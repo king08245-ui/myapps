@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>MindMap Pro - v2.3.0 (v0)</title>
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/litegraph.js@0.7.10/css/litegraph.css">
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/litegraph.js@0.7.10/build/litegraph.min.js"></script>
+    <style>
+        :root { --sidebar-width: 280px; --accent-color: #2e5d8a; --success-color: #27ae60; --save-color: #f39c12; }
+        body, html { width: 100%; height: 100%; margin: 0; padding: 0; display: flex; background: #fff; font-family: 'Segoe UI', sans-serif; overflow: hidden; touch-action: none; }
+        #sidebar { width: var(--sidebar-width); background: #f1f3f5; border-right: 1px solid #dee2e6; display: flex; flex-direction: column; z-index: 10; }
+        #sidebar-header { padding: 20px; border-bottom: 1px solid #ddd; background: #fff; }
+        .header-btns { display: flex; gap: 5px; margin-top: 10px; }
+        .btn-main { background: var(--accent-color); color: white; flex: 1; padding: 10px 5px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 13px; }
+        .btn-save-manual { background: var(--save-color); color: white; flex: 1; padding: 10px 5px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 13px; }
+        #project-list { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+        .project-item { position: relative; padding: 6px 10px; background: #fff; border: 1px solid #ced4da; border-radius: 8px; cursor: pointer; display: flex; align-items: flex-start; gap: 8px; }
+        .project-item.active { border: 2px solid var(--accent-color); background: #f8f9fa; }
+        .project-main-info { flex: 1; overflow: hidden; }
+        .project-name { font-size: 13px; font-weight: 600; color: #333; margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .project-time { font-size: 10px; color: #888; }
+        .project-actions { display: flex; flex-direction: column; gap: 2px; align-items: center; }
+        .order-btns { display: flex; gap: 2px; }
+        .action-btn { background: #eee; border: none; padding: 2px 4px; cursor: pointer; font-size: 10px; border-radius: 4px; }
+        .action-btn:hover { background: #ddd; }
+        .btn-footer { border: none; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 12px; color: white; flex: 1; }
+        #sidebar-footer { padding: 15px; background: #fff; border-top: 1px solid #ddd; display: flex; flex-direction: column; gap: 8px; }
+        #canvas-container { flex: 1; position: relative; background: #eee; }
+        canvas { display: block; background: #ffffff; outline: none; }
+        .zoom-controls { position: absolute; bottom: 40px; right: 40px; display: flex; flex-direction: column; gap: 20px; z-index: 1000; }
+        .zoom-btn { width: 110px; height: 110px; border-radius: 50%; background: var(--accent-color); color: white; border: none; font-size: 60px; font-weight: bold; cursor: pointer; box-shadow: 0 8px 20px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; }
+        .node-editor { position: fixed; background: transparent !important; color: transparent !important; caret-color: #4A90E2; border: none !important; outline: none !important; z-index: 10001; resize: none; overflow: hidden; white-space: pre; line-height: 25px; }
+        #save-toast { position: fixed; bottom: 20px; right: 20px; background: rgba(0,0,0,0.8); color: white; padding: 10px 20px; border-radius: 20px; font-size: 13px; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 2000; }
+    </style>
+</head>
+<body>
+    <div id="sidebar">
+        <div id="sidebar-header">
+            <h2 style="margin: 0; font-size: 20px; color: var(--accent-color); margin-bottom:5px;">Mind Map Pro</h2>
+            <div class="header-btns">
+                <button class="btn-main" onclick="createNewProject()">+ New Project</button>
+                <button class="btn-save-manual" onclick="manualSave()">💾 Save (전체)</button>
+            </div>
+            <div style="margin-top:8px;">
+                <button onclick="notionSyncMindmap()" style="width:100%;padding:10px;background:#000;color:#fff;border:none;border-radius:8px;font-weight:bold;font-size:13px;cursor:pointer;">🔄 노션 수집함 동기화</button>
+            </div>
+        </div>
+        <div id="project-list"></div>
+        <div id="sidebar-footer">
+            <div style="display:flex; gap:5px;">
+                <button class="btn-footer" style="background:var(--success-color)" onclick="exportAllProjects()">💾 추출</button>
+                <button class="btn-footer" style="background:#6c757d" onclick="document.getElementById('fileInput').click()">📂 불러오기</button>
+            </div>
+            <input type="file" id="fileInput" style="display:none" accept=".json" onchange="importAndRepair(event)">
+        </div>
+    </div>
+    <div id="canvas-container">
+        <canvas id='mycanvas' tabindex="1"></canvas>
+        <div class="zoom-controls">
+            <button class="zoom-btn" onclick="changeZoom(1.1)">+</button>
+            <button class="zoom-btn" onclick="changeZoom(0.9)">-</button>
+        </div>
+        <div id="save-toast">모든 프로젝트 저장 완료</div>
+    </div>
+
+    <script>
+        const pathRegex = /(https?:\/\/[^\s\n]+)|([a-zA-Z]:\\[^"<>|]+)|(\\\\[^"<>|]+)/g;
+        const MAX_IMG_WIDTH = 800;
+        const STORAGE_KEY = "lg_v46_final";
+        let currentProjectId = null;
+        let undoStack = [];
+        let clipboard = null;
+        let lastMouseEvt = null;
+
+        // --- 자동화: 모든 프로젝트 순회 저장 ---
+        async function manualSave() {
+            const originalId = currentProjectId;
+            const projects = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+            const sortedKeys = Object.keys(projects).sort((a,b) => (projects[a].order || 0) - (projects[b].order || 0));
+            
+            if (sortedKeys.length === 0) return;
+
+            showToast("전체 프로젝트 자동 순회 저장 시작...");
+            
+            // 현재 작업 중인 프로젝트 먼저 임시 저장
+            if (currentProjectId) saveCurrentProject(false);
+
+            for (const id of sortedKeys) {
+                // 프로젝트 이동 (이 안에서 이전 그래프 자동 저장 로직 포함)
+                await selectProject(id);
+                // 강제 저장 및 UI 갱신을 위해 짧은 지연
+                saveCurrentProject(false);
+                await new Promise(r => setTimeout(r, 50)); 
+            }
+
+            // 원래 보던 프로젝트로 복구
+            if (originalId) await selectProject(originalId);
+            
+            showToast("✅ 모든 프로젝트 순차 저장 완료");
+            loadProjectList();
+        }
+
+        function saveCurrentProject(showToastFlag = false) {
+            if (!currentProjectId) return;
+            const projects = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+            if (!projects[currentProjectId]) return;
+
+            projects[currentProjectId].data = graph.serialize();
+            projects[currentProjectId].offset = [canvas.ds.offset[0], canvas.ds.offset[1]];
+            projects[currentProjectId].scale = canvas.ds.scale;
+            projects[currentProjectId].updatedAt = Date.now();
+            
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+            if (showToastFlag) { showToast("저장 완료"); loadProjectList(); }
+        }
+
+        async function selectProject(id) {
+            if (currentProjectId && currentProjectId !== id) {
+                saveCurrentProject(false);
+            }
+            currentProjectId = id;
+            undoStack = [];
+            const projects = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+            graph.clear();
+            if (projects[id] && projects[id].data) graph.configure(projects[id].data);
+            canvas.ds.offset = [...(projects[id].offset || [0, 0])];
+            canvas.ds.scale = projects[id].scale || 1;
+            saveUndoState();
+            loadProjectList();
+        }
+
+        // --- 비서 연동 및 기존 기능 ---
+        async function openHyperlink(path) {
+            let targetPath = path.trim();
+            if (/^[a-zA-Z]:\\|^\\\\/.test(targetPath)) {
+                try {
+                    await navigator.clipboard.writeText(targetPath);
+                    showToast("비서에게 경로 전달: " + targetPath.split('\\').pop());
+                } catch(err) {
+                    const t = document.createElement("textarea"); t.value = targetPath;
+                    document.body.appendChild(t); t.select(); document.execCommand('copy');
+                    document.body.removeChild(t);
+                }
+            } else {
+                if (!/^https?:\/\//i.test(targetPath)) targetPath = "https://" + targetPath;
+                window.open(targetPath, '_blank');
+            }
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById("save-toast");
+            toast.innerText = msg; toast.style.opacity = "1";
+            setTimeout(() => { toast.style.opacity = "0"; }, 2500);
+        }
+
+        LiteGraph.NODE_SLOT_HEIGHT = 20; LiteGraph.NODE_WIDGET_HEIGHT = 20;
+        LiteGraph.canvas_send_back_on_deselect = false;
+
+        function saveUndoState() {
+            const state = JSON.stringify(graph.serialize());
+            if (undoStack.length > 0 && undoStack[undoStack.length - 1] === state) return;
+            undoStack.push(state); if (undoStack.length > 50) undoStack.shift();
+        }
+
+        function undo() {
+            if (undoStack.length <= 1) return;
+            undoStack.pop(); graph.configure(JSON.parse(undoStack[undoStack.length - 1]));
+            graph.setDirtyCanvas(true, true); saveCurrentProject(false);
+        }
+
+        async function resizeImage(dataUrl) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = function() {
+                    let width = img.width, height = img.height;
+                    if (width > MAX_IMG_WIDTH) { height *= MAX_IMG_WIDTH / width; width = MAX_IMG_WIDTH; }
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width; canvas.height = height;
+                    const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, width, height);
+                    resolve(canvas.toDataURL('image/jpeg', 0.8));
+                };
+                img.src = dataUrl;
+            });
+        }
+
+        function ProjectLinkNode() {
+            this.properties = { targetId: "", targetName: "Select Project", bgColor: "#f39c12" };
+            this.size = [200, 60]; this.addInput("", "number"); this.addOutput("", "number");
+        }
+        ProjectLinkNode.prototype.onDrawForeground = function(ctx) {
+            if (this.flags.collapsed) return;
+            ctx.fillStyle = this.properties.bgColor; ctx.beginPath(); ctx.roundRect(0, 0, this.size[0], this.size[1], 12); ctx.fill();
+            ctx.fillStyle = "#ffffff"; ctx.font = "bold 14px Arial"; ctx.textAlign = "center";
+            ctx.fillText("🚀 " + this.properties.targetName, this.size[0]/2, this.size[1]/2 + 5);
+        };
+        ProjectLinkNode.prototype.onMouseDown = function(e, pos) { if (e.altKey && this.properties.targetId) { selectProject(this.properties.targetId); return true; } };
+        ProjectLinkNode.prototype.getMenuOptions = function() {
+            const projects = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+            let options = [{ content: "Delete", callback: () => { saveUndoState(); graph.remove(this); }}];
+            Object.keys(projects).forEach(id => {
+                options.push({ content: `Link: ${projects[id].name}`, callback: () => { 
+                    saveUndoState(); this.properties.targetId = id; this.properties.targetName = projects[id].name; saveCurrentProject(true);
+                }});
+            });
+            return options;
+        };
+        LiteGraph.registerNodeType("map/project_link", ProjectLinkNode);
+
+        function SimpleTextNode() {
+            this.properties = { content: "Node", bgColor: "#1e1e1e", imgData: null };
+            this.size = [200, 100]; this._img_obj = null; this.addInput("", "number"); this.addOutput("", "number");
+        }
+        SimpleTextNode.prototype.getMenuOptions = function() {
+            const colors = [{name:"Black",code:"#1e1e1e"},{name:"Blue",code:"#2e5d8a"},{name:"Green",code:"#27ae60"},{name:"Red",code:"#c0392b"},{name:"Purple",code:"#8e44ad"},{name:"Orange",code:"#d35400"},{name:"Gray",code:"#7f8c8d"},{name:"DarkBlue",code:"#2c3e50"}];
+            let options = [
+                { content: "Delete", callback: () => { saveUndoState(); graph.remove(this); }},
+                { content: "Clear Image", callback: () => { saveUndoState(); this.properties.imgData = null; this._img_obj = null; saveCurrentProject(true); } },
+                { content: "----------------", disabled: true }
+            ];
+            colors.forEach(c => { options.push({ content: `Color: ${c.name}`, callback: () => { saveUndoState(); this.properties.bgColor = c.code; saveCurrentProject(true); } }); });
+            options.push({ content: "Clone", callback: () => { saveUndoState(); const n = LiteGraph.createNode("map/text"); n.pos = [this.pos[0] + 30, this.pos[1] + 30]; n.properties = JSON.parse(JSON.stringify(this.properties)); graph.add(n); }});
+            return options;
+        };
+        SimpleTextNode.prototype.onMouseDown = function(e, pos) { if (e.altKey) { const match = this.properties.content.match(pathRegex); if (match) { openHyperlink(match[0]); return true; } } };
+        SimpleTextNode.prototype.onDrawForeground = function(ctx) {
+            if (this.flags.collapsed) return;
+            ctx.save(); ctx.beginPath(); ctx.roundRect(0, 0, this.size[0], this.size[1], 12); ctx.clip();
+            if (this.properties.imgData) {
+                if (!this._img_obj || this._img_obj.src !== this.properties.imgData) { this._img_obj = new Image(); this._img_obj.src = this.properties.imgData; }
+                if (this._img_obj.complete) { ctx.drawImage(this._img_obj, 0, 0, this.size[0], this.size[1]); ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.fillRect(0, 0, this.size[0], this.size[1]); }
+            } else { ctx.fillStyle = this.properties.bgColor || "#1e1e1e"; ctx.fill(); }
+            ctx.restore();
+            const lines = (this.properties.content || "").split('\n'); ctx.font = "14px monospace"; ctx.textAlign = "left";
+            const startY = (this.size[1] - (lines.length * 25)) / 2 + 18;
+            lines.forEach((line, i) => {
+                const isLink = pathRegex.test(line); pathRegex.lastIndex = 0;
+                ctx.fillStyle = isLink ? "#5fb3ff" : "#ffffff"; ctx.fillText(line, 15, startY + (i * 25));
+                if (isLink) {
+                    const textWidth = ctx.measureText(line).width; ctx.strokeStyle = "#5fb3ff";
+                    ctx.beginPath(); ctx.moveTo(15, startY + (i * 25) + 3); ctx.lineTo(15 + textWidth, startY + (i * 25) + 3); ctx.stroke();
+                }
+            });
+        };
+        SimpleTextNode.prototype.openEditor = function(isNew = false) {
+            if (document.querySelector(".node-editor")) return;
+            const area = document.createElement("textarea"); area.className = "node-editor"; area.value = isNew ? "" : this.properties.content;
+            document.body.appendChild(area); const rect = canvas.canvas.getBoundingClientRect();
+            const oldContent = this.properties.content;
+            const syncSize = (text) => {
+                this.properties.content = text; const lines = text.split('\n');
+                this.size[0] = Math.max(150, canvas.canvas.getContext("2d").measureText(text).width + 60);
+                this.size[1] = Math.max(80, (lines.length * 25) + 30);
+                const scale = canvas.ds.scale, offset = canvas.convertCanvasToOffset([this.pos[0], this.pos[1]]);
+                area.style.left = (offset[0] + rect.left + (15 * scale)) + "px";
+                area.style.top = (offset[1] + rect.top + (((this.size[1] - (lines.length * 25)) / 2 + 18) * scale) - (15 * scale)) + "px";
+                area.style.width = (this.size[0] * scale - (30 * scale)) + "px"; area.style.height = (lines.length * 25 * scale + (10 * scale)) + "px";
+                area.style.fontSize = (14 * scale) + "px"; graph.setDirtyCanvas(true);
+            };
+            syncSize(area.value); setTimeout(() => area.focus(), 20);
+            area.oninput = () => syncSize(area.value);
+            area.onblur = () => { if (this.properties.content !== oldContent) saveUndoState(); if(area.parentNode) document.body.removeChild(area); saveCurrentProject(true); };
+        };
+        LiteGraph.registerNodeType("map/text", SimpleTextNode);
+        LiteGraph.NODE_TITLE_HEIGHT = 0;
+
+        const graph = new LGraph(); const canvas = new LGraphCanvas("#mycanvas", graph); canvas.allow_searchbox = false;
+
+        window.addEventListener("mousemove", (e) => { lastMouseEvt = e; });
+        window.addEventListener("keydown", (e) => {
+            if (document.querySelector(".node-editor")) return;
+            if (e.ctrlKey && (e.key === "z" || e.key === "Z")) { e.preventDefault(); undo(); }
+            if (e.key === "Delete") { const selected = Object.values(canvas.selected_nodes || {}); if (selected.length > 0) { saveUndoState(); selected.forEach(n => graph.remove(n)); saveCurrentProject(true); } }
+            if (e.ctrlKey && (e.key === "c" || e.key === "C")) { const selected = Object.values(canvas.selected_nodes || {}); if (selected.length > 0) clipboard = selected.map(n => ({ type: n.type, pos: [n.pos[0], n.pos[1]], size: [...n.size], properties: JSON.parse(JSON.stringify(n.properties)) })); }
+            if (e.ctrlKey && (e.key === "v" || e.key === "V")) { if (clipboard) { saveUndoState(); const mousePos = canvas.convertEventToCanvasOffset(lastMouseEvt); clipboard.forEach((data, i) => { const n = LiteGraph.createNode(data.type); n.pos = [mousePos[0] + (i * 20), mousePos[1] + (i * 20)]; n.size = data.size; n.properties = data.properties; graph.add(n); }); saveCurrentProject(true); } }
+            if (e.key === "F2") { const node = canvas.selected_nodes ? Object.values(canvas.selected_nodes)[0] : null; if (node && node.openEditor) { e.preventDefault(); node.openEditor(); } }
+        }, true);
+
+        window.addEventListener("paste", async (e) => {
+            const node = canvas.selected_nodes ? Object.values(canvas.selected_nodes)[0] : null;
+            if (node) {
+                const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+                for (let i = 0; i < items.length; i++) {
+                    if (items[i].type.indexOf("image") !== -1) {
+                        e.preventDefault(); const file = items[i].getAsFile(); const reader = new FileReader();
+                        reader.onload = async (ev) => { saveUndoState(); const optimizedData = await resizeImage(ev.target.result); node.properties.imgData = optimizedData; node._img_obj = null; graph.setDirtyCanvas(true); saveCurrentProject(true); };
+                        reader.readAsDataURL(file); break;
+                    }
+                }
+            }
+        }, true);
+
+        function changeZoom(factor) { canvas.ds.scale = Math.min(Math.max(0.1, canvas.ds.scale * factor), 2); graph.setDirtyCanvas(true); }
+        function spawnNodeAt(e) {
+            const coord = canvas.convertEventToCanvasOffset(e), target = graph.getNodeOnPos(coord[0], coord[1]);
+            if (!target) { saveUndoState(); const n = LiteGraph.createNode("map/text"); n.pos = [coord[0] - n.size[0]/2, coord[1] - n.size[1]/2]; graph.add(n); setTimeout(() => n.openEditor(true), 50); } else { target.openEditor(); }
+        }
+        canvas.canvas.addEventListener("dblclick", spawnNodeAt);
+
+        function loadProjectList() {
+            const listDiv = document.getElementById("project-list"); listDiv.innerHTML = "";
+            const projects = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+            const sortedKeys = Object.keys(projects).sort((a,b) => (projects[a].order || 0) - (projects[b].order || 0));
+            sortedKeys.forEach((id, index) => {
+                const p = projects[id], item = document.createElement("div");
+                item.className = "project-item" + (id === currentProjectId ? " active" : "");
+                item.onclick = (e) => { if(!e.target.closest('.action-btn')) selectProject(id); };
+                item.innerHTML = `<div class="project-main-info"><div class="project-name">${index + 1}. ${p.name}</div><div class="project-time">${p.updatedAt ? new Date(p.updatedAt).toLocaleString() : ""}</div></div><div class="project-actions"><div class="order-btns"><button class="action-btn" onclick="moveProject('${id}', -1)">▲</button><button class="action-btn" onclick="moveProject('${id}', 1)">▼</button></div><div style="display:flex; gap:2px;"><button class="action-btn" onclick="renameProject('${id}')">✏️</button><button class="action-btn" onclick="deleteProject('${id}')">❌</button></div></div>`;
+                listDiv.appendChild(item);
+            });
+        }
+
+        function createNewProject() {
+            const name = prompt("Project Name:"); if (!name) return;
+            const id = "p_" + Date.now(), projects = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+            const maxOrder = Object.values(projects).reduce((max, p) => Math.max(max, p.order || 0), -1);
+            projects[id] = { name, data: null, offset: [0, 0], scale: 1, updatedAt: Date.now(), order: maxOrder + 1 };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(projects)); selectProject(id);
+        }
+
+        function moveProject(id, direction) {
+            const projects = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+            const sortedKeys = Object.keys(projects).sort((a,b) => (projects[a].order || 0) - (projects[b].order || 0));
+            const idx = sortedKeys.indexOf(id), targetIdx = idx + direction;
+            if (targetIdx >= 0 && targetIdx < sortedKeys.length) {
+                const targetId = sortedKeys[targetIdx], tempOrder = projects[id].order || 0;
+                projects[id].order = projects[targetId].order || 0; projects[targetId].order = tempOrder;
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(projects)); loadProjectList();
+            }
+        }
+
+        function renameProject(id) {
+            const projects = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+            const newName = prompt("New Name:", projects[id].name);
+            if (newName) { projects[id].name = newName; localStorage.setItem(STORAGE_KEY, JSON.stringify(projects)); loadProjectList(); }
+        }
+
+        function deleteProject(id) {
+            if (confirm("삭제하시겠습니까?")) {
+                const projects = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); delete projects[id];
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+                if (currentProjectId === id) { graph.clear(); currentProjectId = null; }
+                loadProjectList();
+            }
+        }
+
+        function exportAllProjects() {
+            const blob = new Blob([localStorage.getItem(STORAGE_KEY)], { type: "application/json" });
+            const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+            a.download = `${new Date().toISOString().split('T')[0]}_backup.json`; a.click();
+        }
+
+        function importAndRepair(event) {
+            const reader = new FileReader(); reader.onload = (e) => {
+                localStorage.setItem(STORAGE_KEY, e.target.result.replace(/"type"\s*:\s*"[^"]*"/g, (m) => m.includes("project_link") ? m : '"type":"map/text"'));
+                loadProjectList(); alert("불러오기 완료");
+            };
+            reader.readAsText(event.target.files[0]);
+        }
+
+
+        // ── 노션 수집함 동기화 ──────────────────────────────────────────────
+        const NOTION_KEY_STORAGE = 'notion_api_key';
+        const TASK_DB_ID = '2e6b3fa6e8f28120b54dccff4fb71974';
+        const INBOX_PAGE_ID = '2e6b3fa6e8f2817c8df8ef77cbb45e5d';
+
+        function getNotionKey() { return localStorage.getItem(NOTION_KEY_STORAGE) || ''; }
+        function saveNotionKey(k) { localStorage.setItem(NOTION_KEY_STORAGE, k.trim()); }
+
+        function showKeyModal() {
+          return new Promise(resolve => {
+            const el = document.getElementById('nk-modal');
+            if (el) el.remove();
+            const m = document.createElement('div');
+            m.id = 'nk-modal';
+            m.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.75);z-index:9999;display:flex;align-items:center;justify-content:center;';
+            m.innerHTML = `<div style="background:#1e1e2e;border-radius:16px;padding:28px 24px;width:88%;max-width:400px;">
+              <div style="font-size:20px;margin-bottom:6px;">🔑 노션 API 키</div>
+              <div style="font-size:12px;color:#aaa;margin-bottom:14px;">한 번만 입력하면 자동 저장돼요</div>
+              <input id="nk-input" type="password" placeholder="ntn_XXXXXXXXXX..."
+                style="width:100%;padding:12px;border-radius:8px;border:1px solid #444;background:#2a2a3e;color:#fff;font-size:13px;box-sizing:border-box;margin-bottom:12px;"/>
+              <div style="display:flex;gap:8px;">
+                <button onclick="document.getElementById('nk-modal').remove()"
+                  style="flex:1;padding:11px;border-radius:8px;border:1px solid #555;background:transparent;color:#aaa;cursor:pointer;">취소</button>
+                <button id="nk-save"
+                  style="flex:2;padding:11px;border-radius:8px;border:none;background:#7c6af7;color:#fff;font-weight:bold;cursor:pointer;">저장 후 동기화</button>
+              </div>
+            </div>`;
+            document.body.appendChild(m);
+            const inp = document.getElementById('nk-input');
+            inp.focus();
+            document.getElementById('nk-save').onclick = () => {
+              const k = inp.value.trim();
+              if (!k.startsWith('ntn_') && !k.startsWith('secret_')) { inp.style.borderColor='#e74c3c'; return; }
+              saveNotionKey(k); m.remove(); resolve(k);
+            };
+            inp.onkeydown = e => { if (e.key==='Enter') document.getElementById('nk-save').click(); };
+          });
+        }
+
+        async function getOrPromptKey() {
+          let k = getNotionKey();
+          if (!k) k = await showKeyModal();
+          return k;
+        }
+
+        async function notionSyncMindmap() {
+          if (!currentProjectId) {
+            alert('먼저 왼쪽에서 프로젝트를 선택해주세요!');
+            return;
+          }
+          try {
+            const k = await getOrPromptKey();
+            if (!k) return;
+            const now = new Date().toISOString().slice(0,16).replace('T',' ');
+
+            // 1. DB에서 분류 없는 항목
+            const dbRes = await fetch(`https://api.notion.com/v1/databases/${TASK_DB_ID}/query`, {
+              method: 'POST',
+              headers: { 'Authorization': `Bearer ${k}`, 'Notion-Version': '2022-06-28', 'Content-Type': 'application/json' },
+              body: JSON.stringify({ filter: { and: [
+                { property: '완료 여부', checkbox: { equals: false } },
+                { or: [
+                  { property: '분류', select: { is_empty: true } },
+                  { property: '분류', select: { equals: '수집함' } }
+                ]}
+              ]}})
+            });
+            const dbData = await dbRes.json();
+            const dbItems = (dbData.results || []).map(page => {
+              for (const pval of Object.values(page.properties || {})) {
+                if (pval.type === 'title') return pval.title.map(t => t.plain_text).join('').trim();
+              }
+              return '(제목 없음)';
+            }).filter(Boolean);
+
+            // 2. 수집함 페이지 하위 (모바일 위젯)
+            const pageRes = await fetch(`https://api.notion.com/v1/blocks/${INBOX_PAGE_ID}/children`, {
+              headers: { 'Authorization': `Bearer ${k}`, 'Notion-Version': '2022-06-28' }
+            });
+            const pageData = await pageRes.json();
+            const pageItems = (pageData.results || [])
+              .filter(b => b.type === 'child_page')
+              .map(b => b.child_page?.title || '')
+              .filter(Boolean);
+
+            const allItems = [...dbItems, ...pageItems];
+            if (allItems.length === 0) { alert('수집함이 비어있어요!'); return; }
+
+            // 기존 수집함 노드 제거
+            graph._nodes.filter(n => n.properties?.content?.startsWith('📥 노션 수집함'))
+              .forEach(n => graph.remove(n));
+
+            // 헤더 노드
+            const header = LiteGraph.createNode('map/text');
+            header.pos = [50, 50]; header.size = [280, 60];
+            header.properties.bgColor = '#c0392b';
+            header.properties.content = `📥 노션 수집함 (NEW ${allItems.length})\n${now}`;
+            graph.add(header);
+
+            // 항목 노드
+            allItems.forEach((title, i) => {
+              const node = LiteGraph.createNode('map/text');
+              node.pos = [80, 130 + (i * 80)]; node.size = [250, 60];
+              node.properties.bgColor = '#2c3e50';
+              node.properties.content = title;
+              graph.add(node);
+              header.connect(0, node, 0);
+            });
+
+            graph.setDirtyCanvas(true, true);
+            saveCurrentProject(true);
+            alert(`✅ 노션 수집함 동기화 완료!\n${allItems.length}개 항목\n${now}`);
+
+          } catch(e) {
+            if (e.message?.includes('401')) {
+              localStorage.removeItem(NOTION_KEY_STORAGE);
+              alert('API 키가 올바르지 않아요. 다시 입력해주세요.');
+              notionSyncMindmap();
+            } else {
+              alert('❌ 동기화 실패\n' + e.message);
+            }
+          }
+        }
+        // ────────────────────────────────────────────────────────────────────
+
+        window.onload = () => { loadProjectList(); canvas.resize(window.innerWidth - 280, window.innerHeight); graph.start(); };
+        window.onresize = () => canvas.resize(window.innerWidth - 280, window.innerHeight);
+    </script>
+</body>
+</html>

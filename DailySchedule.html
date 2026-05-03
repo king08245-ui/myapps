@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Daily Schedule v8.0</title>
+    <style>
+        :root {
+            --today-clr:#E74C3C; --tomorrow-clr:#3498DB; --bg:#F4F7F6; --overdue-bg:#FFF3E0; --overdue-text:#E74C3C;
+            --group-clr:#9B59B6; --help-clr: #2C3E50; --complete-clr: #2ECC71;
+            --c1:#FF3B30; --c2:#FFCC00; --c3:#4CD964; --c4:#5AC8FA; --c5:#007AFF; --c6:#5856D6;
+        }
+        body, html { margin:0; padding:0; height:100%; width:100%; overflow:hidden; background:var(--bg); font-family:-apple-system, sans-serif; }
+        .app-container { display:flex; flex-direction:column; height:100vh; }
+
+        .app-header { background:white; padding:8px 10px; border-bottom:1px solid #ddd; flex-shrink:0; }
+        .app-title { font-size:16px; font-weight:900; color:var(--today-clr); margin:0 0 8px; text-align:center; }
+        .header-btns { display:flex; gap:3px; width:100%; }
+        .btn-util { flex:1; height:38px; font-size:10px; border-radius:6px; border:1px solid #ddd; background:#f9f9f9; font-weight:bold; display:flex; align-items:center; justify-content:center; }
+
+        .tab-menu { display:flex; background:#fff; border-bottom:1px solid #eee; flex-shrink:0; }
+        .tab-btn { flex:1; padding:12px 5px; border:none; background:none; font-weight:bold; color:#999; font-size:13px; cursor:pointer; }
+        .tab-btn.active { color:var(--today-clr); border-bottom:3px solid var(--today-clr); }
+        .tab-btn[data-tab="tomorrow"].active { color:var(--tomorrow-clr); border-bottom:3px solid var(--tomorrow-clr); }
+        .tab-btn[data-tab="favorites"].active { color:var(--group-clr); border-bottom:3px solid var(--group-clr); }
+
+        .scroll-area { flex:1; overflow-y:auto; padding:8px 10px 100px; -webkit-overflow-scrolling:touch; }
+        .tab-content { flex:1; display:none; flex-direction:column; overflow:hidden; }
+        .tab-content.active { display:flex; }
+
+        .list-item-container { position: relative; overflow: hidden; margin-bottom: 4px; border-radius: 6px; background: #eee; }
+        .swipe-bg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; padding: 0 20px; box-sizing: border-box; font-weight: 900; font-size: 14px; color: white; z-index: 1; opacity: 0; }
+        .swipe-left-bg { background: var(--today-clr); justify-content: flex-end; }
+        .swipe-right-bg { background: var(--complete-clr); justify-content: flex-start; }
+
+        .list-item {
+            position: relative; background:white; padding:0 8px; border:1px solid #eee; display:flex; align-items:center; height:50px;
+            box-sizing: border-box; z-index: 2; transition: transform 0.1s ease-out; touch-action: pan-y;
+        }
+        .item-text { flex:1; font-weight:bold; font-size:13.5px; color:#333; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:flex; align-items:center; }
+        .badge-count { background: #eee; color: #666; font-size: 10px; padding: 2px 6px; border-radius: 10px; margin-left: 5px; font-weight: 800; }
+        .badge-count.remain { background: var(--tomorrow-clr); color: white; }
+        .overdue-day { color: var(--overdue-text); font-size: 11px; font-weight: 900; margin-left: 4px; }
+
+        .btn-action { font-size:10px; padding:5px 7px; border-radius:4px; border:1px solid #ddd; background:#fff; font-weight:bold; flex-shrink:0; margin-left:2px; }
+        .fav-star { font-size: 16px; color: #FFCC00; border:none; background:none; padding:0 5px; }
+
+        .tz-select { width: 72px; height: 28px; border-radius: 4px; border: 1px solid #ddd; margin-right: 8px; font-size: 10px; font-weight: 800; background:#fff; appearance: none; text-align: center; flex-shrink: 0; }
+        .tz-select.s1 { border-left: 5px solid var(--c1); color: var(--c1); }
+        .tz-select.s2 { border-left: 5px solid var(--c2); color: #b79500; }
+        .tz-select.s3 { border-left: 5px solid var(--c3); color: #2d853d; }
+        .tz-select.s4 { border-left: 5px solid var(--c4); color: #0076a8; }
+        .tz-select.s5 { border-left: 5px solid var(--c5); color: var(--c5); }
+        .tz-select.s6 { border-left: 5px solid var(--c6); color: var(--c6); }
+
+        /* 자동반복 원형 버튼 */
+        .repeat-btn {
+            width: 22px; height: 22px; border-radius: 50%; border: 2px solid #ccc;
+            cursor: pointer; flex-shrink: 0; margin-left: 4px; transition: background 0.15s;
+        }
+        .repeat-btn.on  { background: #FFCC00; border-color: #b79500; }
+        .repeat-btn.off { background: #E74C3C; border-color: #c0392b; }
+
+        #groupModal, #helpModal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:10000; justify-content:center; align-items:center; }
+        .modal-content { background:white; width:85%; max-width:320px; border-radius:15px; padding:20px; max-height: 80vh; overflow-y: auto; }
+        .modal-item { padding:12px; border-bottom:1px solid #eee; font-size:14px; font-weight:bold; cursor:pointer; display:flex; align-items:center; }
+
+        #detailView { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:white; z-index:9998; padding:15px; box-sizing:border-box; }
+        .group-body { display:none; background: #f9f9f9; padding: 5px; border-radius: 0 0 6px 6px; margin-top: -4px; margin-bottom: 8px; border: 1px solid #eee; }
+        .input-form { padding:10px; background:#fff; border-bottom:1px solid #eee; display:flex; gap:6px; flex-shrink:0; }
+        .input-form input { flex:1; border:1px solid #ddd; border-radius:5px; padding:8px; font-size:14px; outline:none; }
+        #helpBtn { position: fixed; bottom: 20px; right: 20px; width: 56px; height: 56px; border-radius: 50%; background: var(--help-clr); color: white; border: none; box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 999; font-weight: bold; font-size: 11px; }
+
+        .date-display { padding: 8px 10px 0; font-size: 13px; font-weight: 800; color: #666; }
+
+        /* 진도표 탭 */
+        .tab-btn[data-tab="progress"].active { color:#27AE60; border-bottom:3px solid #27AE60; }
+        .prog-card { background:white; border-radius:10px; padding:12px; margin-bottom:10px; border:1px solid #eee; }
+        .prog-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; }
+        .prog-title { font-size:14px; font-weight:900; color:#333; }
+        .prog-badge { font-size:10px; background:#eee; padding:2px 8px; border-radius:10px; color:#555; font-weight:800; }
+        .prog-bar-bg { background:#f0f0f0; height:8px; border-radius:4px; overflow:hidden; margin:6px 0; }
+        .prog-bar-fill { height:100%; border-radius:4px; transition:width 0.3s; }
+        .prog-sub { font-size:11px; color:#888; margin-bottom:8px; line-height:1.6; }
+        .prog-btns { display:flex; gap:5px; flex-wrap:wrap; }
+        .prog-btn { height:30px; padding:0 10px; border-radius:5px; border:1px solid #ddd; background:#f9f9f9; font-size:11px; font-weight:bold; cursor:pointer; }
+        .prog-btn.red { background:var(--today-clr); color:white; border:none; }
+        .prog-btn.green { background:var(--complete-clr); color:white; border:none; }
+        .prog-btn.blue { background:var(--tomorrow-clr); color:white; border:none; }
+        .prog-today-tag { display:inline-block; background:#E74C3C; color:white; font-size:9px; font-weight:900; padding:1px 5px; border-radius:6px; margin-left:4px; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <header class="app-header">
+        <h1 class="app-title">Daily Schedule v7.9</h1>
+        <div class="header-btns">
+            <button class="btn-util" onclick="notionSync()" style="background:#000;color:#fff;border-color:#000;">🔄 노션동기화</button>
+            <button class="btn-util" onclick="exportData()">백업</button>
+            <button class="btn-util" onclick="document.getElementById('importFile').click()">복구</button>
+            <button class="btn-util" onclick="downloadCSV()">CSV</button>
+            <button class="btn-util" onclick="resetAllData()">초기화</button>
+            <input type="file" id="importFile" style="display:none" onchange="importData(event)">
+        </div>
+    </header>
+
+    <nav class="tab-menu">
+        <button class="tab-btn active" data-tab="today" onclick="openTab('today', this)">오늘</button>
+        <button class="tab-btn" data-tab="tomorrow" onclick="openTab('tomorrow', this)">내일</button>
+        <button class="tab-btn" data-tab="favorites" onclick="openTab('favorites', this)">즐겨찾기</button>
+        <button class="tab-btn" data-tab="progress" onclick="openTab('progress', this)">진도표</button>
+    </nav>
+
+    <div class="input-form" id="mainInputForm">
+        <input type="text" id="in-today" placeholder="오늘 할 일 입력 (Enter/이동 시 생성)" onkeypress="if(event.key==='Enter') addProject('today')">
+        <button class="btn-action" onclick="addProject('today')" style="background:var(--today-clr); color:white; border:none; width:50px;">생성</button>
+    </div>
+
+    <section id="tab-today" class="tab-content active">
+        <div id="today-date-info" class="date-display"></div>
+        <div id="list-today" class="scroll-area"></div>
+    </section>
+    <section id="tab-tomorrow" class="tab-content">
+        <div id="list-tomorrow" class="scroll-area"></div>
+    </section>
+    <section id="tab-favorites" class="tab-content">
+        <div class="input-form">
+            <input type="text" id="in-group" placeholder="새 그룹 이름" onkeypress="if(event.key==='Enter') createGroup()">
+            <button class="btn-action" onclick="createGroup()" style="background:var(--group-clr); color:white; border:none; height:34px;">방 생성</button>
+        </div>
+        <div id="list-favorites" class="scroll-area"></div>
+    </section>
+    <section id="tab-progress" class="tab-content">
+        <div id="list-progress" class="scroll-area"></div>
+    </section>
+</div>
+
+<div id="detailView">
+    <div style="display:flex; align-items:center; margin-bottom:15px; gap:10px;">
+        <button onclick="history.back()" class="btn-action">← 닫기</button>
+        <h2 id="currentProjectTitle" style="margin:0; font-size:16px; flex:1"></h2>
+    </div>
+    <div class="input-form">
+        <input type="text" id="newItemName" placeholder="할 일 추가..." onkeypress="if(event.key==='Enter') addItem()">
+        <button class="btn-action" onclick="addItem()">추가</button>
+    </div>
+    <div id="itemList" class="scroll-area"></div>
+</div>
+
+<div id="groupModal">
+    <div class="modal-content">
+        <h3 style="margin-top:0">이동</h3>
+        <div id="modalGroupList"></div>
+        <button onclick="closeModal()" style="width:100%; padding:12px; margin-top:10px; border:none; border-radius:8px; background:#eee;">취소</button>
+    </div>
+</div>
+
+<div id="helpModal">
+    <div class="modal-content">
+        <h3>사용법</h3>
+        <p>• 스와이프 오른쪽: 완료 처리<br>• 스와이프 왼쪽: 삭제 처리<br>• 내일 버튼: 클릭 시 제목 뒤에 +1 누적</p>
+        <button onclick="toggleHelp(false)" style="width:100%; padding:12px; margin-top:10px; border:none; border-radius:8px; background:#eee;">닫기</button>
+    </div>
+</div>
+
+<button id="helpBtn" onclick="toggleHelp(true)">도움말</button>
+
+<script>
+    let storage = JSON.parse(localStorage.getItem('dailySchedule_v4')) || { data: [], favorites: [], groups: [], history: [] };
+    const getRawDate = () => new Date().toLocaleDateString('sv-SE');
+    const getTomDate = () => { let d=new Date(); d.setDate(d.getDate()+1); return d.toLocaleDateString('sv-SE'); };
+
+    function getTodayFullText() {
+        const d = new Date();
+        const week = ['일', '월', '화', '수', '목', '금', '토'];
+        return `${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일 (${week[d.getDay()]})`;
+    }
+
+    let currentProjectId = null;
+    let currentGroupInfo = null;
+    let movingItem = null;   // { type:'fav', idx } 또는 { type:'groupProject', gId, pIdx }
+    const timeLabels = { 0:"시간미정", 1:"06-09시", 2:"09-12시", 3:"12-15시", 4:"15-18시", 5:"18-21시", 6:"21-24시" };
+
+    function save(noRender) {
+        localStorage.setItem('dailySchedule_v4', JSON.stringify(storage));
+        if(!noRender) renderAll();
+    }
+
+    let touchStartX = 0;
+    function handleTouchStart(e) { touchStartX = e.touches[0].clientX; }
+    function handleTouchMove(e) {
+        let diff = e.touches[0].clientX - touchStartX;
+        const el = e.currentTarget;
+        const container = el.parentElement;
+        if (Math.abs(diff) > 20) {
+            el.style.transform = `translateX(${diff}px)`;
+            const rb = container.querySelector('.swipe-right-bg');
+            const lb = container.querySelector('.swipe-left-bg');
+            if(diff > 0) { rb.style.opacity = 1; lb.style.opacity = 0; rb.innerText = diff > 100 ? "완료!!!" : "완료"; }
+            else { lb.style.opacity = 1; rb.style.opacity = 0; lb.innerText = diff < -100 ? "삭제!!!" : "삭제"; }
+        }
+    }
+    function handleTouchEnd(e, id) {
+        const el = e.currentTarget;
+        const diff = e.changedTouches[0].clientX - touchStartX;
+        if (diff > 120) finishProject(id, '완료');
+        else if (diff < -120) finishProject(id, '삭제');
+        else { el.style.transform = `translateX(0)`; el.parentElement.querySelectorAll('.swipe-bg').forEach(b => b.style.opacity = 0); }
+    }
+
+    function finishProject(id, action) {
+        const idx = storage.data.findIndex(p => p.id === id);
+        if(idx > -1) { storage.history.push({ date: getRawDate(), title: `[${action}] ${storage.data[idx].title}` }); storage.data.splice(idx, 1); save(); }
+    }
+
+    function renderAll() {
+        const today = getRawDate(), tom = getTomDate();
+        const sortFn = (a, b) => (a.timeZone || 99) - (b.timeZone || 99);
+        document.getElementById('today-date-info').innerText = "📅 " + getTodayFullText();
+        renderList('list-today', storage.data.filter(p => p.date <= today).sort(sortFn), today);
+        renderList('list-tomorrow', storage.data.filter(p => p.date === tom).sort(sortFn), today);
+        renderFavSection();
+    }
+
+    function renderList(domId, data, todayStr) {
+        const el = document.getElementById(domId);
+        el.innerHTML = data.map(p => {
+            const diff = Math.floor((new Date(todayStr) - new Date(p.date)) / 86400000);
+            const remain = (p.items || []).filter(i => !i.checked).length;
+            const isFav = storage.favorites.some(f => f.title === p.title);
+            return `
+            <div class="list-item-container">
+                <div class="swipe-bg swipe-right-bg">완료</div><div class="swipe-bg swipe-left-bg">삭제</div>
+                <div class="list-item" ontouchstart="handleTouchStart(event)" ontouchmove="handleTouchMove(event)" ontouchend="handleTouchEnd(event, ${p.id})">
+                    <select class="tz-select s${p.timeZone||0}" onchange="changeTimeZone(${p.id}, this.value)">
+                        ${Object.entries(timeLabels).map(([v, l]) => `<option value="${v}" ${p.timeZone==v?'selected':''}>${l}</option>`).join('')}
+                    </select>
+                    <span class="item-text" onclick="openDetail(${p.id})">${p.title} ${diff>0?`<span class="overdue-day">+${diff}</span>`:''} ${(p.items||[]).length>0?`<span class="badge-count ${remain>0?'remain':''}">${remain==0?'✓':remain}</span>`:''}</span>
+                    <button class="fav-star" onclick="toggleFavorite(${p.id})">${isFav?'★':'☆'}</button>
+                    <button class="btn-action" onclick="editTitle('project', ${p.id})">수정</button>
+                    <button class="btn-action" onclick="moveToTomorrow(${p.id})">내일</button>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    // ── [수정1] 즐겨찾기 탭 렌더 — 그룹 오름차순 정렬
+    function renderFavSection() {
+        const list = document.getElementById('list-favorites');
+        let h = `<h4 style="margin:10px 0; font-size:11px; color:#888;">👥 그룹(방)</h4>`;
+
+        // 그룹 오름차순 정렬
+        const sortedGroups = [...storage.groups].sort((a, b) => a.title.localeCompare(b.title, 'ko'));
+
+        sortedGroups.forEach(g => {
+            h += `<div class="group-container">
+                    <div class="list-item" style="border-left:4px solid var(--group-clr)">
+                        <span class="item-text" onclick="toggleGroupBody(${g.id})">📦 ${g.title} (${g.projects.length})</span>
+                        <button class="btn-action" onclick="editTitle('group', ${g.id})">수정</button>
+                        <button class="btn-action" onclick="runGroup(${g.id})">복사</button>
+                        <button class="btn-action" onclick="deleteGroup(${g.id})" style="color:red">삭제</button>
+                    </div>
+                    <div id="group-body-${g.id}" class="group-body">
+                        ${g.projects.map((p, i) => `
+                            <div style="display:flex; align-items:center; margin-bottom:4px; padding:5px; background:white; border-radius:4px; border:1px solid #eee;">
+                                <span style="flex:1; font-size:12px; font-weight:bold; cursor:pointer;" onclick="openDetail(null, ${g.id}, ${i})">• ${p.title} (${(p.items||[]).length})</span>
+                                <button class="btn-action" style="font-size:9px" onclick="editTitle('groupProject', ${g.id}, ${i})">수정</button>
+                                <button class="btn-action" style="font-size:9px" onclick="openGroupProjectMoveModal(${g.id}, ${i})">이동</button>
+                                <button class="btn-action" style="font-size:9px; color:red;" onclick="deleteGroupProject(${g.id}, ${i})">삭제</button>
+                                <button class="repeat-btn ${p.autoRepeat?'on':'off'}" onclick="toggleAutoRepeat(${g.id}, ${i})" title="${p.autoRepeat?'매일자동(켜짐)':'매일자동(꺼짐)'}"></button>
+                            </div>`).join('')}
+                    </div>
+                  </div>`;
+        });
+
+        // ── [수정2] 즐겨찾기 목록 — 시간 선택기 추가
+        h += `<h4 style="margin:20px 0 10px; font-size:11px; color:#888;">⭐ 즐겨찾기 목록</h4>`;
+        storage.favorites.forEach((f, idx) => {
+            const tz = f.timeZone || 0;
+            h += `<div class="list-item" style="height:auto; padding:6px 8px; margin-bottom:4px; border:1px solid #eee; border-radius:6px;">
+                <div style="display:flex; align-items:center; width:100%; gap:4px;">
+                    <select class="tz-select s${tz}" onchange="changeFavTimeZone(${idx}, this.value)">
+                        ${Object.entries(timeLabels).map(([v,l]) => `<option value="${v}" ${tz==v?'selected':''}>${l}</option>`).join('')}
+                    </select>
+                    <span class="item-text">${f.title}</span>
+                    <button class="btn-action" onclick="copyToToday(${idx})">오늘</button>
+                    <button class="btn-action" onclick="openMoveModal(${idx})">이동</button>
+                    <button class="btn-action" onclick="toggleFavorite(null, '${f.title}')">삭제</button>
+                </div>
+            </div>`;
+        });
+        list.innerHTML = h;
+    }
+
+    function deleteGroup(id) { if(confirm("그룹을 삭제하시겠습니까?")) { storage.groups = storage.groups.filter(g => g.id !== id); save(); } }
+    function deleteGroupProject(gId, pIdx) { if(confirm("프로젝트를 삭제하시겠습니까?")) { const g = storage.groups.find(x => x.id === gId); g.projects.splice(pIdx, 1); save(); } }
+
+    // ── [수정3] 자동반복 토글
+    function toggleAutoRepeat(gId, pIdx) {
+        const g = storage.groups.find(x => x.id === gId);
+        g.projects[pIdx].autoRepeat = !g.projects[pIdx].autoRepeat;
+        save();
+    }
+
+    // ── [수정3] 앱 시작 시 자동반복 항목을 오늘탭에 복사
+    function checkAutoRepeat() {
+        const today = getRawDate();
+        if (storage.lastAutoRepeatDate === today) return;
+        storage.lastAutoRepeatDate = today;
+        let added = 0;
+        storage.groups.forEach(g => {
+            g.projects.forEach(p => {
+                if (p.autoRepeat) {
+                    const exists = storage.data.some(x => x.title === p.title && x.date === today);
+                    if (!exists) {
+                        let n = JSON.parse(JSON.stringify(p));
+                        n.id = Date.now() + (added++);
+                        n.date = today;
+                        n.timeZone = p.timeZone || 0;
+                        storage.data.push(n);
+                    }
+                }
+            });
+        });
+        localStorage.setItem('dailySchedule_v4', JSON.stringify(storage));
+    }
+
+    // ── [수정4] 이동 모달 — 즐겨찾기↔그룹 상호 이동
+    function openMoveModal(idx) {
+        movingItem = { type: 'fav', idx };
+        showMoveModal();
+    }
+    function openGroupProjectMoveModal(gId, pIdx) {
+        movingItem = { type: 'groupProject', gId, pIdx };
+        showMoveModal();
+    }
+    function showMoveModal() {
+        const listEl = document.getElementById('modalGroupList');
+        let html = '';
+        if (movingItem.type === 'groupProject') {
+            html += `<div class="modal-item" onclick="moveItemToFav()">⭐ 즐겨찾기로 이동</div>`;
+        }
+        storage.groups.forEach((g, i) => {
+            if (movingItem.type === 'groupProject' && g.id === movingItem.gId) return;
+            html += `<div class="modal-item" onclick="moveItemToGroup(${i})">📦 ${g.title}</div>`;
+        });
+        if (!html) html = '<p style="text-align:center;color:#999">이동할 곳이 없습니다.</p>';
+        listEl.innerHTML = html;
+        document.getElementById('groupModal').style.display = 'flex';
+    }
+    function moveItemToGroup(gIdx) {
+        let item;
+        if (movingItem.type === 'fav') {
+            item = storage.favorites[movingItem.idx];
+            storage.favorites.splice(movingItem.idx, 1);
+        } else {
+            const g = storage.groups.find(x => x.id === movingItem.gId);
+            item = g.projects[movingItem.pIdx];
+            g.projects.splice(movingItem.pIdx, 1);
+        }
+        storage.groups[gIdx].projects.push(JSON.parse(JSON.stringify(item)));
+        closeModal(); save();
+    }
+    function moveItemToFav() {
+        if (movingItem.type !== 'groupProject') return;
+        const g = storage.groups.find(x => x.id === movingItem.gId);
+        const item = g.projects[movingItem.pIdx];
+        storage.favorites.push(JSON.parse(JSON.stringify(item)));
+        g.projects.splice(movingItem.pIdx, 1);
+        closeModal(); save();
+    }
+    function closeModal() { document.getElementById('groupModal').style.display = 'none'; movingItem = null; }
+
+    function openDetail(id, gId = null, pIdx = null) {
+        currentProjectId = id; currentGroupInfo = gId !== null ? {gId, pIdx} : null;
+        const p = id ? storage.data.find(x => x.id === id) : storage.groups.find(x => x.id === gId).projects[pIdx];
+        document.getElementById('currentProjectTitle').innerText = p.title;
+        document.getElementById('detailView').style.display = 'block';
+        history.pushState({view: 'detail'}, ''); renderItems();
+    }
+    function renderItems() {
+        const p = currentProjectId ? storage.data.find(x => x.id === currentProjectId) : storage.groups.find(x => x.id === currentGroupInfo.gId).projects[currentGroupInfo.pIdx];
+        document.getElementById('itemList').innerHTML = (p.items || []).map((item, idx) => `
+            <div class="list-item" style="border:none; border-bottom:1px solid #eee;">
+                <input type="checkbox" ${item.checked?'checked':''} onchange="toggleItem(${idx})">
+                <span style="flex:1; margin-left:10px; font-size:14px; ${item.checked?'text-decoration:line-through;color:#aaa':''}">${item.name}</span>
+                <button class="btn-action" onclick="editTitle('item', ${idx})">수정</button>
+                <button class="btn-action" onclick="deleteItem(${idx})" style="color:red">X</button>
+            </div>`).join('');
+    }
+
+    // ── [수정2] 즐겨찾기 항목 시간 변경
+    function changeFavTimeZone(idx, v) {
+        storage.favorites[idx].timeZone = parseInt(v);
+        save();
+    }
+
+    function toggleFavorite(id, tOnly = null) {
+        let t = tOnly; let its = []; let tz = 0;
+        if(id) { const p = storage.data.find(x => x.id === id); t = p.title; its = p.items; tz = p.timeZone || 0; }
+        const fIdx = storage.favorites.findIndex(f => f.title === t);
+        if(fIdx > -1) storage.favorites.splice(fIdx, 1);
+        else if(id) storage.favorites.push({ title: t, items: JSON.parse(JSON.stringify(its)), timeZone: tz });
+        save();
+    }
+    function editTitle(type, id, subId) {
+        let obj;
+        if(type==='project') obj=storage.data.find(p=>p.id===id);
+        else if(type==='item') obj = currentProjectId ? storage.data.find(x=>x.id===currentProjectId).items[id] : storage.groups.find(x=>x.id===currentGroupInfo.gId).projects[currentGroupInfo.pIdx].items[id];
+        else if(type==='group') obj=storage.groups.find(g=>g.id===id);
+        else if(type==='groupProject') obj=storage.groups.find(x=>x.id===id).projects[subId];
+        const n = prompt("수정:", (type==='item'?obj.name:obj.title));
+        if(n) { if(type==='item') obj.name=n; else obj.title=n; save(); if(type==='item') renderItems(); }
+    }
+    function deleteItem(idx) { let p = currentProjectId ? storage.data.find(x=>x.id===currentProjectId) : storage.groups.find(x=>x.id===currentGroupInfo.gId).projects[currentGroupInfo.pIdx]; p.items.splice(idx, 1); save(true); renderItems(); }
+
+    function addProject(t) {
+        const i = document.getElementById('in-today');
+        if(!i.value.trim()) return;
+        const activeTab = document.querySelector('.tab-btn.active').dataset.tab;
+        let targetDate = (activeTab === 'tomorrow') ? getTomDate() : getRawDate();
+        storage.data.push({ id:Date.now(), title:i.value, date:targetDate, items:[], timeZone:0 });
+        i.value='';
+        save();
+    }
+
+    function addItem() { const i=document.getElementById('newItemName'); if(!i.value.trim()) return; let p = currentProjectId ? storage.data.find(x=>x.id===currentProjectId) : storage.groups.find(x=>x.id===currentGroupInfo.gId).projects[currentGroupInfo.pIdx]; p.items.push({ name:i.value, checked:false }); i.value=''; save(true); renderItems(); }
+    function toggleItem(idx) { let p = currentProjectId ? storage.data.find(x=>x.id===currentProjectId) : storage.groups.find(x=>x.id===currentGroupInfo.gId).projects[currentGroupInfo.pIdx]; p.items[idx].checked = !p.items[idx].checked; save(true); renderItems(); }
+    function createGroup() { const i=document.getElementById('in-group'); if(!i.value.trim()) return; storage.groups.push({ id:Date.now(), title:i.value, projects:[] }); i.value=''; save(); }
+    function changeTimeZone(id, v) { storage.data.find(x=>x.id===id).timeZone=parseInt(v); save(true); renderAll(); }
+
+    function moveToTomorrow(id) {
+        const p = storage.data.find(x => x.id === id);
+        if(p) {
+            const delayPattern = /\s\+(\d+)$/;
+            const match = p.title.match(delayPattern);
+            if(match) {
+                const count = parseInt(match[1]) + 1;
+                p.title = p.title.replace(delayPattern, ` +${count}`);
+            } else {
+                p.title = p.title + " +1";
+            }
+            p.date = getTomDate();
+            save();
+        }
+    }
+
+    function toggleGroupBody(id) { const el=document.getElementById(`group-body-${id}`); el.style.display=(el.style.display==='block')?'none':'block'; }
+    function runGroup(id) { const g=storage.groups.find(x=>x.id===id); g.projects.forEach((p,i)=>{ let n=JSON.parse(JSON.stringify(p)); n.id=Date.now()+i; n.date=getRawDate(); n.timeZone=p.timeZone||0; storage.data.push(n); }); save(); }
+    function resetAllData() { if(confirm("초기화?")) { localStorage.removeItem('dailySchedule_v4'); location.reload(); } }
+
+    // ── 노션 API 직접 호출 ──────────────────────────────────────────────────
+    const NOTION_KEY_STORAGE = 'notion_api_key';
+    const TASK_DB_ID = '2e6b3fa6e8f28120b54dccff4fb71974';
+
+    function getNotionKey() { return localStorage.getItem(NOTION_KEY_STORAGE) || ''; }
+    function saveNotionKey(k) { localStorage.setItem(NOTION_KEY_STORAGE, k.trim()); }
+
+    function showKeyModal() {
+      return new Promise(resolve => {
+        const el = document.getElementById('nk-modal');
+        if (el) el.remove();
+        const m = document.createElement('div');
+        m.id = 'nk-modal';
+        m.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.75);z-index:9999;display:flex;align-items:center;justify-content:center;';
+        m.innerHTML = `<div style="background:#1e1e2e;border-radius:16px;padding:28px 24px;width:88%;max-width:400px;">
+          <div style="font-size:20px;margin-bottom:6px;">🔑 노션 API 키</div>
+          <div style="font-size:12px;color:#aaa;margin-bottom:14px;">한 번만 입력하면 자동 저장돼요</div>
+          <input id="nk-input" type="password" placeholder="ntn_XXXXXXXXXX..."
+            style="width:100%;padding:12px;border-radius:8px;border:1px solid #444;background:#2a2a3e;color:#fff;font-size:13px;box-sizing:border-box;margin-bottom:12px;"/>
+          <div style="display:flex;gap:8px;">
+            <button onclick="document.getElementById('nk-modal').remove()"
+              style="flex:1;padding:11px;border-radius:8px;border:1px solid #555;background:transparent;color:#aaa;cursor:pointer;">취소</button>
+            <button id="nk-save"
+              style="flex:2;padding:11px;border-radius:8px;border:none;background:#7c6af7;color:#fff;font-weight:bold;cursor:pointer;">저장 후 동기화</button>
+          </div>
+        </div>`;
+        document.body.appendChild(m);
+        const inp = document.getElementById('nk-input');
+        inp.focus();
+        document.getElementById('nk-save').onclick = () => {
+          const k = inp.value.trim();
+          if (!k.startsWith('ntn_') && !k.startsWith('secret_')) { inp.style.borderColor='#e74c3c'; return; }
+          saveNotionKey(k); m.remove(); resolve(k);
+        };
+        inp.onkeydown = e => { if (e.key==='Enter') document.getElementById('nk-save').click(); };
+      });
+    }
+
+    async function getOrPromptKey() {
+      let k = getNotionKey();
+      if (!k) k = await showKeyModal();
+      return k;
+    }
+
+    async function notionApiQuery(filter = {}) {
+      const k = await getOrPromptKey();
+      if (!k) return null;
+      const r = await fetch(`https://api.notion.com/v1/databases/${TASK_DB_ID}/query`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${k}`, 'Notion-Version': '2022-06-28', 'Content-Type': 'application/json' },
+        body: JSON.stringify(filter)
+      });
+      if (!r.ok) { const e = await r.json(); throw new Error(e.message || r.statusText); }
+      return r.json();
+    }
+
+    function getNotionTitle(page) {
+      for (const pval of Object.values(page.properties || {})) {
+        if (pval.type === 'title') return pval.title.map(t => t.plain_text).join('').trim();
+      }
+      return '(제목 없음)';
+    }
+
+    function getNotionDate(page, propName) {
+      const prop = (page.properties || {})[propName] || {};
+      return prop.date?.start || '';
+    }
+
+    async function notionSync() {
+      try {
+        const today = getRawDate();
+        const now = new Date().toISOString().slice(0,16).replace('T',' ');
+
+        // 할일 읽기
+        const taskData = await notionApiQuery({
+          filter: { and: [
+            { property: '완료 여부', checkbox: { equals: false } },
+            { property: '분류', select: { equals: '오늘' } }
+          ]},
+          sorts: [{ timestamp: 'created_time', direction: 'ascending' }]
+        });
+        if (!taskData) return;
+
+        // 일정 읽기
+        const schedData = await notionApiQuery({
+          filter: { and: [
+            { property: '완료 여부', checkbox: { equals: false } },
+            { property: '분류', select: { equals: '일정' } }
+          ]},
+          sorts: [{ property: '날짜', direction: 'ascending' }]
+        });
+
+        // 기존 노션 항목 제거
+        storage.data = storage.data.filter(x => !x.fromNotion);
+
+        let addedCount = 0;
+        const tasks = taskData.results || [];
+        tasks.forEach(page => {
+          storage.data.push({
+            id: Date.now() + Math.random(),
+            title: getNotionTitle(page),
+            date: today, items: [], timeZone: 0,
+            fromNotion: true, notionType: 'task'
+          });
+          addedCount++;
+        });
+
+        const scheds = (schedData?.results) || [];
+        scheds.forEach(page => {
+          const dateStr = getNotionDate(page, '날짜');
+          const label = dateStr ? ` (${dateStr})` : '';
+          storage.data.push({
+            id: Date.now() + Math.random(),
+            title: '📅 ' + getNotionTitle(page) + label,
+            date: today, items: [], timeZone: 0,
+            fromNotion: true, notionType: 'schedule'
+          });
+          addedCount++;
+        });
+
+        save();
+        alert(`✅ 노션 동기화 완료!\n할일 ${tasks.length}개 + 일정 ${scheds.length}개\n${now}`);
+      } catch(e) {
+        if (e.message.includes('401') || e.message.includes('unauthorized')) {
+          localStorage.removeItem(NOTION_KEY_STORAGE);
+          alert('API 키가 올바르지 않아요. 다시 입력해주세요.');
+          notionSync();
+        } else {
+          alert('❌ 동기화 실패\n' + e.message);
+        }
+      }
+    }
+    // ─────────────────────────────────────────────────────────────────────────────
+    function downloadCSV() { if(!storage.history.length) return; let csv="\uFEFF날짜,내용\n"+storage.history.map(h=>`${h.date},"${h.title}"`).join('\n'); const l=document.createElement("a"); l.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); l.download='History.csv'; l.click(); }
+
+    function exportData() {
+        const today = getRawDate();
+        const filename = `Daily Schedule_Backup_${today}.json`;
+        const b = new Blob([JSON.stringify(storage)], {type:'application/json'});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(b);
+        a.download = filename;
+        a.click();
+    }
+
+    function importData(e) { const r=new FileReader(); r.onload=(ev)=>{ try{storage=JSON.parse(ev.target.result);save();}catch(err){alert("오류");} }; r.readAsText(e.target.files[0]); }
+    function toggleHelp(s) { document.getElementById('helpModal').style.display=s?'flex':'none'; }
+
+    function openTab(t,b) {
+        document.querySelectorAll('.tab-content,.tab-btn').forEach(e=>e.classList.remove('active'));
+        document.getElementById(`tab-${t}`).classList.add('active');
+        b.classList.add('active');
+        document.getElementById('mainInputForm').style.display = (t === 'favorites' || t === 'progress') ? 'none' : 'flex';
+        document.getElementById('in-today').placeholder = (t === 'tomorrow') ? '내일 할 일 입력...' : '오늘 할 일 입력...';
+        if (t === 'progress') renderProgress();
+    }
+
+    // ── [수정2] 즐겨찾기 → 오늘탭 이동 시 저장된 시간 반영
+    function copyToToday(idx) {
+        let n=JSON.parse(JSON.stringify(storage.favorites[idx]));
+        n.id=Date.now();
+        n.date=getRawDate();
+        n.timeZone = storage.favorites[idx].timeZone || 0;
+        storage.data.push(n);
+        save();
+    }
+
+    window.onpopstate = () => { document.getElementById('detailView').style.display='none'; closeModal(); };
+
+    // ── [수정3] 자동반복 체크 후 렌더
+    checkAutoRepeat();
+    renderAll();
+
+    // ════════════════════════════════════════
+    //  진도표 시스템
+    // ════════════════════════════════════════
+    const GUITAR_START = '2026-04-02';
+    const GUITAR_LESSONS = [
+        '기타 자세 · 픽 잡기 · 줄 이름 (E A D G B E)',
+        '빈 줄 소리 내기 · 기본 피킹 연습',
+        'Em 코드 익히기',
+        'Am 코드 익히기',
+        'Em ↔ Am 전환 반복 연습',
+        'Em · Am · 박자 맞추기',
+        'Week 1 복습 · 리듬 연습',
+        'G 코드 익히기',
+        'D 코드 익히기',
+        '곡 1 시작: 생일축하 멜로디 탭',
+        '곡 1: 생일축하 멜로디 연습',
+        '곡 1: 생일축하 멜로디 연습',
+        '곡 1: 생일축하 완성 목표',
+        '곡 1 복습 · 속도 높이기',
+        '곡 1 완성 · Week 2 복습',
+        'C 코드 익히기',
+        '스트러밍 패턴 기초 (다운 · 업)',
+        '곡 2 시작: Smoke on the Water 리프',
+        '곡 2: Smoke on the Water 연습',
+        '곡 2: Smoke on the Water 연습',
+        '곡 2 완성 목표',
+        '곡 2 완성 · Week 3 복습',
+        '파워코드 기초 (E5 · A5 · D5)',
+        '파워코드 전환 연습',
+        '곡 3 시작: Wish You Were Here 인트로',
+        '곡 3: Wish You Were Here 인트로 연습',
+        '곡 3: Wish You Were Here 완성 목표',
+        '곡 3 완성 · 전체 복습 · 4월 목표 달성!',
+    ];
+
+    const JSONBIN_KEY = '$2a$10$y3gWHPgwraqoSOCc/hsLmer/VVbxGqWn6zDw87HRma/xgHjPQjywy';
+    const JSONBIN_ID  = '69cf3e8daaba882197bdd202';
+    const JSONBIN_URL = `https://api.jsonbin.io/v3/b/${JSONBIN_ID}`;
+
+    function defaultProgress() {
+        return {
+            guitar:       { practiced: [] },
+            reading:      { book: '삼국지 3편', pct: 70 },
+            pushups:      { today: 0, todayDate: '', history: [] },
+            motherLesson: { count: 0 },
+            running:      { history: [] },
+            bulgarian:    { history: [] },
+            dumbbell:     { history: [] },
+        };
+    }
+    function getProgress() {
+        try {
+            const xhr = new XMLHttpRequest();
+            xhr.open('GET', JSONBIN_URL + '/latest', false);
+            xhr.setRequestHeader('X-Master-Key', JSONBIN_KEY);
+            xhr.send();
+            if (xhr.status === 200) {
+                const data = JSON.parse(xhr.responseText).record;
+                localStorage.setItem('progress_v1', JSON.stringify(data));
+                return data;
+            }
+        } catch(e) {}
+        return JSON.parse(localStorage.getItem('progress_v1')) || defaultProgress();
+    }
+    function saveProgress(p) {
+        localStorage.setItem('progress_v1', JSON.stringify(p));
+        try {
+            const xhr = new XMLHttpRequest();
+            xhr.open('PUT', JSONBIN_URL, false);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.setRequestHeader('X-Master-Key', JSONBIN_KEY);
+            xhr.send(JSON.stringify(p));
+        } catch(e) {}
+    }
+
+    function daysBetween(a, b) { return Math.floor((new Date(b) - new Date(a)) / 86400000); }
+    function getThisMonday() {
+        const d = new Date(); const day = d.getDay(); const diff = (day === 0) ? 6 : day - 1;
+        d.setDate(d.getDate() - diff); return d.toLocaleDateString('sv-SE');
+    }
+
+    function renderProgress() {
+        const p = getProgress();
+        const today = getRawDate();
+        const weekday = new Date().getDay(); // 0=일 1=월 2=화 3=수 4=목 5=금 6=토
+        const monday = getThisMonday();
+
+        // 기타
+        const rawDay = daysBetween(GUITAR_START, today) + 1;
+        const dayNum = Math.max(1, Math.min(rawDay, 28));
+        const guitarPct = Math.round(dayNum / 28 * 100);
+        const todayLesson = GUITAR_LESSONS[dayNum - 1];
+        const guitarDoneToday = p.guitar.practiced.includes(today);
+
+        // 팔굽혀펴기 — 날짜 바뀌면 리셋
+        if (p.pushups.todayDate !== today) { p.pushups.today = 0; p.pushups.todayDate = today; saveProgress(p); }
+        const weekNum = Math.max(1, Math.min(Math.ceil(rawDay / 7), 4));
+        const pushupsGoal = 100;
+        const pushupsPct = Math.min(Math.round(p.pushups.today / pushupsGoal * 100), 100);
+
+        // 러닝
+        const runGoal = [0, 5, 6, 8, 10][weekNum];
+        const todayRunObj = p.running.history.find(r => r.date === today) || { km: 0 };
+        const todayRun = todayRunObj.km;
+        const runPct = Math.min(Math.round(todayRun / runGoal * 100), 100);
+
+        // 불가리안 백
+        const bulgThisWeek = p.bulgarian.history.filter(d => d >= monday).length;
+        const bulgToday = p.bulgarian.history.includes(today);
+        const bulgarianDay = [1, 3, 5].includes(weekday);
+
+        // 아령
+        const dumbThisWeek = p.dumbbell.history.filter(d => d >= monday).length;
+        const dumbToday = p.dumbbell.history.includes(today);
+        const dumbbellDay = [2, 4, 6].includes(weekday);
+
+        // 어머니 수업
+        const motherPct = Math.round(p.motherLesson.count / 40 * 100);
+        const nextSat = (() => {
+            const d = new Date(); let diff = 6 - d.getDay(); if (diff <= 0) diff += 7;
+            d.setDate(d.getDate() + diff);
+            return `${d.getMonth()+1}월 ${d.getDate()}일 (토)`;
+        })();
+
+        // 독서
+        const readingPct = p.reading.pct || 0;
+
+        document.getElementById('list-progress').innerHTML = `
+        <div class="prog-card">
+            <div class="prog-header">
+                <span class="prog-title">🎸 일렉기타</span>
+                <span class="prog-badge">Day ${dayNum}/28 · ${guitarPct}%</span>
+            </div>
+            <div class="prog-bar-bg"><div class="prog-bar-fill" style="width:${guitarPct}%;background:#FF6B35;"></div></div>
+            <div class="prog-sub">📖 오늘 레슨: ${todayLesson}<br>🎯 100일 목표: Canon (파헬벨 카논)</div>
+            <div class="prog-btns">
+                <button class="prog-btn ${guitarDoneToday ? 'green' : 'red'}" onclick="markGuitarDone()">${guitarDoneToday ? '✓ 오늘 연습 완료' : '오늘 연습 완료'}</button>
+            </div>
+        </div>
+
+        <div class="prog-card">
+            <div class="prog-header">
+                <span class="prog-title">💪 팔굽혀펴기</span>
+                <span class="prog-badge">${p.pushups.today}/${pushupsGoal}회 · ${pushupsPct}%</span>
+            </div>
+            <div class="prog-bar-bg"><div class="prog-bar-fill" style="width:${pushupsPct}%;background:#E74C3C;"></div></div>
+            <div class="prog-sub">목표: 100회/일 (무릎 대고)<br>오늘: ${p.pushups.today}회</div>
+            <div class="prog-btns">
+                <button class="prog-btn red" onclick="addPushups(10)">+10</button>
+                <button class="prog-btn blue" onclick="addPushups(20)">+20</button>
+                <button class="prog-btn" onclick="addPushups(30)">+30</button>
+                <button class="prog-btn" onclick="resetPushups()" style="color:red">초기화</button>
+            </div>
+        </div>
+
+        <div class="prog-card">
+            <div class="prog-header">
+                <span class="prog-title">🏃 러닝</span>
+                <span class="prog-badge">${todayRun}/${runGoal}km · ${runPct}%</span>
+            </div>
+            <div class="prog-bar-bg"><div class="prog-bar-fill" style="width:${runPct}%;background:#27AE60;"></div></div>
+            <div class="prog-sub">${weekNum}주차 목표: ${runGoal}km/일 · 최종 목표: 10km<br>오늘 기록: ${todayRun}km</div>
+            <div class="prog-btns">
+                <button class="prog-btn red" onclick="addRunning(1)">+1km</button>
+                <button class="prog-btn blue" onclick="addRunning(2)">+2km</button>
+                <button class="prog-btn" onclick="addRunning(5)">+5km</button>
+                <button class="prog-btn" onclick="resetRunning()" style="color:red">초기화</button>
+            </div>
+        </div>
+
+        <div class="prog-card">
+            <div class="prog-header">
+                <span class="prog-title">🏋️ 불가리안 백 (월·수·금)${bulgarianDay ? '<span class="prog-today-tag">오늘!</span>' : ''}</span>
+                <span class="prog-badge">이번주 ${bulgThisWeek}/3회</span>
+            </div>
+            <div class="prog-bar-bg"><div class="prog-bar-fill" style="width:${Math.round(bulgThisWeek/3*100)}%;background:#9B59B6;"></div></div>
+            <div class="prog-sub">오후 5시 YouTube 알림 · 오늘은 ${bulgarianDay ? '🔥 운동 날' : '휴식'}</div>
+            <div class="prog-btns">
+                <button class="prog-btn ${bulgToday ? 'green' : 'red'}" onclick="markBulgarian()">${bulgToday ? '✓ 오늘 완료' : '오늘 완료'}</button>
+            </div>
+        </div>
+
+        <div class="prog-card">
+            <div class="prog-header">
+                <span class="prog-title">🏋️ 아령운동 (화·목·토)${dumbbellDay ? '<span class="prog-today-tag">오늘!</span>' : ''}</span>
+                <span class="prog-badge">이번주 ${dumbThisWeek}/3회</span>
+            </div>
+            <div class="prog-bar-bg"><div class="prog-bar-fill" style="width:${Math.round(dumbThisWeek/3*100)}%;background:#3498DB;"></div></div>
+            <div class="prog-sub">오후 5시 YouTube 알림 · 오늘은 ${dumbbellDay ? '🔥 운동 날' : '휴식'}</div>
+            <div class="prog-btns">
+                <button class="prog-btn ${dumbToday ? 'green' : 'red'}" onclick="markDumbbell()">${dumbToday ? '✓ 오늘 완료' : '오늘 완료'}</button>
+            </div>
+        </div>
+
+        <div class="prog-card">
+            <div class="prog-header">
+                <span class="prog-title">📚 독서</span>
+                <span class="prog-badge">${readingPct}% 완료</span>
+            </div>
+            <div class="prog-bar-bg"><div class="prog-bar-fill" style="width:${readingPct}%;background:#F39C12;"></div></div>
+            <div class="prog-sub">현재 책: ${p.reading.book}</div>
+            <div class="prog-btns">
+                <button class="prog-btn red" onclick="addReadingPct(10)">+10%</button>
+                <button class="prog-btn blue" onclick="addReadingPct(25)">+25%</button>
+                <button class="prog-btn green" onclick="completeReading()">✓ 완독</button>
+                <button class="prog-btn" onclick="changeBook()">책 변경</button>
+            </div>
+        </div>
+
+        <div class="prog-card">
+            <div class="prog-header">
+                <span class="prog-title">👩 어머니 인터넷 수업</span>
+                <span class="prog-badge">${p.motherLesson.count}/40강 · ${motherPct}%</span>
+            </div>
+            <div class="prog-bar-bg"><div class="prog-bar-fill" style="width:${motherPct}%;background:#1ABC9C;"></div></div>
+            <div class="prog-sub">토요일 저녁 · 주 1강 · 다음 수업: ${nextSat}</div>
+            <div class="prog-btns">
+                <button class="prog-btn green" onclick="addMotherLesson()">+1강 완료</button>
+            </div>
+        </div>`;
+    }
+
+    function markGuitarDone()  { const p=getProgress(),t=getRawDate(); if(!p.guitar.practiced.includes(t)) p.guitar.practiced.push(t); saveProgress(p); renderProgress(); }
+    function addPushups(n)     { const p=getProgress(); p.pushups.today+=n; saveProgress(p); renderProgress(); }
+    function resetPushups()    { const p=getProgress(); p.pushups.today=0; saveProgress(p); renderProgress(); }
+    function addRunning(km)    { const p=getProgress(),t=getRawDate(); let r=p.running.history.find(x=>x.date===t); if(!r){r={date:t,km:0};p.running.history.push(r);} r.km+=km; saveProgress(p); renderProgress(); }
+    function resetRunning()    { const p=getProgress(),t=getRawDate(); const i=p.running.history.findIndex(x=>x.date===t); if(i>-1)p.running.history.splice(i,1); saveProgress(p); renderProgress(); }
+    function markBulgarian()   { const p=getProgress(),t=getRawDate(); if(!p.bulgarian.history.includes(t))p.bulgarian.history.push(t); saveProgress(p); renderProgress(); }
+    function markDumbbell()    { const p=getProgress(),t=getRawDate(); if(!p.dumbbell.history.includes(t))p.dumbbell.history.push(t); saveProgress(p); renderProgress(); }
+    function addReadingPct(n)  { const p=getProgress(); p.reading.pct=Math.min((p.reading.pct||0)+n,100); saveProgress(p); renderProgress(); }
+    function completeReading() { const p=getProgress(); p.reading.pct=100; alert(`"${p.reading.book}" 완독!`); saveProgress(p); renderProgress(); }
+    function changeBook()      { const p=getProgress(); const n=prompt('새 책 제목:',''); if(n){p.reading.book=n;p.reading.pct=0;saveProgress(p);renderProgress();} }
+    function addMotherLesson() { const p=getProgress(); if(p.motherLesson.count<40)p.motherLesson.count++; saveProgress(p); renderProgress(); }
+</script>
+</body>
+</html>

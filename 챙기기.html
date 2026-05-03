@@ -1,0 +1,1241 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>챙기기</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap');
+
+:root {
+  --bg: #0f0f13;
+  --surface: #1a1a22;
+  --surface2: #22222e;
+  --surface3: #2a2a38;
+  --border: #33334a;
+  --accent: #7c6af7;
+  --accent2: #a78bfa;
+  --star: #f5c518;
+  --text: #e8e8f0;
+  --text2: #9090a8;
+  --text3: #5a5a72;
+  --danger: #e05a5a;
+  --success: #4eca8b;
+  --radius: 12px;
+  --radius-sm: 8px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+body {
+  font-family: 'Noto Sans KR', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  max-width: 480px;
+  margin: 0 auto;
+  overflow-x: hidden;
+}
+
+/* HEADER */
+.header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 14px 14px 0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.app-title {
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: -0.5px;
+  background: linear-gradient(135deg, var(--accent2), #c4b5fd);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.header-btns { display: flex; gap: 6px; }
+.hbtn {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 5px 9px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+.hbtn:active { opacity: 0.7; transform: scale(0.95); }
+.hbtn.danger { color: var(--danger); border-color: #3a1f1f; }
+.hbtn.primary { color: var(--accent2); border-color: #2d2560; }
+
+.input-area { padding: 0 0 12px; }
+.input-wrap {
+  display: flex;
+  align-items: center;
+  background: var(--surface2);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0 10px;
+  transition: border-color 0.2s;
+}
+.input-wrap:focus-within { border-color: var(--accent); }
+.new-item-input {
+  flex: 1; background: none; border: none; outline: none;
+  color: var(--text); font-family: inherit; font-size: 14px; padding: 11px 0;
+}
+.new-item-input::placeholder { color: var(--text3); }
+.add-btn {
+  background: var(--accent); border: none; color: #fff;
+  font-size: 20px; width: 28px; height: 28px; border-radius: 50%;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; line-height: 1; padding-bottom: 1px;
+}
+.add-btn:active { transform: scale(0.88); }
+
+/* TABS */
+.tabs { display: flex; border-bottom: 1px solid var(--border); }
+.tab {
+  flex: 1; text-align: center; padding: 9px 4px;
+  font-size: 13px; font-weight: 500; color: var(--text3);
+  cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s;
+}
+.tab.active { color: var(--accent2); border-bottom-color: var(--accent2); }
+
+/* CONTENT */
+.content {
+  flex: 1; overflow-y: auto; padding: 12px 14px 48px;
+}
+.content::-webkit-scrollbar { width: 3px; }
+.content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* SWIPE WRAPPER */
+.swipe-wrapper {
+  position: relative;
+  margin-bottom: 8px;
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.swipe-bg {
+  position: absolute; inset: 0;
+  display: flex; align-items: center;
+  border-radius: var(--radius);
+  font-size: 13px; font-weight: 700; pointer-events: none;
+}
+.swipe-bg-left  { background: var(--success); justify-content: flex-start; padding-left: 18px; color: #fff; }
+.swipe-bg-right { background: var(--danger);  justify-content: flex-end;   padding-right: 18px; color: #fff; }
+
+/* ITEM */
+.item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  will-change: transform;
+  z-index: 1;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+.item.done { opacity: 0.45; border-color: var(--success); }
+.item.done .item-text { text-decoration: line-through; color: var(--text3); }
+
+.item-row {
+  display: flex; align-items: center;
+  padding: 10px 10px; gap: 8px; min-height: 46px;
+}
+.item-expand-zone {
+  flex: 1; display: flex; align-items: center;
+  gap: 8px; cursor: pointer; min-width: 0;
+}
+.item-star {
+  font-size: 18px; cursor: pointer; flex-shrink: 0;
+  color: var(--text3); user-select: none;
+  transition: transform 0.2s, color 0.2s; padding: 2px;
+}
+.item-star.active { color: var(--star); }
+.item-star:active { transform: scale(1.4); }
+
+.item-text {
+  flex: 1; font-size: 14px; line-height: 1.4;
+  word-break: break-word; color: var(--text); min-width: 0;
+}
+.item-expand-icon {
+  font-size: 10px; color: var(--text3); flex-shrink: 0;
+  transition: transform 0.22s;
+}
+.item.open .item-expand-icon { transform: rotate(90deg); }
+
+.sub-count {
+  font-size: 10px; background: var(--surface3);
+  border-radius: 10px; padding: 1px 7px; color: var(--text3); flex-shrink: 0;
+}
+.sub-count.has-done { color: var(--success); border: 1px solid #1a3a2a; }
+
+.item-actions { display: flex; gap: 4px; flex-shrink: 0; }
+.ibtn {
+  background: var(--surface3); border: 1px solid var(--border);
+  color: var(--text2); font-size: 10px; padding: 4px 7px;
+  border-radius: 6px; cursor: pointer; white-space: nowrap;
+  font-family: inherit; transition: all 0.12s;
+}
+.ibtn:active { transform: scale(0.92); }
+.ibtn.ok  { color: var(--success); border-color: #1a3a2a; }
+.ibtn.bad { color: var(--danger);  border-color: #3a1f1f; }
+.ibtn.blue { color: var(--accent2); border-color: #2d2560; }
+
+.item-edit-input {
+  flex: 1; background: var(--surface3); border: 1px solid var(--accent);
+  border-radius: 6px; color: var(--text); font-family: inherit;
+  font-size: 14px; padding: 5px 8px; outline: none; min-width: 0;
+}
+
+/* SUB PANEL */
+.sub-panel {
+  display: none;
+  background: rgba(0,0,0,0.25);
+  border-top: 1px solid var(--border);
+  padding: 8px 10px 10px 28px;
+}
+.item.open .sub-panel { display: block; }
+
+.sub-input-wrap {
+  display: flex; align-items: center;
+  background: var(--surface2); border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm); padding: 0 8px;
+  margin-bottom: 8px; transition: border-color 0.2s;
+}
+.sub-input-wrap:focus-within { border-color: var(--accent); }
+.sub-input {
+  flex: 1; background: none; border: none; outline: none;
+  color: var(--text); font-family: inherit; font-size: 13px; padding: 8px 0;
+}
+.sub-input::placeholder { color: var(--text3); }
+.sub-add-btn {
+  background: none; border: none; color: var(--accent2);
+  font-size: 18px; cursor: pointer; padding: 2px 0 2px 4px; line-height: 1;
+}
+.sub-add-btn:active { transform: scale(0.85); }
+
+/* SUB SWIPE */
+.sub-swipe-wrapper {
+  position: relative; border-radius: var(--radius-sm);
+  margin-bottom: 6px; overflow: hidden;
+}
+.sub-swipe-bg {
+  position: absolute; inset: 0;
+  display: flex; align-items: center;
+  border-radius: var(--radius-sm);
+  font-size: 11px; font-weight: 700; pointer-events: none;
+}
+.sub-swipe-bg-left  { background: var(--success); justify-content: flex-start; padding-left: 12px; color:#fff; }
+.sub-swipe-bg-right { background: var(--danger);  justify-content: flex-end;   padding-right: 12px; color:#fff; }
+
+.sub-item {
+  position: relative; display: flex; align-items: center;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 7px 8px;
+  gap: 7px; min-height: 38px; z-index: 1; will-change: transform;
+}
+.sub-item.done { opacity: 0.45; border-color: var(--success); }
+.sub-item.done .sub-text { text-decoration: line-through; color: var(--text3); }
+
+.sub-check {
+  width: 16px; height: 16px; border-radius: 50%;
+  border: 1.5px solid var(--border); flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px; cursor: pointer; transition: all 0.2s; color: transparent;
+}
+.sub-item.done .sub-check { background: var(--success); border-color: var(--success); color: #fff; }
+
+.sub-text { flex: 1; font-size: 13px; color: var(--text); word-break: break-word; }
+.sub-edit-input {
+  flex: 1; background: var(--surface3); border: 1px solid var(--accent);
+  border-radius: 5px; color: var(--text); font-family: inherit;
+  font-size: 13px; padding: 3px 6px; outline: none;
+}
+
+/* GROUP */
+.group-header-row {
+  display: flex; align-items: center;
+  justify-content: space-between; margin-bottom: 10px;
+}
+.group-add-btn {
+  background: var(--surface2); border: 1px dashed var(--border);
+  color: var(--accent2); font-family: inherit; font-size: 12px;
+  padding: 6px 12px; border-radius: var(--radius-sm); cursor: pointer;
+}
+.group-add-btn:active { transform: scale(0.95); }
+.group-section { margin-top: 0; margin-bottom: 8px; }
+.group-title-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--surface3); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 10px 12px; margin-bottom: 0;
+  transition: background 0.15s, border-radius 0.2s;
+}
+.group-title-bar.open {
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  border-bottom-color: transparent;
+  background: var(--surface2);
+}
+.group-name  { font-size: 13px; font-weight: 700; color: var(--accent2); }
+.group-count { font-size: 11px; color: var(--text3); background: var(--surface2); border-radius: 10px; padding: 2px 8px; }
+.group-items {
+  padding: 6px 8px 8px 8px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  margin-bottom: 8px;
+}
+.ungrouped-label { font-size: 11px; color: var(--text3); margin-bottom: 6px; padding-left: 2px; }
+
+/* POPUP */
+.popup-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.65); z-index: 200;
+  align-items: flex-end; justify-content: center;
+}
+.popup-overlay.show { display: flex; }
+.popup {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 20px 20px 0 0; width: 100%; max-width: 480px;
+  padding: 20px 16px 36px; animation: slideUp 0.22s ease;
+}
+@keyframes slideUp { from{transform:translateY(40px);opacity:0} to{transform:translateY(0);opacity:1} }
+.popup-title { font-size: 15px; font-weight: 700; text-align: center; margin-bottom: 16px; }
+.popup-input {
+  width: 100%; background: var(--surface2); border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text); font-family: inherit;
+  font-size: 14px; padding: 10px 12px; outline: none; margin-bottom: 12px;
+}
+.popup-input:focus { border-color: var(--accent); }
+.popup-btns { display: flex; gap: 8px; }
+.popup-btn {
+  flex:1; padding:12px; border-radius:var(--radius-sm); border:none;
+  font-family:inherit; font-size:14px; font-weight:600; cursor:pointer; transition:all 0.15s;
+}
+.popup-btn:active { transform: scale(0.97); }
+.popup-btn.confirm { background: var(--accent); color: #fff; }
+.popup-btn.cancel  { background: var(--surface2); color: var(--text2); border: 1px solid var(--border); }
+.popup-group-list { margin-bottom: 12px; }
+.popup-group-item {
+  display: flex; align-items: center; padding: 12px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); margin-bottom: 8px; cursor: pointer;
+}
+.popup-group-item:active { background: var(--surface3); }
+.popup-group-item .g-name { flex:1; font-size:14px; }
+.popup-group-item .g-arrow { color: var(--accent2); font-size:16px; }
+
+.empty-msg { text-align:center; color:var(--text3); font-size:13px; padding:32px 0; }
+#file-input { display:none; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="title-row">
+    <span class="app-title">챙기기</span>
+    <div class="header-btns">
+      <button class="hbtn" onclick="notionSync()" style="background:#7c6af7;color:#fff;border-color:#7c6af7;">🔄 노션</button>
+      <button class="hbtn primary" onclick="backup()">💾 백업</button>
+      <button class="hbtn" onclick="document.getElementById('file-input').click()">📂 불러오기</button>
+      <button class="hbtn danger" onclick="resetAll()">🗑 초기화</button>
+    </div>
+  </div>
+  <div class="input-area">
+    <div class="input-wrap">
+      <input class="new-item-input" id="newInput" type="text"
+        placeholder="새 항목 입력 후 Enter…"
+        inputmode="text" enterkeyhint="done"
+        onkeydown="handleInputKey(event)">
+      <button class="add-btn" onclick="addItem()">+</button>
+    </div>
+  </div>
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab(0,this)">챙길것</div>
+    <div class="tab" onclick="switchTab(1,this)">1일여행</div>
+    <div class="tab" onclick="switchTab(2,this)">정기행사</div>
+  </div>
+</div>
+
+<div class="content" id="contentArea"></div>
+<input type="file" id="file-input" accept=".json" onchange="loadFile(event)">
+
+<!-- Move popup -->
+<div class="popup-overlay" id="movePopup" onclick="closeMovePopup(event)">
+  <div class="popup">
+    <div class="popup-title">그룹으로 이동</div>
+    <div class="popup-group-list" id="moveGroupList"></div>
+    <div class="popup-btns">
+      <button class="popup-btn cancel" onclick="document.getElementById('movePopup').classList.remove('show')">취소</button>
+    </div>
+  </div>
+</div>
+
+<!-- Group create popup -->
+<div class="popup-overlay" id="groupPopup" onclick="closeGroupPopup(event)">
+  <div class="popup">
+    <div class="popup-title">그룹 이름 입력</div>
+    <input class="popup-input" id="groupNameInput" placeholder="그룹 이름…"
+      onkeydown="if(event.key==='Enter')confirmGroup()">
+    <div class="popup-btns">
+      <button class="popup-btn cancel" onclick="document.getElementById('groupPopup').classList.remove('show')">취소</button>
+      <button class="popup-btn confirm" onclick="confirmGroup()">만들기</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════
+let state = {
+  tabs: [
+    { name:'챙길것',   items:[] },
+    { name:'1일여행',  items:[] },
+    { name:'정기행사', items:[], groups:[] }
+  ],
+  currentTab: 0
+};
+let movingItemId = null;
+
+function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+}
+
+function esc(s) {
+  return String(s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;');
+}
+
+// ══════════════════════════════════════════════
+//  STORAGE
+// ══════════════════════════════════════════════
+function save() {
+  localStorage.setItem('chaengigi_v2', JSON.stringify(state));
+}
+
+function load() {
+  const d = localStorage.getItem('chaengigi_v2') || localStorage.getItem('chaengigi_v1');
+  if (!d) return;
+  try {
+    state = JSON.parse(d);
+    if (!state.tabs[2].groups) state.tabs[2].groups = [];
+    state.tabs.forEach(t => t.items.forEach(i => {
+      if (!i.subItems) i.subItems = [];
+    }));
+  } catch(e) {}
+}
+
+// ══════════════════════════════════════════════
+//  MAIN INPUT
+// ══════════════════════════════════════════════
+function handleInputKey(e) {
+  if (e.key === 'Enter') { e.preventDefault(); addItem(); }
+}
+
+function addItem() {
+  const input = document.getElementById('newInput');
+  const text = input.value.trim();
+  if (!text) return;
+  const tab = state.tabs[state.currentTab];
+  tab.items.push({
+    id: uid(), text, star: false, done: false,
+    groupId: null, editing: false, open: false, subItems: []
+  });
+  input.value = '';
+  save(); render();
+}
+
+// ══════════════════════════════════════════════
+//  TABS
+// ══════════════════════════════════════════════
+function switchTab(idx, el) {
+  state.currentTab = idx;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  render();
+}
+
+// ══════════════════════════════════════════════
+//  RENDER
+// ══════════════════════════════════════════════
+function render() {
+  const area = document.getElementById('contentArea');
+  area.innerHTML = '';
+  const tab = state.tabs[state.currentTab];
+
+  if (state.currentTab === 2) {
+    renderJeongi(area, tab);
+  } else {
+    if (!tab.items.length) {
+      area.innerHTML = '<div class="empty-msg">항목이 없어요<br>위에서 추가해보세요!</div>';
+      return;
+    }
+    tab.items.forEach(item => area.appendChild(makeSwipeWrap(item, false)));
+  }
+}
+
+function renderJeongi(area, tab) {
+  const row = document.createElement('div');
+  row.className = 'group-header-row';
+  const gb = document.createElement('button');
+  gb.className = 'group-add-btn';
+  gb.textContent = '＋ 그룹 만들기';
+  gb.onclick = openGroupPopup;
+  row.appendChild(gb);
+  area.appendChild(row);
+
+  const starred   = tab.items.filter(i => i.star);
+  const unstarred = tab.items.filter(i => !i.star);
+  const ungrouped = starred.filter(i => !i.groupId);
+
+  if (ungrouped.length) {
+    area.appendChild(mkLabel('미분류'));
+    ungrouped.forEach(item => area.appendChild(makeSwipeWrap(item, true)));
+  }
+
+  (tab.groups||[]).forEach(group => {
+    if (!('open' in group)) group.open = false;
+    const groupItems = starred.filter(i => i.groupId === group.id);
+    const doneCount = groupItems.filter(i => i.done).length;
+
+    const sec = document.createElement('div');
+    sec.className = 'group-section';
+
+    // clickable bar
+    const bar = document.createElement('div');
+    bar.className = 'group-title-bar' + (group.open ? ' open' : '');
+    bar.style.cursor = 'pointer';
+
+    const leftSide = document.createElement('div');
+    leftSide.style.cssText = 'display:flex;align-items:center;gap:8px;flex:1;min-width:0;';
+
+    const chevronEl = document.createElement('span');
+    chevronEl.style.cssText = `font-size:10px;color:var(--accent2);transition:transform 0.22s;transform:rotate(${group.open?'90deg':'0deg'})`;
+    chevronEl.textContent = '▶';
+
+    const nameEl = document.createElement('span');
+    nameEl.className = 'group-name';
+    nameEl.textContent = '📁 ' + group.name;
+
+    leftSide.appendChild(chevronEl);
+    leftSide.appendChild(nameEl);
+
+    const rightSide = document.createElement('div');
+    rightSide.style.cssText = 'display:flex;align-items:center;gap:6px;';
+
+    const countEl = document.createElement('span');
+    countEl.className = 'group-count';
+    countEl.textContent = (doneCount > 0 ? doneCount + '/' : '') + groupItems.length + '개';
+    if (doneCount > 0) countEl.style.color = 'var(--success)';
+    rightSide.appendChild(countEl);
+
+    bar.appendChild(leftSide);
+    bar.appendChild(rightSide);
+
+    bar.onclick = () => {
+      group.open = !group.open;
+      save(); render();
+    };
+
+    sec.appendChild(bar);
+
+    // collapsible items area
+    if (group.open) {
+      const gi = document.createElement('div');
+      gi.className = 'group-items';
+      if (groupItems.length === 0) {
+        const empty = document.createElement('div');
+        empty.style.cssText = 'font-size:12px;color:var(--text3);padding:8px 4px;';
+        empty.textContent = '이 그룹에 항목이 없어요';
+        gi.appendChild(empty);
+      } else {
+        groupItems.forEach(item => gi.appendChild(makeSwipeWrap(item, true)));
+      }
+      sec.appendChild(gi);
+    }
+
+    area.appendChild(sec);
+  });
+
+  if (unstarred.length) {
+    const lbl = mkLabel('일반 항목');
+    lbl.style.marginTop = '12px';
+    area.appendChild(lbl);
+    unstarred.forEach(item => area.appendChild(makeSwipeWrap(item, true)));
+  }
+
+  if (!tab.items.length) {
+    const msg = document.createElement('div');
+    msg.className = 'empty-msg';
+    msg.textContent = '별표 항목이 이동되면 여기에 표시돼요';
+    area.appendChild(msg);
+  }
+}
+
+function mkLabel(text) {
+  const d = document.createElement('div');
+  d.className = 'ungrouped-label';
+  d.textContent = text;
+  return d;
+}
+
+// ══════════════════════════════════════════════
+//  BUILD SWIPE WRAPPER (item)
+// ══════════════════════════════════════════════
+function makeSwipeWrap(item, isJeongi) {
+  const wrap = document.createElement('div');
+  wrap.className = 'swipe-wrapper';
+
+  const bgL = document.createElement('div');
+  bgL.className = 'swipe-bg swipe-bg-left';
+  bgL.textContent = '✓  완료';
+
+  const bgR = document.createElement('div');
+  bgR.className = 'swipe-bg swipe-bg-right';
+  bgR.textContent = '삭제  ✕';
+
+  wrap.appendChild(bgL);
+  wrap.appendChild(bgR);
+  wrap.appendChild(buildItemEl(item, isJeongi));
+  return wrap;
+}
+
+// ══════════════════════════════════════════════
+//  BUILD ITEM ELEMENT
+// ══════════════════════════════════════════════
+function buildItemEl(item, isJeongi) {
+  const div = document.createElement('div');
+  div.className = 'item' + (item.done ? ' done' : '') + (item.open ? ' open' : '');
+  div.id = 'item-' + item.id;
+
+  /* ── main row ── */
+  const row = document.createElement('div');
+  row.className = 'item-row';
+
+  // star
+  const star = document.createElement('span');
+  star.className = 'item-star' + (item.star ? ' active' : '');
+  star.textContent = '★';
+  star.onclick = e => { e.stopPropagation(); toggleStar(item.id); };
+  row.appendChild(star);
+
+  if (item.editing) {
+    const inp = document.createElement('input');
+    inp.className = 'item-edit-input';
+    inp.value = item.text;
+    inp.onclick = e => e.stopPropagation();
+    inp.onkeydown = e => { if(e.key==='Enter') saveEdit(item.id, inp.value); };
+    row.appendChild(inp);
+    setTimeout(() => inp.focus(), 50);
+
+    const acts = document.createElement('div');
+    acts.className = 'item-actions';
+    acts.appendChild(mkbtn('저장','ok',  () => saveEdit(item.id, inp.value)));
+    acts.appendChild(mkbtn('취소','bad', () => cancelEdit(item.id)));
+    row.appendChild(acts);
+
+  } else {
+    // expand zone
+    const zone = document.createElement('div');
+    zone.className = 'item-expand-zone';
+    zone.onclick = () => toggleOpen(item.id);
+
+    const txt = document.createElement('span');
+    txt.className = 'item-text';
+    txt.textContent = item.text;
+    zone.appendChild(txt);
+
+    if (item.subItems && item.subItems.length) {
+      const doneN = item.subItems.filter(s => s.done).length;
+      const badge = document.createElement('span');
+      badge.className = 'sub-count' + (doneN > 0 ? ' has-done' : '');
+      badge.textContent = doneN + '/' + item.subItems.length;
+      zone.appendChild(badge);
+    }
+
+    const chevron = document.createElement('span');
+    chevron.className = 'item-expand-icon';
+    chevron.textContent = '▶';
+    zone.appendChild(chevron);
+    row.appendChild(zone);
+
+    const acts = document.createElement('div');
+    acts.className = 'item-actions';
+    acts.appendChild(mkbtn('수정', '', () => startEdit(item.id)));
+    if (isJeongi && item.star && (state.tabs[2].groups||[]).length) {
+      acts.appendChild(mkbtn('그룹▾','blue', () => openMovePopup(item.id)));
+    }
+    row.appendChild(acts);
+  }
+
+  div.appendChild(row);
+
+  /* ── sub panel ── */
+  const subPanel = document.createElement('div');
+  subPanel.className = 'sub-panel';
+  subPanel.appendChild(buildSubInputRow(item));
+  (item.subItems||[]).forEach(sub => subPanel.appendChild(buildSubSwipeWrap(item.id, sub)));
+  div.appendChild(subPanel);
+
+  /* ── attach swipe ── */
+  attachSwipe(div, item.id, false, null);
+
+  return div;
+}
+
+// ══════════════════════════════════════════════
+//  SUB-ITEM ELEMENTS
+// ══════════════════════════════════════════════
+function buildSubInputRow(item) {
+  const wrap = document.createElement('div');
+  wrap.className = 'sub-input-wrap';
+
+  const inp = document.createElement('input');
+  inp.className = 'sub-input';
+  inp.placeholder = '서브 항목 추가…';
+  inp.inputMode = 'text';
+  inp.setAttribute('enterkeyhint','done');
+  inp.onkeydown = e => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      addSubItem(item.id, inp.value);
+      inp.value = '';
+    }
+  };
+
+  const btn = document.createElement('button');
+  btn.className = 'sub-add-btn';
+  btn.textContent = '+';
+  btn.onclick = e => {
+    e.stopPropagation();
+    addSubItem(item.id, inp.value);
+    inp.value = '';
+  };
+
+  wrap.appendChild(inp);
+  wrap.appendChild(btn);
+  return wrap;
+}
+
+function buildSubSwipeWrap(parentId, sub) {
+  const wrap = document.createElement('div');
+  wrap.className = 'sub-swipe-wrapper';
+
+  const bgL = document.createElement('div');
+  bgL.className = 'sub-swipe-bg sub-swipe-bg-left';
+  bgL.textContent = '✓';
+
+  const bgR = document.createElement('div');
+  bgR.className = 'sub-swipe-bg sub-swipe-bg-right';
+  bgR.textContent = '✕';
+
+  wrap.appendChild(bgL);
+  wrap.appendChild(bgR);
+  wrap.appendChild(buildSubItemEl(parentId, sub));
+  return wrap;
+}
+
+function buildSubItemEl(parentId, sub) {
+  const div = document.createElement('div');
+  div.className = 'sub-item' + (sub.done ? ' done' : '');
+  div.id = 'sub-' + sub.id;
+
+  const check = document.createElement('div');
+  check.className = 'sub-check';
+  check.textContent = '✓';
+  check.onclick = e => { e.stopPropagation(); toggleSubDone(parentId, sub.id); };
+  div.appendChild(check);
+
+  if (sub.editing) {
+    const inp = document.createElement('input');
+    inp.className = 'sub-edit-input';
+    inp.value = sub.text;
+    inp.onclick = e => e.stopPropagation();
+    inp.onkeydown = e => { if(e.key==='Enter') saveSubEdit(parentId, sub.id, inp.value); };
+    div.appendChild(inp);
+    setTimeout(() => inp.focus(), 50);
+
+    div.appendChild(mkbtn('저장','ok',  () => saveSubEdit(parentId, sub.id, inp.value)));
+    div.appendChild(mkbtn('취소','bad', () => cancelSubEdit(parentId, sub.id)));
+  } else {
+    const txt = document.createElement('span');
+    txt.className = 'sub-text';
+    txt.textContent = sub.text;
+    div.appendChild(txt);
+    div.appendChild(mkbtn('수정','', () => startSubEdit(parentId, sub.id)));
+  }
+
+  attachSwipe(div, sub.id, true, parentId);
+  return div;
+}
+
+function mkbtn(label, cls, fn) {
+  const b = document.createElement('button');
+  b.className = 'ibtn' + (cls ? ' ' + cls : '');
+  b.textContent = label;
+  b.onclick = e => { e.stopPropagation(); fn(); };
+  return b;
+}
+
+// ══════════════════════════════════════════════
+//  SWIPE
+// ══════════════════════════════════════════════
+function attachSwipe(el, id, isSub, parentId) {
+  const THRESHOLD = 75;
+  const MAX = 110;
+  let startX, startY, dx = 0, moved = false, axisLocked = false, swipeAxis = null;
+
+  el.addEventListener('touchstart', e => {
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    dx = 0; moved = false; axisLocked = false; swipeAxis = null;
+    el.style.transition = 'none';
+  }, { passive: true });
+
+  el.addEventListener('touchmove', e => {
+    if (axisLocked && swipeAxis === 'vertical') return;
+
+    const cx = e.touches[0].clientX;
+    const cy = e.touches[0].clientY;
+    const adx = Math.abs(cx - startX);
+    const ady = Math.abs(cy - startY);
+
+    if (!axisLocked && (adx > 6 || ady > 6)) {
+      axisLocked = true;
+      swipeAxis = adx >= ady ? 'horizontal' : 'vertical';
+    }
+    if (swipeAxis !== 'horizontal') return;
+
+    e.preventDefault();
+    moved = true;
+    dx = cx - startX;
+    const clamped = Math.max(-MAX, Math.min(MAX, dx));
+    el.style.transform = `translateX(${clamped}px)`;
+  }, { passive: false });
+
+  el.addEventListener('touchend', () => {
+    el.style.transition = 'transform 0.25s ease';
+    if (swipeAxis !== 'horizontal' || !moved) {
+      el.style.transform = '';
+      return;
+    }
+    if (dx > THRESHOLD) {
+      // right → complete
+      el.style.transform = `translateX(160px)`;
+      setTimeout(() => {
+        if (isSub) toggleSubDone(parentId, id);
+        else toggleDone(id);
+      }, 200);
+    } else if (dx < -THRESHOLD) {
+      // left → delete
+      el.style.transform = `translateX(-160px)`;
+      el.style.opacity = '0';
+      setTimeout(() => {
+        if (isSub) deleteSubItem(parentId, id);
+        else deleteItem(id);
+      }, 200);
+    } else {
+      el.style.transform = '';
+    }
+    dx = 0;
+  });
+}
+
+// ══════════════════════════════════════════════
+//  ITEM ACTIONS
+// ══════════════════════════════════════════════
+function toggleOpen(id) {
+  const tab = state.tabs[state.currentTab];
+  const item = tab.items.find(i => i.id === id);
+  if (item) item.open = !item.open;
+  save(); render();
+}
+
+function toggleDone(id) {
+  const tab = state.tabs[state.currentTab];
+  const item = tab.items.find(i => i.id === id);
+  if (item) item.done = !item.done;
+  save(); render();
+}
+
+function startEdit(id) {
+  const tab = state.tabs[state.currentTab];
+  tab.items.forEach(i => i.editing = false);
+  const item = tab.items.find(i => i.id === id);
+  if (item) item.editing = true;
+  render();
+}
+
+function saveEdit(id, val) {
+  val = val.trim();
+  if (!val) return;
+  // 텍스트 수정은 편집 중인 탭에서만 반영 (정기행사 복사본은 독립)
+  const tab = state.tabs[state.currentTab];
+  const item = tab.items.find(i => i.id === id);
+  if (item) { item.text = val; item.editing = false; }
+  save(); render();
+}
+
+function cancelEdit(id) {
+  const tab = state.tabs[state.currentTab];
+  const item = tab.items.find(i => i.id === id);
+  if (item) item.editing = false;
+  render();
+}
+
+function deleteItem(id) {
+  const curTab = state.tabs[state.currentTab];
+  const item = curTab.items.find(i => i.id === id);
+  const isStarredAndInOtherTab = item && item.star && state.currentTab !== 2;
+
+  if (isStarredAndInOtherTab) {
+    // 정기행사에 복사된 항목은 남겨두고, 현재 탭에서만 삭제
+    // 정기행사의 복사본에서 별표를 해제하지 않음 — 독립적으로 유지
+    curTab.items = curTab.items.filter(i => i.id !== id);
+  } else if (state.currentTab === 2) {
+    // 정기행사에서 삭제하는 경우: 정기행사에서만 제거
+    curTab.items = curTab.items.filter(i => i.id !== id);
+  } else {
+    // 별표 없는 일반 항목 삭제
+    curTab.items = curTab.items.filter(i => i.id !== id);
+  }
+  save(); render();
+}
+
+// ══════════════════════════════════════════════
+//  SUB-ITEM ACTIONS
+// ══════════════════════════════════════════════
+function addSubItem(parentId, text) {
+  text = text.trim();
+  if (!text) return;
+  const tab = state.tabs[state.currentTab];
+  const item = tab.items.find(i => i.id === parentId);
+  if (item) {
+    if (!item.subItems) item.subItems = [];
+    item.subItems.push({ id: uid(), text, done: false, editing: false });
+  }
+  save(); render();
+}
+
+function toggleSubDone(parentId, subId) {
+  const tab = state.tabs[state.currentTab];
+  const item = tab.items.find(i => i.id === parentId);
+  if (item) {
+    const sub = (item.subItems||[]).find(s => s.id === subId);
+    if (sub) sub.done = !sub.done;
+  }
+  save(); render();
+}
+
+function deleteSubItem(parentId, subId) {
+  const tab = state.tabs[state.currentTab];
+  const item = tab.items.find(i => i.id === parentId);
+  if (item) item.subItems = (item.subItems||[]).filter(s => s.id !== subId);
+  save(); render();
+}
+
+function startSubEdit(parentId, subId) {
+  const tab = state.tabs[state.currentTab];
+  const item = tab.items.find(i => i.id === parentId);
+  if (item) {
+    (item.subItems||[]).forEach(s => s.editing = false);
+    const sub = (item.subItems||[]).find(s => s.id === subId);
+    if (sub) sub.editing = true;
+  }
+  render();
+}
+
+function saveSubEdit(parentId, subId, val) {
+  val = val.trim();
+  if (!val) return;
+  const tab = state.tabs[state.currentTab];
+  const item = tab.items.find(i => i.id === parentId);
+  if (item) {
+    const sub = (item.subItems||[]).find(s => s.id === subId);
+    if (sub) { sub.text = val; sub.editing = false; }
+  }
+  save(); render();
+}
+
+function cancelSubEdit(parentId, subId) {
+  const tab = state.tabs[state.currentTab];
+  const item = tab.items.find(i => i.id === parentId);
+  if (item) {
+    const sub = (item.subItems||[]).find(s => s.id === subId);
+    if (sub) sub.editing = false;
+  }
+  render();
+}
+
+// ══════════════════════════════════════════════
+//  STAR
+// ══════════════════════════════════════════════
+function toggleStar(id) {
+  const tab = state.tabs[state.currentTab];
+  const item = tab.items.find(i => i.id === id);
+  if (!item) return;
+  item.star = !item.star;
+
+  if (item.star && state.currentTab !== 2) {
+    const jeongi = state.tabs[2];
+    if (!jeongi.items.find(i => i.id === id)) {
+      jeongi.items.push(JSON.parse(JSON.stringify({ ...item, groupId: null })));
+    }
+  }
+  if (!item.star && state.currentTab !== 2) {
+    state.tabs[2].items = state.tabs[2].items.filter(i => i.id !== id);
+  }
+  const jItem = state.tabs[2].items.find(i => i.id === id);
+  if (jItem) jItem.star = item.star;
+
+  save(); render();
+}
+
+// ══════════════════════════════════════════════
+//  GROUP
+// ══════════════════════════════════════════════
+function openGroupPopup() {
+  document.getElementById('groupNameInput').value = '';
+  document.getElementById('groupPopup').classList.add('show');
+  setTimeout(() => document.getElementById('groupNameInput').focus(), 100);
+}
+function closeGroupPopup(e) {
+  if (e.target === document.getElementById('groupPopup'))
+    document.getElementById('groupPopup').classList.remove('show');
+}
+function confirmGroup() {
+  const val = document.getElementById('groupNameInput').value.trim();
+  if (!val) return;
+  const jeongi = state.tabs[2];
+  if (!jeongi.groups) jeongi.groups = [];
+  jeongi.groups.push({ id: uid(), name: val });
+  document.getElementById('groupPopup').classList.remove('show');
+  save(); render();
+}
+
+function openMovePopup(itemId) {
+  movingItemId = itemId;
+  const jeongi = state.tabs[2];
+  const list = document.getElementById('moveGroupList');
+  list.innerHTML = '';
+  if (!jeongi.groups || !jeongi.groups.length) {
+    list.innerHTML = '<div class="empty-msg" style="padding:12px 0">생성된 그룹이 없어요</div>';
+  } else {
+    jeongi.groups.forEach(g => {
+      const el = document.createElement('div');
+      el.className = 'popup-group-item';
+      el.innerHTML = `<span class="g-name">📁 ${esc(g.name)}</span><span class="g-arrow">→</span>`;
+      el.onclick = () => moveToGroup(g.id);
+      list.appendChild(el);
+    });
+    const none = document.createElement('div');
+    none.className = 'popup-group-item';
+    none.innerHTML = `<span class="g-name" style="color:var(--text3)">그룹 없음 (미분류)</span><span class="g-arrow">→</span>`;
+    none.onclick = () => moveToGroup(null);
+    list.appendChild(none);
+  }
+  document.getElementById('movePopup').classList.add('show');
+}
+function closeMovePopup(e) {
+  if (e.target === document.getElementById('movePopup'))
+    document.getElementById('movePopup').classList.remove('show');
+}
+function moveToGroup(groupId) {
+  const jeongi = state.tabs[2];
+  const item = jeongi.items.find(i => i.id === movingItemId);
+  if (item) item.groupId = groupId;
+  movingItemId = null;
+  document.getElementById('movePopup').classList.remove('show');
+  save(); render();
+}
+
+// ══════════════════════════════════════════════
+//  HELPERS
+// ══════════════════════════════════════════════
+// apply fn to the item in ALL tabs that have it (for sync)
+function forEachCopy(id, fn) {
+  state.tabs.forEach(t => {
+    const item = t.items.find(i => i.id === id);
+    if (item) fn(item);
+  });
+}
+
+// ══════════════════════════════════════════════
+//  BACKUP / RESTORE / RESET
+// ══════════════════════════════════════════════
+function backup() {
+  const now = new Date();
+  const d = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
+  const blob = new Blob([JSON.stringify(state,null,2)], { type:'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `챙기기_${d}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function loadFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      state = JSON.parse(e.target.result);
+      if (!state.tabs[2].groups) state.tabs[2].groups = [];
+      state.tabs.forEach(t => t.items.forEach(i => { if(!i.subItems) i.subItems = []; }));
+      save(); render();
+    } catch { alert('올바른 백업 파일이 아니에요.'); }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+
+// ══════════════════════════════════════════════
+//  노션 API 직접 호출
+// ══════════════════════════════════════════════
+const NOTION_KEY_STORAGE = 'notion_api_key';
+const TASK_DB_ID = '2e6b3fa6e8f28120b54dccff4fb71974';
+
+function getNotionKey() { return localStorage.getItem(NOTION_KEY_STORAGE) || ''; }
+function saveNotionKey(k) { localStorage.setItem(NOTION_KEY_STORAGE, k.trim()); }
+
+function showKeyModal() {
+  return new Promise(resolve => {
+    const el = document.getElementById('nk-modal');
+    if (el) el.remove();
+    const m = document.createElement('div');
+    m.id = 'nk-modal';
+    m.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.75);z-index:9999;display:flex;align-items:center;justify-content:center;';
+    m.innerHTML = `<div style="background:#1e1e2e;border-radius:16px;padding:28px 24px;width:88%;max-width:400px;">
+      <div style="font-size:20px;margin-bottom:6px;">🔑 노션 API 키</div>
+      <div style="font-size:12px;color:#aaa;margin-bottom:14px;">한 번만 입력하면 자동 저장돼요</div>
+      <input id="nk-input" type="password" placeholder="ntn_XXXXXXXXXX..."
+        style="width:100%;padding:12px;border-radius:8px;border:1px solid #444;background:#2a2a3e;color:#fff;font-size:13px;box-sizing:border-box;margin-bottom:12px;"/>
+      <div style="display:flex;gap:8px;">
+        <button onclick="document.getElementById('nk-modal').remove()"
+          style="flex:1;padding:11px;border-radius:8px;border:1px solid #555;background:transparent;color:#aaa;cursor:pointer;">취소</button>
+        <button id="nk-save"
+          style="flex:2;padding:11px;border-radius:8px;border:none;background:#7c6af7;color:#fff;font-weight:bold;cursor:pointer;">저장 후 동기화</button>
+      </div>
+    </div>`;
+    document.body.appendChild(m);
+    const inp = document.getElementById('nk-input');
+    inp.focus();
+    document.getElementById('nk-save').onclick = () => {
+      const k = inp.value.trim();
+      if (!k.startsWith('ntn_') && !k.startsWith('secret_')) {
+        inp.style.borderColor = '#e74c3c'; return;
+      }
+      saveNotionKey(k); m.remove(); resolve(k);
+    };
+    inp.onkeydown = e => { if (e.key === 'Enter') document.getElementById('nk-save').click(); };
+  });
+}
+
+async function getOrPromptKey() {
+  let k = getNotionKey();
+  if (!k) k = await showKeyModal();
+  return k;
+}
+
+async function notionQuery(filter = {}) {
+  const k = await getOrPromptKey();
+  if (!k) return null;
+  const r = await fetch(`https://api.notion.com/v1/databases/${TASK_DB_ID}/query`, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${k}`, 'Notion-Version': '2022-06-28', 'Content-Type': 'application/json' },
+    body: JSON.stringify(filter)
+  });
+  if (!r.ok) { const e = await r.json(); throw new Error(e.message || r.statusText); }
+  return r.json();
+}
+
+function getTitle(page) {
+  for (const pval of Object.values(page.properties || {})) {
+    if (pval.type === 'title') return pval.title.map(t => t.plain_text).join('').trim();
+  }
+  return '(제목 없음)';
+}
+
+async function notionSync() {
+  try {
+    const data = await notionQuery({
+      filter: { and: [
+        { property: '완료 여부', checkbox: { equals: false } },
+        { property: '분류', select: { equals: '장바구니' } }
+      ]},
+      sorts: [{ timestamp: 'created_time', direction: 'ascending' }]
+    });
+    if (!data) return;
+
+    const items = data.results || [];
+    const now = new Date().toISOString().slice(0,16).replace('T',' ');
+
+    // 기존 노션 항목만 제거
+    state.tabs[0].items = state.tabs[0].items.filter(x => !x.fromNotion);
+
+    items.forEach(page => {
+      state.tabs[0].items.push({
+        id: Date.now() + Math.random(),
+        text: getTitle(page),
+        done: false,
+        star: false,
+        subItems: [],
+        fromNotion: true
+      });
+    });
+
+    save(); render();
+    alert(`✅ 노션 동기화 완료!\n장바구니 ${items.length}개\n${now}`);
+  } catch(e) {
+    if (e.message.includes('401') || e.message.includes('unauthorized')) {
+      localStorage.removeItem(NOTION_KEY_STORAGE);
+      alert('API 키가 올바르지 않아요. 다시 입력해주세요.');
+      notionSync();
+    } else {
+      alert('❌ 동기화 실패\n' + e.message);
+    }
+  }
+}
+
+function resetAll() {
+  if (!confirm('모든 데이터를 초기화할까요?')) return;
+  state = {
+    tabs:[
+      { name:'챙길것',   items:[] },
+      { name:'1일여행',  items:[] },
+      { name:'정기행사', items:[], groups:[] }
+    ],
+    currentTab: state.currentTab
+  };
+  save(); render();
+}
+
+// ══════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════
+load();
+render();
+</script>
+</body>
+</html>
