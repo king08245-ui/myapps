@@ -533,11 +533,13 @@
         });
         if (!taskData) return;
 
-        // 일정 읽기
+        // 일정 읽기 (오늘 이후 일정만)
+        const todayStr = new Date().toISOString().slice(0,10);
         const schedData = await notionApiQuery({
           filter: { and: [
             { property: '완료 여부', checkbox: { equals: false } },
-            { property: '분류', select: { equals: '일정' } }
+            { property: '분류', select: { equals: '일정' } },
+            { property: '날짜', date: { on_or_after: todayStr } }
           ]},
           sorts: [{ property: '날짜', direction: 'ascending' }]
         });
