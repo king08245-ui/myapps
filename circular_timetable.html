@@ -514,6 +514,14 @@ function deleteSched(id){
 }
 
 // ════ DailySchedule 동기화 ════
+function setSyncStatus(type,msg){
+  const bar=document.getElementById('syncBar');
+  const st=document.getElementById('syncStatus');
+  bar.style.display='flex';
+  st.className='sync-status '+type;
+  st.textContent=msg;
+}
+
 // timeZone → 시작/종료 시간 매핑 (DailySchedule과 동일)
 const TZ_MAP = {
   0: null,           // 시간미정 → 표시 안 함
@@ -534,44 +542,35 @@ function syncFromDailySchedule(){
   try{
     const raw = localStorage.getItem('dailySchedule_v4');
     if(!raw){
-      setSyncStatus('err','DailySchedule 데이터 없음');
-      showToast('DailySchedule 데이터가 없어요. 같은 브라우저에서 열어주세요.');
+      const keys = Object.keys(localStorage).slice(0,5).join(', ') || '(비어있음)';
+      setSyncStatus('err','데이터 없음');
+      showToast('키 없음. localStorage: ' + keys);
       return;
     }
     const ds = JSON.parse(raw);
     const today = new Date().toLocaleDateString('sv-SE');
-
-    // 오늘 날짜 이하 항목 (오늘 탭에 보이는 것과 동일)
-    const todayItems = (ds.data||[]).filter(p => p.date <= today);
+    const allItems = ds.data||[];
+    const todayItems = allItems.filter(p => p.date <= today);
+    showToast(`전체 ${allItems.length}개 / 오늘 ${todayItems.length}개`);
 
     notionSchedules = todayItems
-      .filter(p => p.timeZone && p.timeZone > 0) // 시간미정 제외
+      .filter(p => p.timeZone && p.timeZone > 0)
       .map(p => {
         const [start, end] = TZ_MAP[p.timeZone];
-        return {
-          id: 'ds_' + p.id,
-          title: p.title,
-          start, end,
-          color: TZ_COLORS[p.timeZone] || COLORS[0],
-          memo: '', repeat: null, _src: 'ds'
-        };
+        return { id:'ds_'+p.id, title:p.title, start, end,
+          color:TZ_COLORS[p.timeZone]||COLORS[0], memo:'', repeat:null, _src:'ds' };
       });
 
-    // 시간미정 항목도 따로 보관 (목록에만 표시)
-    dsNoTime = (todayItems).filter(p => !p.timeZone || p.timeZone === 0)
+    dsNoTime = todayItems.filter(p => !p.timeZone || p.timeZone === 0)
       .map(p => ({ id:'ds_nt_'+p.id, title:p.title, _src:'ds_notime' }));
 
     const now = new Date();
     const hm = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-    setSyncStatus('ok', `${notionSchedules.length}개 · ${hm}`);
+    setSyncStatus('ok', `${notionSchedules.length + dsNoTime.length}개 · ${hm}`);
     drawClock(); drawList();
-    if(notionSchedules.length || dsNoTime.length)
-      showToast(`DailySchedule ${notionSchedules.length + dsNoTime.length}개 가져왔어요 ✓`);
-    else
-      showToast('오늘 시간 지정된 일정이 없어요');
   } catch(err) {
-    setSyncStatus('err','읽기 실패');
-    showToast('동기화 실패: ' + err.message);
+    setSyncStatus('err','오류');
+    showToast('오류: ' + err.message);
   }
 }
 
