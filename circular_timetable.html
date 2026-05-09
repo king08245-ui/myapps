@@ -633,31 +633,56 @@ function drawList(){
   const local=[...schedules].sort((a,b)=>a.start.localeCompare(b.start));
   const notion=[...notionSchedules].sort((a,b)=>a.start.localeCompare(b.start));
 
+  function makeItem(s, isNotion){
+    const div=document.createElement('div');
+    div.className='sched-item'+(isNotion?' github':'');
+
+    const bar=document.createElement('div');
+    bar.className='sched-color-bar';
+    bar.style.background=s.color||COLORS[0];
+
+    const body=document.createElement('div');
+    body.className='sched-body';
+    body.innerHTML=`
+      <div class="sched-title">${escHtml(s.title)}</div>
+      <div class="sched-time">${s.start} ~ ${s.end} · ${durLabel(s.start,s.end)}</div>
+      <div class="sched-tags">
+        ${s.repeat?`<span class="tag repeat">🔁 ${RMAP[s.repeat]}</span>`:''}
+        ${isNotion?'<span class="tag gh">📅 DS</span>':''}
+      </div>
+      ${s.memo?`<div class="sched-memo">${escHtml(s.memo)}</div>`:''}`;
+
+    const actions=document.createElement('div');
+    actions.className='sched-actions';
+
+    // 수정 버튼
+    const editBtn=document.createElement('button');
+    editBtn.className='sched-btn';
+    editBtn.textContent='✏️';
+    editBtn.addEventListener('click',()=>editSched(s.id));
+    actions.appendChild(editBtn);
+
+    // 삭제 버튼 (내 일정만)
+    if(!isNotion){
+      const delBtn=document.createElement('button');
+      delBtn.className='sched-btn del';
+      delBtn.textContent='🗑';
+      delBtn.addEventListener('click',()=>deleteSched(s.id));
+      actions.appendChild(delBtn);
+    }
+
+    div.appendChild(bar);
+    div.appendChild(body);
+    div.appendChild(actions);
+    return div;
+  }
+
   function renderSection(title,items,isNotion){
     if(!items.length)return;
     const hdr=document.createElement('div');hdr.className='list-section-header';
     hdr.innerHTML=`${title} <span class="badge">${items.length}</span>`;
     wrap.appendChild(hdr);
-    items.forEach(s=>{
-      const div=document.createElement('div');
-      div.className='sched-item'+(isNotion?' github':'');
-      div.innerHTML=`
-        <div class="sched-color-bar" style="background:${s.color||COLORS[0]}"></div>
-        <div class="sched-body">
-          <div class="sched-title">${escHtml(s.title)}</div>
-          <div class="sched-time">${s.start} ~ ${s.end} · ${durLabel(s.start,s.end)}</div>
-          <div class="sched-tags">
-            ${s.repeat?`<span class="tag repeat">🔁 ${RMAP[s.repeat]}</span>`:''}
-            ${isNotion?'<span class="tag gh">📅 DS</span>':''}
-          </div>
-          ${s.memo?`<div class="sched-memo">${escHtml(s.memo)}</div>`:''}
-        </div>
-        <div class="sched-actions">
-          <button class="sched-btn" onclick="editSched(${JSON.stringify(s.id)})">✏️</button>
-          ${!isNotion?`<button class="sched-btn del" onclick="deleteSched(${JSON.stringify(s.id)})">🗑</button>`:''}
-        </div>`;
-      wrap.appendChild(div);
-    });
+    items.forEach(s=>wrap.appendChild(makeItem(s,isNotion)));
   }
 
   if(!local.length&&!notion.length&&!dsNoTime.length){
@@ -667,7 +692,7 @@ function drawList(){
   renderSection('내 일정', local, false);
   renderSection('📅 DailySchedule (시간 지정)', notion, true);
 
-  // 시간미정 항목 - 시간 지정 버튼 포함
+  // 시간미정 항목
   if(dsNoTime.length){
     const hdr=document.createElement('div');hdr.className='list-section-header';
     hdr.innerHTML=`⏳ 시간미정 <span class="badge">${dsNoTime.length}</span>`;
@@ -675,15 +700,29 @@ function drawList(){
     dsNoTime.forEach(s=>{
       const div=document.createElement('div');
       div.className='sched-item';
-      div.innerHTML=`
-        <div class="sched-color-bar" style="background:var(--t3)"></div>
-        <div class="sched-body">
-          <div class="sched-title">${escHtml(s.title)}</div>
-          <div class="sched-time" style="color:var(--t3)">시간 미지정</div>
-        </div>
-        <div class="sched-actions">
-          <button class="sched-btn" onclick="assignTime(${JSON.stringify(s.id)},${JSON.stringify(s.title)})">⏰</button>
-        </div>`;
+
+      const bar=document.createElement('div');
+      bar.className='sched-color-bar';
+      bar.style.background='var(--t3)';
+
+      const body=document.createElement('div');
+      body.className='sched-body';
+      body.innerHTML=`
+        <div class="sched-title">${escHtml(s.title)}</div>
+        <div class="sched-time" style="color:var(--t3)">시간 미지정</div>`;
+
+      const actions=document.createElement('div');
+      actions.className='sched-actions';
+
+      const timeBtn=document.createElement('button');
+      timeBtn.className='sched-btn';
+      timeBtn.textContent='⏰';
+      timeBtn.addEventListener('click',()=>assignTime(s.id, s.title));
+      actions.appendChild(timeBtn);
+
+      div.appendChild(bar);
+      div.appendChild(body);
+      div.appendChild(actions);
       wrap.appendChild(div);
     });
   }
