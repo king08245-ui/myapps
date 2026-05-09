@@ -18,15 +18,33 @@ html,body{height:100%;overflow:hidden;}
 body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--t1);display:flex;flex-direction:column;height:100dvh;-webkit-tap-highlight-color:transparent;}
 
 /* ── 헤더 ── */
-header{display:flex;align-items:center;justify-content:space-between;padding:11px 16px;background:var(--s1);border-bottom:1px solid var(--b1);flex-shrink:0;gap:8px;}
+header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--s1);border-bottom:1px solid var(--b1);flex-shrink:0;gap:8px;}
 .logo{font-size:15px;font-weight:700;letter-spacing:-.3px;white-space:nowrap;}
 .logo em{color:var(--acc2);font-style:normal;}
-.hdate{font-family:'DM Mono',monospace;font-size:11px;color:var(--t3);flex:1;text-align:center;}
+.hdate{font-family:'DM Mono',monospace;font-size:12px;color:#ffffff;font-weight:500;flex:1;text-align:center;}
 .header-right{display:flex;gap:6px;align-items:center;}
-.btn-icon{width:32px;height:32px;border:1px solid var(--b2);background:var(--s2);border-radius:9px;color:var(--t2);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.btn-icon{width:32px;height:32px;border:1px solid var(--b2);background:var(--s2);border-radius:9px;color:var(--t2);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:'Noto Sans KR',sans-serif;}
 .btn-icon:active{background:var(--s3);}
+.btn-help{padding:0 10px;height:32px;border:1px solid var(--b2);background:var(--s2);border-radius:9px;color:var(--t2);font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;font-family:'Noto Sans KR',sans-serif;}
+.btn-help:active{background:var(--acc);color:#fff;border-color:var(--acc);}
 .btn-add{width:34px;height:34px;background:var(--acc);border:none;border-radius:10px;color:#fff;font-size:22px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .1s,opacity .1s;flex-shrink:0;}
 .btn-add:active{transform:scale(.92);opacity:.85;}
+
+/* ── syncBar (최소화) ── */
+.sync-bar{display:flex;align-items:center;gap:6px;padding:4px 14px;flex-shrink:0;}
+.sync-status{font-size:10px;white-space:nowrap;padding:2px 7px;border-radius:5px;}
+.sync-status.ok{color:#4ecdc4;background:rgba(78,205,196,.12);}
+.sync-status.err{color:#ff6b6b;background:rgba(255,107,107,.12);}
+.sync-status.loading{color:var(--t2);background:var(--b1);}
+
+/* ── 사용법 팝업 ── */
+.help-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:none;align-items:center;justify-content:center;padding:24px;}
+.help-overlay.on{display:flex;}
+.help-box{background:var(--s1);border:1px solid var(--b2);border-radius:16px;padding:20px;width:100%;max-width:320px;}
+.help-title{font-size:15px;font-weight:700;margin-bottom:14px;color:var(--t1);}
+.help-row{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;font-size:13px;color:var(--t2);line-height:1.5;}
+.help-icon{font-size:18px;flex-shrink:0;width:24px;text-align:center;}
+.btn-help-close{width:100%;margin-top:16px;padding:11px;border-radius:10px;border:none;background:var(--acc);color:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:'Noto Sans KR',sans-serif;}
 
 /* ── 탭 ── */
 .view-tabs{display:flex;background:var(--s1);border-bottom:1px solid var(--b1);flex-shrink:0;}
@@ -37,18 +55,78 @@ main{flex:1;overflow:hidden;position:relative;}
 .view{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;display:none;}
 .view.on{display:block;}
 
-/* ── 시계 뷰 ── */
-.clock-wrap{display:flex;flex-direction:column;align-items:center;padding:14px 12px 20px;}
-.clock-outer{position:relative;width:min(88vw,370px);height:min(88vw,370px);flex-shrink:0;}
+/* ── 시계 sticky ── */
+.clock-wrap{display:flex;flex-direction:column;align-items:center;padding:0;}
+.clock-sticky{position:sticky;top:0;z-index:20;background:var(--bg);width:100%;display:flex;flex-direction:column;align-items:center;padding:6px 0 2px;}
+.clock-outer{position:relative;width:min(92vw,380px);height:min(92vw,380px);flex-shrink:0;}
 #clockSvg{width:100%;height:100%;display:block;touch-action:none;}
-.clock-center-info{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;width:110px;}
+.clock-center-info{position:absolute;top:42%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;width:110px;}
 .clock-time{font-family:'DM Mono',monospace;font-size:24px;font-weight:500;color:#1a1a2e;line-height:1.1;}
 .clock-sub{font-size:10px;color:#9090b0;margin-top:2px;}
-.drag-hint{font-size:11px;color:var(--t3);margin-top:8px;text-align:center;}
 
-.legend{display:flex;flex-wrap:wrap;gap:5px 10px;justify-content:center;margin-top:12px;padding:0 8px;}
-.legend-item{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--t2);}
-.legend-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+/* ── 인라인 목록 (시계 아래) ── */
+.inline-list{width:100%;padding:0 0 30px;}
+.inline-section-header{
+  font-size:11px;font-weight:700;color:var(--t3);
+  text-transform:uppercase;letter-spacing:1px;
+  padding:10px 14px 4px;display:flex;align-items:center;gap:6px;
+}
+.inline-section-header .badge{background:var(--s3);border:1px solid var(--b2);border-radius:5px;padding:1px 6px;font-size:10px;color:var(--t2);}
+
+/* ── 메모 말풍선 ── */
+#memoCallouts{width:100%;padding:0 12px;margin-top:4px;}
+.memo-callout{
+  display:flex;align-items:flex-start;gap:8px;
+  background:var(--s2);border:1px solid var(--b2);border-radius:10px;
+  padding:8px 12px;margin-bottom:6px;position:relative;
+}
+.memo-callout::before{
+  content:'';position:absolute;top:12px;left:-7px;
+  border:6px solid transparent;border-right-color:var(--b2);
+}
+.memo-callout-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:3px;}
+.memo-callout-body{flex:1;min-width:0;}
+.memo-callout-title{font-size:11px;font-weight:600;color:var(--t2);margin-bottom:2px;}
+.memo-callout-text{font-size:12px;color:var(--t1);line-height:1.5;word-break:keep-all;}
+
+/* ── 인라인 목록 (시계 아래) ── */
+.inline-list{width:100%;padding:0 0 20px;}
+.inline-section-header{
+  font-size:10px;font-weight:700;color:var(--t3);
+  text-transform:uppercase;letter-spacing:1px;
+  padding:14px 12px 5px;display:flex;align-items:center;gap:6px;
+}
+.inline-section-header .badge{background:var(--s3);border:1px solid var(--b2);border-radius:5px;padding:1px 6px;font-size:10px;color:var(--t2);}
+
+/* ── 스와이프 아이템 ── */
+.swipe-wrap{position:relative;overflow:hidden;border-radius:10px;margin:0 12px 5px;}
+.swipe-del-bg{
+  position:absolute;top:0;right:0;bottom:0;width:80px;
+  background:#ff4444;border-radius:0 10px 10px 0;
+  display:flex;align-items:center;justify-content:center;
+  font-size:20px;color:#fff;
+  transition:width .15s;
+}
+.inline-item{
+  position:relative;z-index:1;
+  display:flex;align-items:stretch;gap:9px;
+  background:var(--s2);border-radius:10px;
+  padding:10px 11px;border:1px solid var(--b1);
+  transition:transform .18s cubic-bezier(.25,.46,.45,.94), background .15s;
+  touch-action:pan-y;
+  will-change:transform;
+}
+.inline-item.github{border-left:2px solid #4ecdc4;}
+.inline-item.notime{opacity:0.65;}
+.inline-item-color{width:3px;border-radius:2px;flex-shrink:0;}
+.inline-item-body{flex:1;min-width:0;}
+.inline-item-title{font-size:13px;font-weight:500;color:var(--t1);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.inline-item-time{font-family:'DM Mono',monospace;font-size:11px;color:var(--t2);}
+.inline-item-tags{display:flex;gap:4px;margin-top:3px;flex-wrap:wrap;}
+.inline-item-actions{display:flex;align-items:center;gap:4px;flex-shrink:0;}
+.inline-btn{width:28px;height:28px;border-radius:7px;border:1px solid var(--b2);background:var(--s3);color:var(--t2);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.inline-btn:active{background:var(--b2);}
+.swipe-hint{font-size:10px;color:var(--t3);text-align:center;padding:2px 12px 8px;}
 
 /* ── GitHub 동기화 패널 ── */
 .sync-bar{display:flex;align-items:center;gap:8px;background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:9px 12px;margin:0 12px 10px;}
@@ -143,45 +221,52 @@ main{flex:1;overflow:hidden;position:relative;}
 <body>
 
 <header>
-  <div class="logo">원형 <em>시간표</em></div>
+  <button class="btn-help" id="btnHelp">사용법</button>
   <div class="hdate" id="hdate"></div>
   <div class="header-right">
-    <button class="btn-icon" id="btnNotionSettings" title="노션 동기화">🔄</button>
+    <button class="btn-icon" id="btnNotionSettings" title="동기화">🔄</button>
     <button class="btn-add" id="btnAdd" aria-label="일정 추가">+</button>
   </div>
 </header>
 
-<nav class="view-tabs">
-  <button class="vtab on" data-v="Clock">🕐 시계</button>
-  <button class="vtab" data-v="List">📋 목록</button>
-</nav>
+<nav class="view-tabs" style="display:none;"></nav>
 
 <main>
-  <!-- 시계 뷰 -->
-  <div class="view on" id="vClock">
+  <div class="view on" id="vClock" style="overflow-y:auto;">
+    <!-- 동기화 상태 (최소) -->
+    <div class="sync-bar" id="syncBar">
+      <span style="font-size:11px;">📅</span>
+      <span class="sync-status loading" id="syncStatus">동기화 중...</span>
+    </div>
     <div class="clock-wrap">
-      <!-- DailySchedule 동기화 상태 바 -->
-      <div class="sync-bar" id="syncBar">
-        <span style="font-size:13px;">📅</span>
-        <span class="sync-status loading" id="syncStatus">동기화 중...</span>
-      </div>
-      <div class="clock-outer">
-        <svg id="clockSvg" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg"></svg>
-        <div class="clock-center-info">
-          <div class="clock-time" id="nowTime">--:--</div>
-          <div class="clock-sub">현재 시각</div>
+      <!-- 시계: sticky -->
+      <div class="clock-sticky" id="clockSticky">
+        <div class="clock-outer">
+          <svg id="clockSvg" viewBox="-80 -80 560 560" xmlns="http://www.w3.org/2000/svg"></svg>
+          <div class="clock-center-info">
+            <div class="clock-time" id="nowTime">--:--</div>
+            <div class="clock-sub">현재 시각</div>
+          </div>
         </div>
       </div>
-      <div class="drag-hint">💡 링 위를 드래그해서 일정 추가</div>
-      <div class="legend" id="legend"></div>
+      <!-- 목록 -->
+      <div class="inline-list" id="inlineList"></div>
     </div>
   </div>
-
-  <!-- 목록 뷰 -->
-  <div class="view" id="vList">
-    <div class="list-wrap" id="listWrap"></div>
-  </div>
 </main>
+
+<!-- 사용법 팝업 -->
+<div class="help-overlay" id="helpOverlay">
+  <div class="help-box">
+    <div class="help-title">사용법</div>
+    <div class="help-row"><span class="help-icon">👆</span><span>시계 링 위를 <b>드래그</b>하면 시간 범위를 지정해서 일정을 추가할 수 있어요</span></div>
+    <div class="help-row"><span class="help-icon">✏️</span><span>목록에서 <b>연필 버튼</b>을 누르면 일정을 수정할 수 있어요</span></div>
+    <div class="help-row"><span class="help-icon">👈</span><span>목록 아이템을 <b>왼쪽으로 밀면</b> 삭제할 수 있어요</span></div>
+    <div class="help-row"><span class="help-icon">📝</span><span>일정에 <b>메모를 입력</b>하면 시계 바깥에 말풍선으로 표시돼요</span></div>
+    <div class="help-row"><span class="help-icon">🔄</span><span>우측 상단 버튼으로 <b>DailySchedule과 동기화</b>할 수 있어요</span></div>
+    <button class="btn-help-close" id="btnHelpClose">확인</button>
+  </div>
+</div>
 
 <!-- 일정 추가/수정 시트 -->
 <div class="overlay" id="overlay">
@@ -611,120 +696,259 @@ function drawClock(){
   svg.appendChild(svgEl('line',{x1:CX,y1:CY,x2:np[0],y2:np[1],stroke:'#ff4444','stroke-width':'2.5','stroke-linecap':'round'}));
   svg.appendChild(svgEl('circle',{cx:CX,cy:CY,r:'5',fill:'#ff4444'}));
 
+  // 메모 지시선
+  drawMemoLeaders(svg);
+
   // 현재 시각 텍스트
   const hh=String(now.getHours()).padStart(2,'0'),mm=String(now.getMinutes()).padStart(2,'0');
   document.getElementById('nowTime').textContent=`${hh}:${mm}`;
 
-  drawLegend();
+  drawInlineList();
 }
 
-function drawLegend(){
-  const leg=document.getElementById('legend');leg.innerHTML='';
-  allSchedules().forEach(s=>{
-    const item=document.createElement('div');item.className='legend-item';
-    item.innerHTML=`<div class="legend-dot" style="background:${s.color||COLORS[0]}"></div><span>${escHtml(s.title)}</span>`;
-    leg.appendChild(item);
+// 링 바깥 말풍선 그리기
+function drawMemoLeaders(svg){
+  const items = allSchedules().filter(s=>s.memo);
+  if(!items.length) return;
+
+  items.forEach(s=>{
+    const c = s.color || COLORS[0];
+    const aS = timeToAngle(s.start);
+    const aE = timeToAngle(s.end);
+    let sweep = aE - aS; if(sweep<=0) sweep+=360;
+    const mid = aS + sweep/2; // 블록 중간 각도
+
+    // 지시선 시작점 (링 바로 바깥)
+    const pStart = pol(R+4, mid);
+    // 지시선 끝점 (말풍선 앵커, 링에서 38px 바깥)
+    const LEADER = 48;
+    const pEnd = pol(R + LEADER, mid);
+
+    // 말풍선 텍스트 준비
+    const memoShort = s.memo.length > 12 ? s.memo.slice(0,11)+'…' : s.memo;
+    const bW = Math.min(memoShort.length * 8 + 20, 130);
+    const bH = 36;
+
+    // 말풍선 위치: pEnd 기준, 각도에 따라 좌/우 정렬
+    const radMid = mid * Math.PI / 180;
+    const isRight = Math.cos(radMid) >= 0; // 오른쪽 반구면 오른쪽 정렬
+    const isBottom = Math.sin(radMid) >= 0; // 아래쪽 반구
+    const bX = isRight ? pEnd[0] + 4 : pEnd[0] - bW - 4;
+    const bY = pEnd[1] - bH/2;
+
+    // 지시선 (점선)
+    const line = svgEl('line',{
+      x1:pStart[0], y1:pStart[1],
+      x2:pEnd[0],   y2:pEnd[1],
+      stroke:c, 'stroke-width':'1.2',
+      'stroke-linecap':'round',
+      'stroke-dasharray':'3 2',
+      opacity:'0.85'
+    });
+    svg.appendChild(line);
+
+    // 말풍선 배경
+    const bubble = svgEl('rect',{
+      x:bX, y:bY,
+      width:bW, height:bH,
+      rx:'6',
+      fill:'rgba(19,19,28,0.92)',
+      stroke:c, 'stroke-width':'1'
+    });
+    svg.appendChild(bubble);
+
+    // 말풍선 꼬리 (삼각형, 지시선 방향쪽)
+    const tailX = isRight ? bX : bX + bW;
+    const tailPts = isRight
+      ? `${tailX},${bY+bH/2-4} ${tailX-6},${bY+bH/2} ${tailX},${bY+bH/2+4}`
+      : `${tailX},${bY+bH/2-4} ${tailX+6},${bY+bH/2} ${tailX},${bY+bH/2+4}`;
+    const tail = svgEl('polygon',{
+      points:tailPts,
+      fill:'rgba(19,19,28,0.92)',
+      stroke:c, 'stroke-width':'1'
+    });
+    svg.appendChild(tail);
+
+    // 색상 인디케이터 바
+    const bar = svgEl('rect',{
+      x: isRight ? bX : bX,
+      y: bY,
+      width:'3', height:bH,
+      rx:'3',
+      fill:c
+    });
+    // 왼쪽/오른쪽에 따라 인디케이터 위치 조정
+    bar.setAttribute('x', isRight ? bX : bX + bW - 3);
+    svg.appendChild(bar);
+
+    // 메모 텍스트
+    const txt = svgEl('text',{
+      x: bX + (isRight ? 9 : 8),
+      y: bY + bH/2 + 5,
+      fill:'rgba(238,238,248,0.95)',
+      'font-size':'13',
+      'font-family':'Noto Sans KR,sans-serif',
+      'font-weight':'500'
+    });
+    txt.textContent = memoShort;
+    svg.appendChild(txt);
+
+    // 링 시작점 점
+    const dot = svgEl('circle',{
+      cx:pStart[0], cy:pStart[1],
+      r:'2.5', fill:c, opacity:'0.9'
+    });
+    svg.appendChild(dot);
   });
 }
 
-// ════ 목록 그리기 ════
-function drawList(){
-  const wrap=document.getElementById('listWrap');wrap.innerHTML='';
-  const local=[...schedules].sort((a,b)=>a.start.localeCompare(b.start));
-  const notion=[...notionSchedules].sort((a,b)=>a.start.localeCompare(b.start));
 
-  function makeItem(s, isNotion){
-    const div=document.createElement('div');
-    div.className='sched-item'+(isNotion?' github':'');
+// ════ 인라인 목록 + 메모 말풍선 ════
+function drawInlineList(){
+  const wrap = document.getElementById('inlineList');
+  wrap.innerHTML = '';
 
-    const bar=document.createElement('div');
-    bar.className='sched-color-bar';
-    bar.style.background=s.color||COLORS[0];
+  const local = [...schedules].sort((a,b)=>a.start.localeCompare(b.start));
+  const notion = [...notionSchedules].sort((a,b)=>a.start.localeCompare(b.start));
 
-    const body=document.createElement('div');
-    body.className='sched-body';
-    body.innerHTML=`
-      <div class="sched-title">${escHtml(s.title)}</div>
-      <div class="sched-time">${s.start} ~ ${s.end} · ${durLabel(s.start,s.end)}</div>
-      <div class="sched-tags">
-        ${s.repeat?`<span class="tag repeat">🔁 ${RMAP[s.repeat]}</span>`:''}
-        ${isNotion?'<span class="tag gh">📅 DS</span>':''}
-      </div>
-      ${s.memo?`<div class="sched-memo">${escHtml(s.memo)}</div>`:''}`;
-
-    const actions=document.createElement('div');
-    actions.className='sched-actions';
-
-    // 수정 버튼
-    const editBtn=document.createElement('button');
-    editBtn.className='sched-btn';
-    editBtn.textContent='✏️';
-    editBtn.addEventListener('click',()=>editSched(s.id));
-    actions.appendChild(editBtn);
-
-    // 삭제 버튼 (내 일정만)
-    if(!isNotion){
-      const delBtn=document.createElement('button');
-      delBtn.className='sched-btn del';
-      delBtn.textContent='🗑';
-      delBtn.addEventListener('click',()=>deleteSched(s.id));
-      actions.appendChild(delBtn);
-    }
-
-    div.appendChild(bar);
-    div.appendChild(body);
-    div.appendChild(actions);
-    return div;
-  }
-
-  function renderSection(title,items,isNotion){
-    if(!items.length)return;
-    const hdr=document.createElement('div');hdr.className='list-section-header';
-    hdr.innerHTML=`${title} <span class="badge">${items.length}</span>`;
-    wrap.appendChild(hdr);
-    items.forEach(s=>wrap.appendChild(makeItem(s,isNotion)));
-  }
-
-  if(!local.length&&!notion.length&&!dsNoTime.length){
-    wrap.innerHTML='<div class="empty-state">아직 일정이 없어요.<br>+ 버튼을 눌러 추가하거나<br>DailySchedule을 동기화해보세요!</div>';
+  const empty = !local.length && !notion.length && !dsNoTime.length;
+  if(empty){
+    wrap.innerHTML='<div class="empty-state">아직 일정이 없어요.<br>+ 버튼을 눌러 추가하거나<br>링 위를 드래그해서 추가하세요!</div>';
     return;
   }
-  renderSection('내 일정', local, false);
-  renderSection('📅 DailySchedule (시간 지정)', notion, true);
 
-  // 시간미정 항목
+  function makeSwipeItem(s, isNotion, isNoTime){
+    // 바깥 래퍼 (삭제 배경 포함)
+    const outer = document.createElement('div');
+    outer.className = 'swipe-wrap';
+
+    const delBg = document.createElement('div');
+    delBg.className = 'swipe-del-bg';
+    delBg.textContent = '🗑';
+
+    // 아이템 본체
+    const item = document.createElement('div');
+    item.className = 'inline-item' + (isNotion?' github':'') + (isNoTime?' notime':'');
+
+    const colorBar = document.createElement('div');
+    colorBar.className = 'inline-item-color';
+    colorBar.style.background = s.color || COLORS[0];
+
+    const body = document.createElement('div');
+    body.className = 'inline-item-body';
+
+    const titleEl = document.createElement('div');
+    titleEl.className = 'inline-item-title';
+    titleEl.textContent = s.title;
+
+    const timeEl = document.createElement('div');
+    timeEl.className = 'inline-item-time';
+    timeEl.textContent = isNoTime ? '시간 미지정' : `${s.start} ~ ${s.end} · ${durLabel(s.start,s.end)}`;
+
+    const tags = document.createElement('div');
+    tags.className = 'inline-item-tags';
+    if(s.repeat) tags.innerHTML += `<span class="tag repeat">🔁 ${RMAP[s.repeat]}</span>`;
+    if(isNotion) tags.innerHTML += `<span class="tag gh">📅 DS</span>`;
+    if(isNoTime) tags.innerHTML += `<span class="tag" style="color:var(--t3);background:var(--b1)">시간미정</span>`;
+
+    body.appendChild(titleEl);
+    body.appendChild(timeEl);
+    if(tags.innerHTML) body.appendChild(tags);
+
+    // 수정 버튼
+    const actions = document.createElement('div');
+    actions.className = 'inline-item-actions';
+    const editBtn = document.createElement('button');
+    editBtn.className = 'inline-btn';
+    editBtn.textContent = '✏️';
+    editBtn.addEventListener('click', e=>{ e.stopPropagation(); isNoTime ? assignTime(s.id,s.title) : editSched(s.id); });
+    actions.appendChild(editBtn);
+
+    item.appendChild(colorBar);
+    item.appendChild(body);
+    item.appendChild(actions);
+
+    outer.appendChild(delBg);
+    outer.appendChild(item);
+
+    // ── 스와이프 삭제 (왼쪽으로) ──
+    let startX=0, startY=0, isDragging=false, isH=false;
+    const THRESHOLD = 80;
+
+    function onStart(clientX, clientY){
+      startX=clientX; startY=clientY; isDragging=true; isH=false;
+      item.style.transition='none';
+    }
+    function onMove(clientX, clientY){
+      if(!isDragging) return;
+      const dx=clientX-startX, dy=clientY-startY;
+      if(!isH && Math.abs(dy)>Math.abs(dx)){ isDragging=false; return; }
+      isH=true;
+      if(dx>0) return; // 오른쪽은 무시
+      const move=Math.max(dx,-THRESHOLD*1.5);
+      item.style.transform=`translateX(${move}px)`;
+      delBg.style.width=`${Math.min(-move,100)}px`;
+    }
+    function onEnd(clientX){
+      if(!isDragging||!isH){ isDragging=false; return; }
+      isDragging=false;
+      item.style.transition='transform .18s cubic-bezier(.25,.46,.45,.94)';
+      const dx=clientX-startX;
+      if(dx < -THRESHOLD){
+        // 삭제 확정
+        item.style.transform=`translateX(-100%)`;
+        delBg.style.width='100%';
+        setTimeout(()=>{
+          if(!isNotion && !isNoTime){
+            schedules=schedules.filter(x=>String(x.id)!==String(s.id));
+            saveLocal();
+          }
+          drawClock(); drawInlineList();
+          showToast('삭제했어요');
+        },200);
+      } else {
+        item.style.transform='translateX(0)';
+        delBg.style.width='0';
+      }
+    }
+
+    // 터치
+    item.addEventListener('touchstart',e=>{
+      onStart(e.touches[0].clientX, e.touches[0].clientY);
+    },{passive:true});
+    item.addEventListener('touchmove',e=>{
+      onMove(e.touches[0].clientX, e.touches[0].clientY);
+    },{passive:true});
+    item.addEventListener('touchend',e=>{
+      onEnd(e.changedTouches[0].clientX);
+    });
+
+    // 마우스 (데스크탑)
+    item.addEventListener('mousedown',e=>onStart(e.clientX, e.clientY));
+    item.addEventListener('mousemove',e=>{ if(isDragging) onMove(e.clientX, e.clientY); });
+    item.addEventListener('mouseup',e=>onEnd(e.clientX));
+    item.addEventListener('mouseleave',e=>{ if(isDragging) onEnd(e.clientX); });
+
+    return outer;
+  }
+
+  function renderSection(title, items, isNotion){
+    if(!items.length) return;
+    const hdr = document.createElement('div');
+    hdr.className = 'inline-section-header';
+    hdr.innerHTML = `${title} <span class="badge">${items.length}</span>`;
+    wrap.appendChild(hdr);
+    items.forEach(s=>wrap.appendChild(makeSwipeItem(s, isNotion, false)));
+  }
+
+  renderSection('내 일정', local, false);
+  renderSection('📅 DailySchedule', notion, true);
+
   if(dsNoTime.length){
-    const hdr=document.createElement('div');hdr.className='list-section-header';
+    const hdr=document.createElement('div');hdr.className='inline-section-header';
     hdr.innerHTML=`⏳ 시간미정 <span class="badge">${dsNoTime.length}</span>`;
     wrap.appendChild(hdr);
-    dsNoTime.forEach(s=>{
-      const div=document.createElement('div');
-      div.className='sched-item';
-
-      const bar=document.createElement('div');
-      bar.className='sched-color-bar';
-      bar.style.background='var(--t3)';
-
-      const body=document.createElement('div');
-      body.className='sched-body';
-      body.innerHTML=`
-        <div class="sched-title">${escHtml(s.title)}</div>
-        <div class="sched-time" style="color:var(--t3)">시간 미지정</div>`;
-
-      const actions=document.createElement('div');
-      actions.className='sched-actions';
-
-      const timeBtn=document.createElement('button');
-      timeBtn.className='sched-btn';
-      timeBtn.textContent='⏰';
-      timeBtn.addEventListener('click',()=>assignTime(s.id, s.title));
-      actions.appendChild(timeBtn);
-
-      div.appendChild(bar);
-      div.appendChild(body);
-      div.appendChild(actions);
-      wrap.appendChild(div);
-    });
+    dsNoTime.forEach(s=>wrap.appendChild(makeSwipeItem(s, false, true)));
   }
 }
 
@@ -799,7 +1023,7 @@ document.getElementById('btnSave').addEventListener('click',()=>{
   } else {
     schedules.push(obj);
   }
-  saveLocal(); closeSheet(); drawClock(); drawList();
+  saveLocal(); closeSheet(); drawClock(); drawInlineList();
   showToast(editId ? '수정했어요 ✓' : '추가했어요 ✓');
 });
 
@@ -823,7 +1047,7 @@ function assignTime(id, title){
 function deleteSched(id){
   if(!confirm('삭제할까요?'))return;
   schedules = schedules.filter(x=>String(x.id)!==String(id));
-  saveLocal(); drawClock(); drawList(); showToast('삭제했어요');
+  saveLocal(); drawClock(); drawInlineList(); showToast('삭제했어요');
 }
 
 // ════ DailySchedule 동기화 ════
@@ -880,7 +1104,7 @@ function syncFromDailySchedule(){
     const now = new Date();
     const hm = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
     setSyncStatus('ok', `${notionSchedules.length + dsNoTime.length}개 · ${hm}`);
-    drawClock(); drawList();
+    drawClock(); drawInlineList();
   } catch(err) {
     setSyncStatus('err','오류');
     showToast('오류: ' + err.message);
@@ -891,13 +1115,10 @@ function syncFromDailySchedule(){
 document.getElementById('btnNotionSettings').addEventListener('click', syncFromDailySchedule);
 
 // ════ 탭 ════
-document.querySelectorAll('.vtab').forEach(tab=>tab.addEventListener('click',()=>{
-  document.querySelectorAll('.vtab').forEach(t=>t.classList.remove('on'));
-  document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));
-  tab.classList.add('on');
-  document.getElementById('v'+tab.dataset.v).classList.add('on');
-  if(tab.dataset.v==='List')drawList();
-}));
+// ════ 사용법 팝업 ════
+document.getElementById('btnHelp').addEventListener('click',()=>document.getElementById('helpOverlay').classList.add('on'));
+document.getElementById('btnHelpClose').addEventListener('click',()=>document.getElementById('helpOverlay').classList.remove('on'));
+document.getElementById('helpOverlay').addEventListener('click',e=>{if(e.target===e.currentTarget)document.getElementById('helpOverlay').classList.remove('on');});
 
 // ════ 토스트 ════
 function showToast(msg){
