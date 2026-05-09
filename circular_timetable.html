@@ -160,10 +160,10 @@ main{flex:1;overflow:hidden;position:relative;}
   <!-- 시계 뷰 -->
   <div class="view on" id="vClock">
     <div class="clock-wrap">
-      <!-- 노션 동기화 상태 바 -->
+      <!-- DailySchedule 동기화 상태 바 -->
       <div class="sync-bar" id="syncBar">
-        <span style="font-size:13px;">📥</span>
-        <span class="sync-status loading" id="syncStatus">노션 동기화 중...</span>
+        <span style="font-size:13px;">📅</span>
+        <span class="sync-status loading" id="syncStatus">동기화 중...</span>
       </div>
       <div class="clock-outer">
         <svg id="clockSvg" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg"></svg>
@@ -241,31 +241,7 @@ main{flex:1;overflow:hidden;position:relative;}
   </div>
 </div>
 
-<!-- 노션 API 키 설정 시트 -->
-<div class="overlay" id="overlayNotion">
-  <div class="sheet">
-    <div class="sheet-handle"></div>
-    <div class="sheet-header">
-      <div class="sheet-title">노션 동기화 설정</div>
-      <button class="btn-close" id="btnCloseNotion">✕</button>
-    </div>
-    <div class="sheet-body">
-      <div class="gh-info">
-        DailySchedule과 동일한 API 키를 사용해요.<br>
-        이미 입력한 경우 바로 동기화됩니다.<br><br>
-        노션 <code>분류 = 일정</code> 항목 중<br>
-        오늘 이후 날짜 항목을 가져와요.<br>
-        시간은 원형 시계에서 직접 지정해요.
-      </div>
-      <div class="fg">
-        <label class="fl">노션 API 키</label>
-        <input class="fi" id="inNotionKey" type="password" placeholder="ntn_XXXXXXXXXX...">
-      </div>
-      <button class="btn-gh-save" id="btnNotionSave" style="width:100%;padding:13px;border-radius:12px;font-size:15px;">저장 후 동기화</button>
-      <button id="btnNotionClear" style="width:100%;padding:10px;margin-top:8px;border-radius:10px;border:1px solid var(--b2);background:none;color:var(--t3);font-size:13px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;">API 키 초기화</button>
-    </div>
-  </div>
-</div>
+<!-- (노션 설정 시트 제거됨 - DailySchedule localStorage 직접 읽기) -->
 
 <div class="toast" id="toast"></div>
 
@@ -277,13 +253,12 @@ const NS='http://www.w3.org/2000/svg';
 const CX=200,CY=200,R=178,RI=92; // RI = 내부 원 반지름 (흰색)
 
 let schedules = JSON.parse(localStorage.getItem('circ_local')||'[]');
-let notionSchedules = []; // 노션에서 가져온 일정 (메모리 유지)
+let notionSchedules = [];
+let dsNoTime = []; // 시간미정 항목
 let editId=null, selColor=COLORS[0], selRepeat='daily', repeatOn=false;
 
-// ════ 노션 설정 (DailySchedule과 동일 키 공유) ════
-const NOTION_KEY_STORAGE = 'notion_api_key';
-const TASK_DB_ID = '2e6b3fa6e8f28120b54dccff4fb71974';
-const PROXY = 'https://notion-proxy-2026.king08245.workers.dev/notion-proxy';
+// ════ DailySchedule 동기화 설정 ════
+// localStorage 키: 'dailySchedule_v4' (DailySchedule 앱과 동일)
 
 // 드래그 상태
 let dragState=null; // {startAngle, previewEl}
@@ -445,8 +420,27 @@ function drawList(){
     wrap.innerHTML='<div class="empty-state">아직 일정이 없어요.<br>+ 버튼을 눌러 추가하거나<br>노션을 동기화해보세요!</div>';
     return;
   }
-  renderSection('내 일정',local,false);
-  renderSection('📥 노션 일정',notion,true);
+  renderSection('내 일정', local, false);
+  renderSection('📅 DailySchedule (시간 지정)', notion, true);
+
+  // 시간미정 항목
+  if(dsNoTime.length){
+    const hdr=document.createElement('div');hdr.className='list-section-header';
+    hdr.innerHTML=`⏳ 시간미정 <span class="badge">${dsNoTime.length}</span>`;
+    wrap.appendChild(hdr);
+    dsNoTime.forEach(s=>{
+      const div=document.createElement('div');
+      div.className='sched-item';
+      div.style.opacity='0.6';
+      div.innerHTML=`
+        <div class="sched-color-bar" style="background:var(--t3)"></div>
+        <div class="sched-body">
+          <div class="sched-title">${escHtml(s.title)}</div>
+          <div class="sched-time">시간 미지정 · 시계에서 드래그로 추가하세요</div>
+        </div>`;
+      wrap.appendChild(div);
+    });
+  }
 }
 
 // ════ 색상 팔레트 ════
@@ -519,136 +513,70 @@ function deleteSched(id){
   schedules=schedules.filter(x=>x.id!==id);saveLocal();drawClock();drawList();showToast('삭제했어요');
 }
 
-// ════ 노션 동기화 ════
-function getNotionKey(){return localStorage.getItem(NOTION_KEY_STORAGE)||'';}
-function saveNotionKey(k){localStorage.setItem(NOTION_KEY_STORAGE,k.trim());}
+// ════ DailySchedule 동기화 ════
+// timeZone → 시작/종료 시간 매핑 (DailySchedule과 동일)
+const TZ_MAP = {
+  0: null,           // 시간미정 → 표시 안 함
+  1: ['06:00','09:00'],
+  2: ['09:00','12:00'],
+  3: ['12:00','15:00'],
+  4: ['15:00','18:00'],
+  5: ['18:00','21:00'],
+  6: ['21:00','24:00'],
+};
+const TZ_COLORS = {
+  1:'#ffd166', 2:'#ff9f43', 3:'#4ecdc4',
+  4:'#7c6dfa', 5:'#ff6b9d', 6:'#a29bfe',
+};
 
-function setSyncStatus(type,msg){
-  const bar=document.getElementById('syncBar');
-  const st=document.getElementById('syncStatus');
-  bar.style.display='flex';
-  st.className='sync-status '+type;
-  st.textContent=msg;
-}
-
-async function notionQuery(filter){
-  const k=getNotionKey();
-  if(!k)return null;
-  const r=await fetch(`${PROXY}/v1/databases/${TASK_DB_ID}/query`,{
-    method:'POST',
-    headers:{'Authorization':`Bearer ${k}`,'Notion-Version':'2022-06-28','Content-Type':'application/json'},
-    body:JSON.stringify(filter)
-  });
-  if(!r.ok){const e=await r.json();throw new Error(e.message||r.statusText);}
-  return r.json();
-}
-
-function getNotionTitle(page){
-  for(const v of Object.values(page.properties||{})){
-    if(v.type==='title')return v.title.map(t=>t.plain_text).join('').trim();
-  }
-  return '(제목 없음)';
-}
-function getNotionDate(page,prop){
-  return((page.properties||{})[prop]?.date?.start)||'';
-}
-
-// 노션 일정 → 시계 블록으로 변환
-// 시간 정보가 없으면 날짜 순서대로 1시간짜리 블록을 자동 배치 (08:00부터)
-function mapNotionToSchedules(pages){
-  const colorPalette=['#4ecdc4','#ffd166','#a29bfe','#ff9f43','#70e1f5','#ff6b9d'];
-  let nextStart=8*60; // 08:00부터 시작
-  return pages.map((page,i)=>{
-    const title=getNotionTitle(page);
-    const dateStr=getNotionDate(page,'날짜');
-    // 날짜+시간이 있으면 시간 추출 (예: "2026-05-09T09:00:00.000+09:00")
-    let start='',end='';
-    if(dateStr&&dateStr.includes('T')){
-      const d=new Date(dateStr);
-      const h=d.getHours(),m=d.getMinutes();
-      start=minsToTime(h*60+m);
-      end=minsToTime(h*60+m+60);
-    }else{
-      // 날짜만 있으면 순서대로 1시간 블록 배치
-      start=minsToTime(nextStart);
-      end=minsToTime(nextStart+60);
-      nextStart+=60;
-      if(nextStart>=24*60)nextStart=8*60;
-    }
-    const label=dateStr&&!dateStr.includes('T')?` (${dateStr})`:'';
-    return{
-      id:'notion_'+page.id,
-      title:title+label,
-      start,end,
-      color:colorPalette[i%colorPalette.length],
-      memo:'',repeat:null,_src:'notion'
-    };
-  });
-}
-
-async function notionSync(silent=false){
-  const k=getNotionKey();
-  if(!k){
-    // API 키 없으면 설정 시트 열기
-    document.getElementById('inNotionKey').value='';
-    document.getElementById('overlayNotion').classList.add('on');
-    return;
-  }
+function syncFromDailySchedule(){
   setSyncStatus('loading','동기화 중...');
   try{
-    const today=new Date().toISOString().slice(0,10);
-    const data=await notionQuery({
-      filter:{and:[
-        {property:'완료 여부',checkbox:{equals:false}},
-        {property:'분류',select:{equals:'일정'}},
-        {property:'날짜',date:{on_or_after:today}}
-      ]},
-      sorts:[{property:'날짜',direction:'ascending'}]
-    });
-    if(!data){setSyncStatus('err','키 없음');return;}
-    notionSchedules=mapNotionToSchedules(data.results||[]);
-    const now=new Date();
-    const hm=`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-    setSyncStatus('ok',`${notionSchedules.length}개 · ${hm}`);
-    drawClock();drawList();
-    if(!silent)showToast(`노션에서 ${notionSchedules.length}개 가져왔어요 ✓`);
-  }catch(err){
-    setSyncStatus('err','연결 실패');
-    if(err.message.includes('401')||err.message.includes('unauthorized')){
-      localStorage.removeItem(NOTION_KEY_STORAGE);
-      setSyncStatus('err','API 키 오류');
-      showToast('API 키가 올바르지 않아요');
-      document.getElementById('overlayNotion').classList.add('on');
-    }else{
-      if(!silent)showToast('동기화 실패: '+err.message);
+    const raw = localStorage.getItem('dailySchedule_v4');
+    if(!raw){
+      setSyncStatus('err','DailySchedule 데이터 없음');
+      showToast('DailySchedule 데이터가 없어요. 같은 브라우저에서 열어주세요.');
+      return;
     }
+    const ds = JSON.parse(raw);
+    const today = new Date().toLocaleDateString('sv-SE');
+
+    // 오늘 날짜 이하 항목 (오늘 탭에 보이는 것과 동일)
+    const todayItems = (ds.data||[]).filter(p => p.date <= today);
+
+    notionSchedules = todayItems
+      .filter(p => p.timeZone && p.timeZone > 0) // 시간미정 제외
+      .map(p => {
+        const [start, end] = TZ_MAP[p.timeZone];
+        return {
+          id: 'ds_' + p.id,
+          title: p.title,
+          start, end,
+          color: TZ_COLORS[p.timeZone] || COLORS[0],
+          memo: '', repeat: null, _src: 'ds'
+        };
+      });
+
+    // 시간미정 항목도 따로 보관 (목록에만 표시)
+    dsNoTime = (todayItems).filter(p => !p.timeZone || p.timeZone === 0)
+      .map(p => ({ id:'ds_nt_'+p.id, title:p.title, _src:'ds_notime' }));
+
+    const now = new Date();
+    const hm = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+    setSyncStatus('ok', `${notionSchedules.length}개 · ${hm}`);
+    drawClock(); drawList();
+    if(notionSchedules.length || dsNoTime.length)
+      showToast(`DailySchedule ${notionSchedules.length + dsNoTime.length}개 가져왔어요 ✓`);
+    else
+      showToast('오늘 시간 지정된 일정이 없어요');
+  } catch(err) {
+    setSyncStatus('err','읽기 실패');
+    showToast('동기화 실패: ' + err.message);
   }
 }
 
-// ════ 노션 설정 시트 ════
-document.getElementById('btnNotionSettings').addEventListener('click',()=>{
-  document.getElementById('inNotionKey').value=getNotionKey();
-  document.getElementById('overlayNotion').classList.add('on');
-});
-document.getElementById('btnCloseNotion').addEventListener('click',()=>document.getElementById('overlayNotion').classList.remove('on'));
-document.getElementById('overlayNotion').addEventListener('click',e=>{if(e.target===e.currentTarget)document.getElementById('overlayNotion').classList.remove('on');});
-
-document.getElementById('btnNotionSave').addEventListener('click',async()=>{
-  const k=document.getElementById('inNotionKey').value.trim();
-  if(k&&(k.startsWith('ntn_')||k.startsWith('secret_')))saveNotionKey(k);
-  else if(k){showToast('올바른 API 키를 입력해주세요 (ntn_...)');return;}
-  document.getElementById('overlayNotion').classList.remove('on');
-  await notionSync();
-});
-document.getElementById('btnNotionClear').addEventListener('click',()=>{
-  if(!confirm('API 키를 초기화할까요?'))return;
-  localStorage.removeItem(NOTION_KEY_STORAGE);
-  notionSchedules=[];
-  document.getElementById('inNotionKey').value='';
-  document.getElementById('syncBar').style.display='none';
-  drawClock();drawList();
-  showToast('API 키를 초기화했어요');
-});
+// 🔄 버튼 → 수동 재동기화
+document.getElementById('btnNotionSettings').addEventListener('click', syncFromDailySchedule);
 
 // ════ 탭 ════
 document.querySelectorAll('.vtab').forEach(tab=>tab.addEventListener('click',()=>{
@@ -797,15 +725,9 @@ svgEl2.addEventListener('mouseleave',()=>{removeDragPreview();dragState=null;});
 
 // ════ 초기 실행 ════
 drawClock();
-setInterval(drawClock,30000);
-
-// 앱 시작 시 노션 자동 동기화
-if(getNotionKey()){
-  setSyncStatus('loading','동기화 중...');
-  setTimeout(()=>notionSync(true),600);
-}else{
-  document.getElementById('syncBar').style.display='none';
-}
+setInterval(drawClock, 30000);
+// 앱 열리자마자 DailySchedule 자동 동기화
+setTimeout(syncFromDailySchedule, 400);
 </script>
 </body>
 </html>
