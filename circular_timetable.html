@@ -146,7 +146,7 @@ main{flex:1;overflow:hidden;position:relative;}
   <div class="logo">원형 <em>시간표</em></div>
   <div class="hdate" id="hdate"></div>
   <div class="header-right">
-    <button class="btn-icon" id="btnGhSettings" title="GitHub 동기화">⚙️</button>
+    <button class="btn-icon" id="btnNotionSettings" title="노션 동기화">🔄</button>
     <button class="btn-add" id="btnAdd" aria-label="일정 추가">+</button>
   </div>
 </header>
@@ -160,11 +160,10 @@ main{flex:1;overflow:hidden;position:relative;}
   <!-- 시계 뷰 -->
   <div class="view on" id="vClock">
     <div class="clock-wrap">
-      <!-- GitHub 동기화 바 -->
-      <div class="sync-bar" id="syncBar" style="display:none;">
-        <span style="font-size:12px;color:var(--t3);white-space:nowrap;">GitHub</span>
-        <span class="sync-status loading" id="syncStatus">연결 중...</span>
-        <button class="btn-sync" id="btnSync">새로고침</button>
+      <!-- 노션 동기화 상태 바 -->
+      <div class="sync-bar" id="syncBar">
+        <span style="font-size:13px;">📥</span>
+        <span class="sync-status loading" id="syncStatus">노션 동기화 중...</span>
       </div>
       <div class="clock-outer">
         <svg id="clockSvg" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg"></svg>
@@ -242,45 +241,28 @@ main{flex:1;overflow:hidden;position:relative;}
   </div>
 </div>
 
-<!-- GitHub 설정 시트 -->
-<div class="overlay" id="overlayGh">
+<!-- 노션 API 키 설정 시트 -->
+<div class="overlay" id="overlayNotion">
   <div class="sheet">
     <div class="sheet-handle"></div>
     <div class="sheet-header">
-      <div class="sheet-title">GitHub 동기화 설정</div>
-      <button class="btn-close" id="btnCloseGh">✕</button>
+      <div class="sheet-title">노션 동기화 설정</div>
+      <button class="btn-close" id="btnCloseNotion">✕</button>
     </div>
     <div class="sheet-body">
       <div class="gh-info">
-        GitHub에 <code>dailyschedule.json</code> 파일을 올리고<br>
-        Raw URL을 입력하면 자동으로 동기화돼요.<br><br>
-        <b>파일 형식 예시:</b><br>
-        <code>[{"start":"06:00","end":"09:00","title":"오전 루틴","color":"#4ecdc4"}]</code><br><br>
-        3시간 블록 형식도 자동 변환됩니다.<br>
-        Raw URL: <code>raw.githubusercontent.com/...</code>
+        DailySchedule과 동일한 API 키를 사용해요.<br>
+        이미 입력한 경우 바로 동기화됩니다.<br><br>
+        노션 <code>분류 = 일정</code> 항목 중<br>
+        오늘 이후 날짜 항목을 가져와요.<br>
+        시간은 원형 시계에서 직접 지정해요.
       </div>
       <div class="fg">
-        <label class="fl">GitHub Raw URL</label>
-        <div class="gh-url-row">
-          <input class="fi" id="inGhUrl" type="url" placeholder="https://raw.githubusercontent.com/username/repo/main/dailyschedule.json">
-        </div>
+        <label class="fl">노션 API 키</label>
+        <input class="fi" id="inNotionKey" type="password" placeholder="ntn_XXXXXXXXXX...">
       </div>
-      <div class="fg">
-        <label class="fl">자동 동기화</label>
-        <div class="check-row">
-          <span class="check-label">앱 시작 시 자동으로 가져오기</span>
-          <div class="toggle" id="toggleAutoSync"></div>
-        </div>
-      </div>
-      <div class="fg">
-        <label class="fl">병합 방식</label>
-        <select class="fsel" id="selMerge">
-          <option value="merge">로컬 + GitHub 병합 (추천)</option>
-          <option value="github">GitHub 우선 (로컬 덮어쓰기)</option>
-          <option value="local">로컬 우선 (GitHub 무시)</option>
-        </select>
-      </div>
-      <button class="btn-gh-save" id="btnGhSave" style="width:100%;padding:13px;border-radius:12px;font-size:15px;">저장 및 동기화</button>
+      <button class="btn-gh-save" id="btnNotionSave" style="width:100%;padding:13px;border-radius:12px;font-size:15px;">저장 후 동기화</button>
+      <button id="btnNotionClear" style="width:100%;padding:10px;margin-top:8px;border-radius:10px;border:1px solid var(--b2);background:none;color:var(--t3);font-size:13px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;">API 키 초기화</button>
     </div>
   </div>
 </div>
@@ -295,11 +277,13 @@ const NS='http://www.w3.org/2000/svg';
 const CX=200,CY=200,R=178,RI=92; // RI = 내부 원 반지름 (흰색)
 
 let schedules = JSON.parse(localStorage.getItem('circ_local')||'[]');
-let ghSchedules = JSON.parse(localStorage.getItem('circ_github')||'[]');
-let ghUrl = localStorage.getItem('circ_ghurl')||'';
-let autoSync = localStorage.getItem('circ_autosync')==='1';
-let mergeMode = localStorage.getItem('circ_merge')||'merge';
+let notionSchedules = []; // 노션에서 가져온 일정 (메모리 유지)
 let editId=null, selColor=COLORS[0], selRepeat='daily', repeatOn=false;
+
+// ════ 노션 설정 (DailySchedule과 동일 키 공유) ════
+const NOTION_KEY_STORAGE = 'notion_api_key';
+const TASK_DB_ID = '2e6b3fa6e8f28120b54dccff4fb71974';
+const PROXY = 'https://notion-proxy-2026.king08245.workers.dev/notion-proxy';
 
 // 드래그 상태
 let dragState=null; // {startAngle, previewEl}
@@ -344,11 +328,7 @@ function arcOnlyPath(aS,aE){
 
 // ════ 병합된 일정 목록 ════
 function allSchedules(){
-  if(mergeMode==='local') return schedules;
-  if(mergeMode==='github') return ghSchedules.length?ghSchedules:schedules;
-  // merge: 로컬 + GitHub (source:'gh' 태그 기준 중복 제거)
-  const ghMapped=ghSchedules.map(g=>({...g,_src:'gh'}));
-  return [...schedules, ...ghMapped];
+  return [...schedules, ...notionSchedules];
 }
 
 // ════ 시계 그리기 ════
@@ -431,18 +411,17 @@ function drawLegend(){
 // ════ 목록 그리기 ════
 function drawList(){
   const wrap=document.getElementById('listWrap');wrap.innerHTML='';
-
   const local=[...schedules].sort((a,b)=>a.start.localeCompare(b.start));
-  const gh=ghSchedules.length&&mergeMode!=='local'?[...ghSchedules].sort((a,b)=>a.start.localeCompare(b.start)):[];
+  const notion=[...notionSchedules].sort((a,b)=>a.start.localeCompare(b.start));
 
-  function renderSection(title,items,isGh){
+  function renderSection(title,items,isNotion){
     if(!items.length)return;
     const hdr=document.createElement('div');hdr.className='list-section-header';
     hdr.innerHTML=`${title} <span class="badge">${items.length}</span>`;
     wrap.appendChild(hdr);
     items.forEach(s=>{
       const div=document.createElement('div');
-      div.className='sched-item'+(isGh?' github':'');
+      div.className='sched-item'+(isNotion?' github':'');
       div.innerHTML=`
         <div class="sched-color-bar" style="background:${s.color||COLORS[0]}"></div>
         <div class="sched-body">
@@ -450,24 +429,24 @@ function drawList(){
           <div class="sched-time">${s.start} ~ ${s.end} · ${durLabel(s.start,s.end)}</div>
           <div class="sched-tags">
             ${s.repeat?`<span class="tag repeat">🔁 ${RMAP[s.repeat]}</span>`:''}
-            ${isGh?'<span class="tag gh">GitHub</span>':''}
+            ${isNotion?'<span class="tag gh">📥 노션</span>':''}
           </div>
           ${s.memo?`<div class="sched-memo">${escHtml(s.memo)}</div>`:''}
         </div>
         <div class="sched-actions">
-          ${!isGh?`<button class="sched-btn" onclick="editSched('${s.id}')">✏️</button>
+          ${!isNotion?`<button class="sched-btn" onclick="editSched('${s.id}')">✏️</button>
           <button class="sched-btn del" onclick="deleteSched('${s.id}')">🗑</button>`:''}
         </div>`;
       wrap.appendChild(div);
     });
   }
 
-  if(!local.length&&!gh.length){
-    wrap.innerHTML='<div class="empty-state">아직 일정이 없어요.<br>+ 버튼을 눌러 추가하거나<br>GitHub를 연동해보세요!</div>';
+  if(!local.length&&!notion.length){
+    wrap.innerHTML='<div class="empty-state">아직 일정이 없어요.<br>+ 버튼을 눌러 추가하거나<br>노션을 동기화해보세요!</div>';
     return;
   }
   renderSection('내 일정',local,false);
-  renderSection('GitHub 일정',gh,true);
+  renderSection('📥 노션 일정',notion,true);
 }
 
 // ════ 색상 팔레트 ════
@@ -540,92 +519,136 @@ function deleteSched(id){
   schedules=schedules.filter(x=>x.id!==id);saveLocal();drawClock();drawList();showToast('삭제했어요');
 }
 
-// ════ GitHub 설정 시트 ════
-document.getElementById('btnGhSettings').addEventListener('click',()=>{
-  document.getElementById('inGhUrl').value=ghUrl;
-  document.getElementById('toggleAutoSync').classList.toggle('on',autoSync);
-  document.getElementById('selMerge').value=mergeMode;
-  document.getElementById('overlayGh').classList.add('on');
-});
-document.getElementById('btnCloseGh').addEventListener('click',()=>document.getElementById('overlayGh').classList.remove('on'));
-document.getElementById('overlayGh').addEventListener('click',e=>{if(e.target===e.currentTarget)document.getElementById('overlayGh').classList.remove('on');});
-document.getElementById('toggleAutoSync').addEventListener('click',function(){autoSync=!autoSync;this.classList.toggle('on',autoSync);});
+// ════ 노션 동기화 ════
+function getNotionKey(){return localStorage.getItem(NOTION_KEY_STORAGE)||'';}
+function saveNotionKey(k){localStorage.setItem(NOTION_KEY_STORAGE,k.trim());}
 
-document.getElementById('btnGhSave').addEventListener('click',async()=>{
-  ghUrl=document.getElementById('inGhUrl').value.trim();
-  mergeMode=document.getElementById('selMerge').value;
-  localStorage.setItem('circ_ghurl',ghUrl);
-  localStorage.setItem('circ_autosync',autoSync?'1':'0');
-  localStorage.setItem('circ_merge',mergeMode);
-  document.getElementById('overlayGh').classList.remove('on');
-  if(ghUrl)await fetchGitHub();
-  else{drawClock();drawList();}
-});
-document.getElementById('btnSync').addEventListener('click',()=>fetchGitHub());
-
-// ════ GitHub fetch ════
-async function fetchGitHub(){
-  if(!ghUrl){showToast('GitHub URL을 먼저 설정하세요 (⚙️)');return;}
+function setSyncStatus(type,msg){
   const bar=document.getElementById('syncBar');
   const st=document.getElementById('syncStatus');
   bar.style.display='flex';
-  st.className='sync-status loading';st.textContent='불러오는 중...';
+  st.className='sync-status '+type;
+  st.textContent=msg;
+}
+
+async function notionQuery(filter){
+  const k=getNotionKey();
+  if(!k)return null;
+  const r=await fetch(`${PROXY}/v1/databases/${TASK_DB_ID}/query`,{
+    method:'POST',
+    headers:{'Authorization':`Bearer ${k}`,'Notion-Version':'2022-06-28','Content-Type':'application/json'},
+    body:JSON.stringify(filter)
+  });
+  if(!r.ok){const e=await r.json();throw new Error(e.message||r.statusText);}
+  return r.json();
+}
+
+function getNotionTitle(page){
+  for(const v of Object.values(page.properties||{})){
+    if(v.type==='title')return v.title.map(t=>t.plain_text).join('').trim();
+  }
+  return '(제목 없음)';
+}
+function getNotionDate(page,prop){
+  return((page.properties||{})[prop]?.date?.start)||'';
+}
+
+// 노션 일정 → 시계 블록으로 변환
+// 시간 정보가 없으면 날짜 순서대로 1시간짜리 블록을 자동 배치 (08:00부터)
+function mapNotionToSchedules(pages){
+  const colorPalette=['#4ecdc4','#ffd166','#a29bfe','#ff9f43','#70e1f5','#ff6b9d'];
+  let nextStart=8*60; // 08:00부터 시작
+  return pages.map((page,i)=>{
+    const title=getNotionTitle(page);
+    const dateStr=getNotionDate(page,'날짜');
+    // 날짜+시간이 있으면 시간 추출 (예: "2026-05-09T09:00:00.000+09:00")
+    let start='',end='';
+    if(dateStr&&dateStr.includes('T')){
+      const d=new Date(dateStr);
+      const h=d.getHours(),m=d.getMinutes();
+      start=minsToTime(h*60+m);
+      end=minsToTime(h*60+m+60);
+    }else{
+      // 날짜만 있으면 순서대로 1시간 블록 배치
+      start=minsToTime(nextStart);
+      end=minsToTime(nextStart+60);
+      nextStart+=60;
+      if(nextStart>=24*60)nextStart=8*60;
+    }
+    const label=dateStr&&!dateStr.includes('T')?` (${dateStr})`:'';
+    return{
+      id:'notion_'+page.id,
+      title:title+label,
+      start,end,
+      color:colorPalette[i%colorPalette.length],
+      memo:'',repeat:null,_src:'notion'
+    };
+  });
+}
+
+async function notionSync(silent=false){
+  const k=getNotionKey();
+  if(!k){
+    // API 키 없으면 설정 시트 열기
+    document.getElementById('inNotionKey').value='';
+    document.getElementById('overlayNotion').classList.add('on');
+    return;
+  }
+  setSyncStatus('loading','동기화 중...');
   try{
-    // CORS 우회: raw.githubusercontent.com은 직접 가능
-    const url=ghUrl.includes('raw.githubusercontent.com')?ghUrl
-      :ghUrl.replace('github.com','raw.githubusercontent.com').replace('/blob/','/')
-             .replace('/tree/','/');;
-    const res=await fetch(url+'?t='+Date.now());
-    if(!res.ok)throw new Error(`HTTP ${res.status}`);
-    const data=await res.json();
-    ghSchedules=normalizeGhData(data);
-    localStorage.setItem('circ_github',JSON.stringify(ghSchedules));
-    st.className='sync-status ok';
+    const today=new Date().toISOString().slice(0,10);
+    const data=await notionQuery({
+      filter:{and:[
+        {property:'완료 여부',checkbox:{equals:false}},
+        {property:'분류',select:{equals:'일정'}},
+        {property:'날짜',date:{on_or_after:today}}
+      ]},
+      sorts:[{property:'날짜',direction:'ascending'}]
+    });
+    if(!data){setSyncStatus('err','키 없음');return;}
+    notionSchedules=mapNotionToSchedules(data.results||[]);
     const now=new Date();
-    st.textContent=`동기화 완료 ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+    const hm=`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+    setSyncStatus('ok',`${notionSchedules.length}개 · ${hm}`);
     drawClock();drawList();
-    showToast(`GitHub에서 ${ghSchedules.length}개 불러왔어요 ✓`);
+    if(!silent)showToast(`노션에서 ${notionSchedules.length}개 가져왔어요 ✓`);
   }catch(err){
-    st.className='sync-status err';st.textContent='연결 실패';
-    showToast('GitHub 연결 실패: '+err.message);
-    console.error(err);
+    setSyncStatus('err','연결 실패');
+    if(err.message.includes('401')||err.message.includes('unauthorized')){
+      localStorage.removeItem(NOTION_KEY_STORAGE);
+      setSyncStatus('err','API 키 오류');
+      showToast('API 키가 올바르지 않아요');
+      document.getElementById('overlayNotion').classList.add('on');
+    }else{
+      if(!silent)showToast('동기화 실패: '+err.message);
+    }
   }
 }
 
-// GitHub 데이터 정규화 (다양한 형식 지원)
-function normalizeGhData(data){
-  if(!Array.isArray(data))return[];
-  const colorPalette=['#4ecdc4','#ffd166','#a29bfe','#ff9f43','#70e1f5','#ff6b9d','#7c6dfa','#ff6b6b'];
-  return data.map((item,i)=>{
-    // 표준 형식: {start, end, title, color}
-    if(item.start&&item.end&&item.title){
-      return{id:'gh_'+i,title:item.title,start:normalizeTime(item.start),end:normalizeTime(item.end),color:item.color||colorPalette[i%colorPalette.length],memo:item.memo||item.note||'',repeat:item.repeat||null,_src:'gh'};
-    }
-    // 시간 범위 형식: {time:"0~3", title, color} 또는 {range:"0-3"}
-    const rangeStr=item.time||item.range||item.hours||'';
-    const match=String(rangeStr).match(/(\d+)\s*[~\-~]\s*(\d+)/);
-    if(match){
-      const sh=parseInt(match[1]),eh=parseInt(match[2]);
-      return{id:'gh_'+i,title:item.title||item.name||`블록 ${sh}~${eh}시`,start:minsToTime(sh*60),end:minsToTime(eh*60),color:item.color||colorPalette[i%colorPalette.length],memo:item.memo||item.note||'',repeat:item.repeat||null,_src:'gh'};
-    }
-    // block 형식: {block: 0} → 0~3시
-    if(typeof item.block==='number'){
-      const sh=item.block*3,eh=sh+3;
-      return{id:'gh_'+i,title:item.title||item.name||`${sh}~${eh}시`,start:minsToTime(sh*60),end:minsToTime(eh*60),color:item.color||colorPalette[i%colorPalette.length],memo:item.memo||'',repeat:null,_src:'gh'};
-    }
-    return null;
-  }).filter(Boolean);
-}
+// ════ 노션 설정 시트 ════
+document.getElementById('btnNotionSettings').addEventListener('click',()=>{
+  document.getElementById('inNotionKey').value=getNotionKey();
+  document.getElementById('overlayNotion').classList.add('on');
+});
+document.getElementById('btnCloseNotion').addEventListener('click',()=>document.getElementById('overlayNotion').classList.remove('on'));
+document.getElementById('overlayNotion').addEventListener('click',e=>{if(e.target===e.currentTarget)document.getElementById('overlayNotion').classList.remove('on');});
 
-function normalizeTime(t){
-  if(!t)return'00:00';
-  const s=String(t).trim();
-  // "HH:MM" 형식
-  if(/^\d{1,2}:\d{2}$/.test(s)){const[h,m]=s.split(':');return`${String(parseInt(h)).padStart(2,'0')}:${m}`;}
-  // "HH" 형식 (정수)
-  if(/^\d{1,2}$/.test(s))return`${String(parseInt(s)).padStart(2,'0')}:00`;
-  return'00:00';
-}
+document.getElementById('btnNotionSave').addEventListener('click',async()=>{
+  const k=document.getElementById('inNotionKey').value.trim();
+  if(k&&(k.startsWith('ntn_')||k.startsWith('secret_')))saveNotionKey(k);
+  else if(k){showToast('올바른 API 키를 입력해주세요 (ntn_...)');return;}
+  document.getElementById('overlayNotion').classList.remove('on');
+  await notionSync();
+});
+document.getElementById('btnNotionClear').addEventListener('click',()=>{
+  if(!confirm('API 키를 초기화할까요?'))return;
+  localStorage.removeItem(NOTION_KEY_STORAGE);
+  notionSchedules=[];
+  document.getElementById('inNotionKey').value='';
+  document.getElementById('syncBar').style.display='none';
+  drawClock();drawList();
+  showToast('API 키를 초기화했어요');
+});
 
 // ════ 탭 ════
 document.querySelectorAll('.vtab').forEach(tab=>tab.addEventListener('click',()=>{
@@ -651,27 +674,44 @@ function showToast(msg){
 // ════ 드래그로 일정 추가 (터치 + 마우스 통합) ════
 const svgEl2=document.getElementById('clockSvg');
 
-// SVG 내 실제 좌표 → 각도 변환 (터치 정확도 핵심)
+// SVG 내부 좌표(0~400) 기준 각도 + 거리 반환
 function getAngleFromEvent(e){
   const rect=svgEl2.getBoundingClientRect();
-  // 터치 우선, 없으면 마우스
   const src=(e.touches&&e.touches.length>0)?e.touches[0]
            :(e.changedTouches&&e.changedTouches.length>0)?e.changedTouches[0]
            :e;
-  // SVG 내부 좌표 (0~400 기준)
+  // 화면 px → SVG 내부 400×400 좌표계로 변환
   const scaleX=400/rect.width, scaleY=400/rect.height;
   const x=(src.clientX-rect.left)*scaleX-CX;
   const y=(src.clientY-rect.top)*scaleY-CY;
-  return{angle:Math.atan2(y,x)*180/Math.PI, dist:Math.sqrt(x*x+y*y)};
+  const dist=Math.sqrt(x*x+y*y);
+  const angle=Math.atan2(y,x)*180/Math.PI;
+  return{angle,dist};
 }
 
-function isRingZone(dist){return dist>=RI&&dist<=R+16;}
+// dist는 SVG 내부 좌표(0~400) 기준이므로 RI/R과 직접 비교 가능
+function isRingZone(dist){return dist>=(RI-10)&&dist<=(R+20);}
 
 function removeDragPreview(){
   if(dragState&&dragState.previewEl){
     dragState.previewEl.remove();
     dragState.previewEl=null;
   }
+}
+
+function makeDragArc(aS,aE){
+  // 항상 document.createElementNS 사용 (SVG 요소에는 없음)
+  const p=document.createElementNS(NS,'path');
+  let sweep=aE-aS; if(sweep<=0)sweep+=360;
+  p.setAttribute('d',arcOnlyPath(aS,aE));
+  p.setAttribute('fill','none');
+  p.setAttribute('stroke','rgba(255,255,255,0.55)');
+  p.setAttribute('stroke-width','6');
+  p.setAttribute('stroke-linecap','round');
+  p.setAttribute('stroke-dasharray','8 5');
+  // 터치에서 잘 보이도록 외곽에 글로우 효과
+  p.setAttribute('filter','drop-shadow(0 0 3px rgba(255,255,255,0.6))');
+  return p;
 }
 
 // 터치 이벤트
@@ -687,25 +727,23 @@ svgEl2.addEventListener('touchmove',e=>{
   e.preventDefault();
   removeDragPreview();
   const{angle}=getAngleFromEvent(e);
-  let aS=dragState.startAngle, aE=angle;
-  if(aE<aS)aE+=360;
-  const p=svgEl2.createElementNS?svgEl2.ownerDocument.createElementNS(NS,'path'):null;
-  if(!p)return;
-  p.setAttribute('d',arcOnlyPath(aS,aE));
-  p.setAttribute('fill','none');
-  p.setAttribute('stroke','rgba(255,255,255,0.45)');
-  p.setAttribute('stroke-width','5');
-  p.setAttribute('stroke-linecap','round');
-  p.setAttribute('stroke-dasharray','7 4');
-  p.classList.add('drag-arc');
+  const p=makeDragArc(dragState.startAngle,angle);
   svgEl2.appendChild(p);
   dragState.previewEl=p;
+
+  // 현재 시간 힌트 표시
+  const tS=angleToSnap(dragState.startAngle);
+  const tE=angleToSnap(angle);
+  document.getElementById('nowTime').textContent=`${tS}~${tE}`;
 },{passive:false});
 
 svgEl2.addEventListener('touchend',e=>{
   if(!dragState)return;
   e.preventDefault();
   removeDragPreview();
+  // 시각 복원
+  const now=new Date();
+  document.getElementById('nowTime').textContent=`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
   const{angle}=getAngleFromEvent(e);
   const tS=angleToSnap(dragState.startAngle);
   const tE=angleToSnap(angle);
@@ -713,11 +751,16 @@ svgEl2.addEventListener('touchend',e=>{
   if(tS!==tE){
     openSheet(null,tS,tE);
   }else{
-    showToast('드래그 범위가 너무 짧아요');
+    showToast('조금 더 드래그해보세요');
   }
 },{passive:false});
 
-svgEl2.addEventListener('touchcancel',()=>{removeDragPreview();dragState=null;});
+svgEl2.addEventListener('touchcancel',()=>{
+  removeDragPreview();
+  dragState=null;
+  const now=new Date();
+  document.getElementById('nowTime').textContent=`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+});
 
 // 마우스 이벤트 (데스크탑)
 svgEl2.addEventListener('mousedown',e=>{
@@ -752,18 +795,16 @@ svgEl2.addEventListener('mouseup',e=>{
 });
 svgEl2.addEventListener('mouseleave',()=>{removeDragPreview();dragState=null;});
 
-// ════ GitHub 동기화 바 초기화 ════
-if(ghUrl){
-  document.getElementById('syncBar').style.display='flex';
-  document.getElementById('syncStatus').className='sync-status loading';
-  document.getElementById('syncStatus').textContent='대기 중';
-}
-
 // ════ 초기 실행 ════
 drawClock();
 setInterval(drawClock,30000);
-if(ghUrl&&autoSync){
-  setTimeout(fetchGitHub,800);
+
+// 앱 시작 시 노션 자동 동기화
+if(getNotionKey()){
+  setSyncStatus('loading','동기화 중...');
+  setTimeout(()=>notionSync(true),600);
+}else{
+  document.getElementById('syncBar').style.display='none';
 }
 </script>
 </body>
