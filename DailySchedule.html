@@ -75,6 +75,10 @@
 
         /* 진도표 탭 */
         .tab-btn[data-tab="progress"].active { color:#27AE60; border-bottom:3px solid #27AE60; }
+        .tab-btn[data-tab="memo"].active { color:#2C3E50; border-bottom:3px solid #2C3E50; }
+        .memo-item { background:white; border:1px solid #eee; border-left:4px solid #2C3E50; border-radius:6px; padding:10px 12px; margin-bottom:6px; display:flex; align-items:flex-start; gap:8px; }
+        .memo-date { font-size:10px; color:#999; font-weight:800; margin-bottom:3px; }
+        .memo-text { font-size:13.5px; font-weight:bold; color:#333; line-height:1.5; }
         .prog-card { background:white; border-radius:10px; padding:12px; margin-bottom:10px; border:1px solid #eee; }
         .prog-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; }
         .prog-title { font-size:14px; font-weight:900; color:#333; }
@@ -110,6 +114,7 @@
         <button class="tab-btn" data-tab="tomorrow" onclick="openTab('tomorrow', this)">내일</button>
         <button class="tab-btn" data-tab="favorites" onclick="openTab('favorites', this)">즐겨찾기</button>
         <button class="tab-btn" data-tab="progress" onclick="openTab('progress', this)">진도표</button>
+        <button class="tab-btn" data-tab="memo" onclick="openTab('memo', this)">메모</button>
     </nav>
 
     <div class="input-form" id="mainInputForm">
@@ -133,6 +138,13 @@
     </section>
     <section id="tab-progress" class="tab-content">
         <div id="list-progress" class="scroll-area"></div>
+    </section>
+    <section id="tab-memo" class="tab-content" style="flex-direction:column;">
+        <div class="input-form" style="display:flex;">
+            <input type="text" id="in-memo" placeholder="메모 입력..." onkeypress="if(event.key==='Enter') addMemo()" style="flex:1;border:1px solid #ddd;border-radius:5px;padding:8px;font-size:14px;outline:none;">
+            <button class="btn-action" onclick="addMemo()" style="background:#2C3E50;color:white;border:none;width:50px;margin-left:6px;">추가</button>
+        </div>
+        <div id="list-memo" class="scroll-area"></div>
     </section>
 </div>
 
@@ -533,13 +545,11 @@
         });
         if (!taskData) return;
 
-        // 일정 읽기 (오늘 이후 일정만)
-        const todayStr = new Date().toISOString().slice(0,10);
+        // 일정 읽기
         const schedData = await notionApiQuery({
           filter: { and: [
             { property: '완료 여부', checkbox: { equals: false } },
-            { property: '분류', select: { equals: '일정' } },
-            { property: '날짜', date: { on_or_after: todayStr } }
+            { property: '분류', select: { equals: '일정' } }
           ]},
           sorts: [{ property: '날짜', direction: 'ascending' }]
         });
@@ -604,9 +614,10 @@
         document.querySelectorAll('.tab-content,.tab-btn').forEach(e=>e.classList.remove('active'));
         document.getElementById(`tab-${t}`).classList.add('active');
         b.classList.add('active');
-        document.getElementById('mainInputForm').style.display = (t === 'favorites' || t === 'progress') ? 'none' : 'flex';
+        document.getElementById('mainInputForm').style.display = (t === 'favorites' || t === 'progress' || t === 'memo') ? 'none' : 'flex';
         document.getElementById('in-today').placeholder = (t === 'tomorrow') ? '내일 할 일 입력...' : '오늘 할 일 입력...';
         if (t === 'progress') renderProgress();
+        if (t === 'memo') renderMemos();
     }
 
     // ── [수정2] 즐겨찾기 → 오늘탭 이동 시 저장된 시간 반영
@@ -858,6 +869,43 @@
     function completeReading() { const p=getProgress(); p.reading.pct=100; alert(`"${p.reading.book}" 완독!`); saveProgress(p); renderProgress(); }
     function changeBook()      { const p=getProgress(); const n=prompt('새 책 제목:',''); if(n){p.reading.book=n;p.reading.pct=0;saveProgress(p);renderProgress();} }
     function addMotherLesson() { const p=getProgress(); if(p.motherLesson.count<40)p.motherLesson.count++; saveProgress(p); renderProgress(); }
+
+    // ── 메모 시스템 ──────────────────────────────────────────────────
+    let memos = JSON.parse(localStorage.getItem('memos_v1')) || [
+        { id: 1, date: '2026-05-09', text: '차량 수리 내역 확인 후 앤트로픽 문의' },
+        { id: 2, date: '2026-05-09', text: '용산구청 에어비앤비 보완' },
+        { id: 3, date: '2026-05-09', text: '네이버플레이스/당근/네이버블로그 정리/명함 정리' },
+        { id: 4, date: '2026-05-09', text: '사진 정리' },
+    ];
+    if (!localStorage.getItem('memos_v1')) localStorage.setItem('memos_v1', JSON.stringify(memos));
+
+    function saveMemos() { localStorage.setItem('memos_v1', JSON.stringify(memos)); renderMemos(); }
+
+    function addMemo() {
+        const i = document.getElementById('in-memo');
+        if (!i.value.trim()) return;
+        memos.unshift({ id: Date.now(), date: getRawDate(), text: i.value.trim() });
+        i.value = '';
+        saveMemos();
+    }
+
+    function deleteMemo(id) { memos = memos.filter(m => m.id !== id); saveMemos(); }
+
+    function renderMemos() {
+        const el = document.getElementById('list-memo');
+        if (!el) return;
+        el.innerHTML = memos.length === 0
+            ? '<p style="text-align:center;color:#999;padding:20px;">메모가 없습니다</p>'
+            : memos.map(m => `
+            <div class="memo-item">
+                <div style="flex:1;">
+                    <div class="memo-date">${m.date}</div>
+                    <div class="memo-text">${m.text}</div>
+                </div>
+                <button class="btn-action" onclick="deleteMemo(${m.id})" style="color:red;flex-shrink:0;">X</button>
+            </div>`).join('');
+    }
+    // ─────────────────────────────────────────────────────────────────
 </script>
 </body>
 </html>

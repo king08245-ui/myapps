@@ -703,21 +703,22 @@ function buildColorRow(){
 
 // ════ 일정 시트 ════
 function openSheet(id=null,startTime='',endTime=''){
-  editId=id;
-  const s=id?schedules.find(x=>x.id===id):null;
-  document.getElementById('sheetTitle').textContent=id?'일정 수정':'일정 추가';
-  document.getElementById('inTitle').value=s?.title||'';
-  document.getElementById('inMemo').value=s?.memo||'';
-  document.getElementById('inStart').value=s?.start||startTime;
-  document.getElementById('inEnd').value=s?.end||endTime;
-  selColor=s?.color||COLORS[schedules.length%COLORS.length];
-  repeatOn=!!(s?.repeat); selRepeat=s?.repeat||'daily';
-  document.getElementById('toggleRepeat').classList.toggle('on',repeatOn);
-  document.getElementById('repeatOpts').classList.toggle('on',repeatOn);
-  document.querySelectorAll('.repbtn').forEach(b=>b.classList.toggle('on',b.dataset.rep===selRepeat));
+  editId = id ? String(id) : null;
+  const s = editId ? schedules.find(x=>String(x.id)===editId) : null;
+  document.getElementById('sheetTitle').textContent = editId ? '일정 수정' : '일정 추가';
+  document.getElementById('inTitle').value  = s?.title  || '';
+  document.getElementById('inMemo').value   = s?.memo   || '';
+  document.getElementById('inStart').value  = s?.start  || startTime;
+  document.getElementById('inEnd').value    = s?.end    || endTime;
+  selColor  = s?.color  || COLORS[schedules.length % COLORS.length];
+  repeatOn  = !!(s?.repeat);
+  selRepeat = s?.repeat || 'daily';
+  document.getElementById('toggleRepeat').classList.toggle('on', repeatOn);
+  document.getElementById('repeatOpts').classList.toggle('on', repeatOn);
+  document.querySelectorAll('.repbtn').forEach(b=>b.classList.toggle('on', b.dataset.rep===selRepeat));
   buildColorRow();
   document.getElementById('overlay').classList.add('on');
-  setTimeout(()=>document.getElementById('inTitle').focus(),350);
+  setTimeout(()=>document.getElementById('inTitle').focus(), 350);
 }
 function closeSheet(){document.getElementById('overlay').classList.remove('on');}
 
@@ -740,32 +741,41 @@ document.querySelectorAll('.qbtn').forEach(b=>b.addEventListener('click',()=>{
 }));
 
 document.getElementById('btnSave').addEventListener('click',()=>{
-  const title=document.getElementById('inTitle').value.trim();
-  const start=document.getElementById('inStart').value;
-  const end=document.getElementById('inEnd').value;
+  const title = document.getElementById('inTitle').value.trim();
+  const start = document.getElementById('inStart').value;
+  const end   = document.getElementById('inEnd').value;
   if(!title){showToast('일정 이름을 입력하세요');return;}
   if(!start||!end){showToast('시작/종료 시간을 입력하세요');return;}
   if(start===end){showToast('시작과 종료 시간이 같아요');return;}
-  const obj={id:editId||uid(),title,memo:document.getElementById('inMemo').value.trim(),start,end,color:selColor,repeat:repeatOn?selRepeat:null};
-  if(editId){const i=schedules.findIndex(x=>x.id===editId);schedules[i]=obj;}
-  else{schedules.push(obj);}
-  saveLocal();closeSheet();drawClock();drawList();
-  showToast(editId?'수정했어요 ✓':'추가했어요 ✓');
+  const obj = {
+    id: editId || uid(),
+    title, memo: document.getElementById('inMemo').value.trim(),
+    start, end, color: selColor,
+    repeat: repeatOn ? selRepeat : null
+  };
+  if(editId){
+    const i = schedules.findIndex(x=>String(x.id)===editId);
+    if(i>-1) schedules[i]=obj;
+    else schedules.push(obj);
+  } else {
+    schedules.push(obj);
+  }
+  saveLocal(); closeSheet(); drawClock(); drawList();
+  showToast(editId ? '수정했어요 ✓' : '추가했어요 ✓');
 });
 
 function editSched(id){
-  // 내 일정에서 먼저 찾고, 없으면 DS 일정에서 찾아 새 항목으로 추가
-  const local = schedules.find(x=>String(x.id)===String(id));
+  const sid = String(id);
+  const local = schedules.find(x=>String(x.id)===sid);
   if(local){ openSheet(local.id); return; }
-  const ds = notionSchedules.find(x=>String(x.id)===String(id));
+  // DS 일정이면 로컬로 복사해서 편집
+  const ds = notionSchedules.find(x=>String(x.id)===sid);
   if(ds){
-    // DS 일정은 수정 시 로컬 일정으로 복사해서 편집
     openSheet(null, ds.start, ds.end);
-    setTimeout(()=>{ document.getElementById('inTitle').value=ds.title; },100);
+    setTimeout(()=>{ document.getElementById('inTitle').value=ds.title; }, 100);
   }
 }
 
-// 시간미정 항목 → 시간 지정해서 로컬 일정으로 추가
 function assignTime(id, title){
   openSheet(null, '', '');
   setTimeout(()=>{ document.getElementById('inTitle').value=title; }, 100);
@@ -773,8 +783,8 @@ function assignTime(id, title){
 
 function deleteSched(id){
   if(!confirm('삭제할까요?'))return;
-  schedules=schedules.filter(x=>String(x.id)!==String(id));
-  saveLocal();drawClock();drawList();showToast('삭제했어요');
+  schedules = schedules.filter(x=>String(x.id)!==String(id));
+  saveLocal(); drawClock(); drawList(); showToast('삭제했어요');
 }
 
 // ════ DailySchedule 동기화 ════
