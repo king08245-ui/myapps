@@ -339,7 +339,11 @@ const CX=200,CY=200,R=178,RI=92; // RI = 내부 원 반지름 (흰색)
 
 let schedules = JSON.parse(localStorage.getItem('circ_local')||'[]');
 let notionSchedules = [];
-let dsNoTime = []; // 시간미정 항목
+let dsNoTime = [];
+// 숨긴 DS 항목 (오늘 날짜 키 → 날짜 바뀌면 자동 초기화)
+const _todayKey = 'circ_hidden_' + new Date().toLocaleDateString('sv-SE');
+let hiddenIds = new Set(JSON.parse(localStorage.getItem(_todayKey)||'[]'));
+function saveHidden(){ localStorage.setItem(_todayKey, JSON.stringify([...hiddenIds])); }
 let editId=null, selColor=COLORS[0], selRepeat='daily', repeatOn=false;
 
 // ════ DailySchedule 동기화 설정 ════
@@ -388,7 +392,7 @@ function arcOnlyPath(aS,aE){
 
 // ════ 병합된 일정 목록 ════
 function allSchedules(){
-  return [...schedules, ...notionSchedules];
+  return [...schedules, ...notionSchedules].filter(s=>!hiddenIds.has(String(s.id)));
 }
 
 // ════ 키워드 → 캐릭터 매핑 ════
@@ -808,8 +812,8 @@ function drawInlineList(){
   const wrap = document.getElementById('inlineList');
   wrap.innerHTML = '';
 
-  const local = [...schedules].sort((a,b)=>a.start.localeCompare(b.start));
-  const notion = [...notionSchedules].sort((a,b)=>a.start.localeCompare(b.start));
+  const local = [...schedules].filter(s=>!hiddenIds.has(String(s.id))).sort((a,b)=>a.start.localeCompare(b.start));
+  const notion = [...notionSchedules].filter(s=>!hiddenIds.has(String(s.id))).sort((a,b)=>a.start.localeCompare(b.start));
 
   const empty = !local.length && !notion.length && !dsNoTime.length;
   if(empty){
@@ -895,16 +899,21 @@ function drawInlineList(){
       item.style.transition='transform .18s cubic-bezier(.25,.46,.45,.94)';
       const dx=clientX-startX;
       if(dx < -THRESHOLD){
-        // 삭제 확정
         item.style.transform=`translateX(-100%)`;
         delBg.style.width='100%';
         setTimeout(()=>{
           if(!isNotion && !isNoTime){
-            schedules=schedules.filter(x=>String(x.id)!==String(s.id));
+            // 내 일정 → 실제 삭제
+            schedules = schedules.filter(x=>String(x.id)!==String(s.id));
             saveLocal();
+            showToast('삭제했어요');
+          } else {
+            // DS 일정 / 시간미정 → 오늘만 숨기기
+            hiddenIds.add(String(s.id));
+            saveHidden();
+            showToast('오늘 목록에서 숨겼어요');
           }
           drawClock(); drawInlineList();
-          showToast('삭제했어요');
         },200);
       } else {
         item.style.transform='translateX(0)';
@@ -944,11 +953,12 @@ function drawInlineList(){
   renderSection('내 일정', local, false);
   renderSection('📅 DailySchedule', notion, true);
 
-  if(dsNoTime.length){
+  if(dsNoTime.filter(s=>!hiddenIds.has(String(s.id))).length){
+    const filtered = dsNoTime.filter(s=>!hiddenIds.has(String(s.id)));
     const hdr=document.createElement('div');hdr.className='inline-section-header';
-    hdr.innerHTML=`⏳ 시간미정 <span class="badge">${dsNoTime.length}</span>`;
+    hdr.innerHTML=`⏳ 시간미정 <span class="badge">${filtered.length}</span>`;
     wrap.appendChild(hdr);
-    dsNoTime.forEach(s=>wrap.appendChild(makeSwipeItem(s, false, true)));
+    filtered.forEach(s=>wrap.appendChild(makeSwipeItem(s, false, true)));
   }
 }
 
