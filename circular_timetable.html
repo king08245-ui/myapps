@@ -46,8 +46,46 @@ header{display:flex;align-items:center;justify-content:space-between;padding:10p
 .help-icon{font-size:18px;flex-shrink:0;width:24px;text-align:center;}
 .btn-help-close{width:100%;margin-top:16px;padding:11px;border-radius:10px;border:none;background:var(--acc);color:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:'Noto Sans KR',sans-serif;}
 
-/* ── 탭 ── */
-.view-tabs{display:flex;background:var(--s1);border-bottom:1px solid var(--b1);flex-shrink:0;}
+/* ── 날짜 네비게이터 ── */
+.date-nav{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:6px 14px;background:var(--s1);border-bottom:1px solid var(--b1);
+  flex-shrink:0;
+}
+.date-nav-btn{
+  width:32px;height:32px;border-radius:8px;border:1px solid var(--b2);
+  background:var(--s2);color:var(--t2);font-size:16px;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;transition:all .1s;
+}
+.date-nav-btn:active{background:var(--acc);color:#fff;border-color:var(--acc);}
+.date-nav-center{flex:1;text-align:center;}
+.date-nav-main{font-size:15px;font-weight:700;color:var(--t1);}
+.date-nav-sub{font-size:11px;color:var(--t3);margin-top:1px;}
+.date-nav-today{
+  padding:3px 10px;border-radius:6px;border:1px solid var(--b2);
+  background:var(--s3);color:var(--acc2);font-size:11px;font-weight:600;
+  cursor:pointer;font-family:'Noto Sans KR',sans-serif;
+}
+.date-nav-today:active{background:var(--acc);color:#fff;}
+
+/* ── 날짜 도트 (7일 인디케이터) ── */
+.date-dots{display:flex;gap:5px;justify-content:center;padding:4px 0 2px;}
+.date-dot{
+  width:6px;height:6px;border-radius:50%;
+  background:var(--s3);border:1px solid var(--b2);
+  cursor:pointer;transition:all .15s;
+}
+.date-dot.has{background:var(--acc);opacity:.5;}
+.date-dot.active{background:var(--acc);opacity:1;transform:scale(1.3);}
+.date-dot.today{border-color:var(--acc2);}
+
+/* ── 시계 스와이프 애니메이션 ── */
+.clock-slide{transition:transform .25s cubic-bezier(.32,.72,0,1),opacity .25s;}
+.clock-slide.out-left{transform:translateX(-60px);opacity:0;}
+.clock-slide.out-right{transform:translateX(60px);opacity:0;}
+.clock-slide.in-left{transform:translateX(60px);opacity:0;}
+.clock-slide.in-right{transform:translateX(-60px);opacity:0;}
 .vtab{flex:1;padding:9px 4px;font-size:12px;font-weight:500;color:var(--t3);text-align:center;cursor:pointer;border:none;background:none;border-bottom:2px solid transparent;transition:color .15s,border-color .15s;font-family:'Noto Sans KR',sans-serif;}
 .vtab.on{color:var(--acc2);border-bottom-color:var(--acc2);}
 
@@ -229,6 +267,19 @@ main{flex:1;overflow:hidden;position:relative;}
   </div>
 </header>
 
+<!-- 날짜 네비게이터 -->
+<div class="date-nav">
+  <button class="date-nav-btn" id="btnPrevDay">‹</button>
+  <div class="date-nav-center">
+    <div class="date-nav-main" id="dateNavMain"></div>
+    <div class="date-nav-sub" id="dateNavSub"></div>
+  </div>
+  <button class="date-nav-today" id="btnToday">오늘</button>
+  <button class="date-nav-btn" id="btnNextDay">›</button>
+</div>
+<!-- 7일 도트 인디케이터 -->
+<div class="date-dots" id="dateDots"></div>
+
 <nav class="view-tabs" style="display:none;"></nav>
 
 <main>
@@ -260,6 +311,7 @@ main{flex:1;overflow:hidden;position:relative;}
   <div class="help-box">
     <div class="help-title">사용법</div>
     <div class="help-row"><span class="help-icon">👆</span><span>시계 링 위를 <b>드래그</b>하면 시간 범위를 지정해서 일정을 추가할 수 있어요</span></div>
+    <div class="help-row"><span class="help-icon">◀▶</span><span>시계를 <b>좌우로 스와이프</b>하거나 상단 ‹ › 버튼으로 날짜를 이동해요 (최대 7일 후까지)</span></div>
     <div class="help-row"><span class="help-icon">✏️</span><span>목록에서 <b>연필 버튼</b>을 누르면 일정을 수정할 수 있어요</span></div>
     <div class="help-row"><span class="help-icon">👈</span><span>목록 아이템을 <b>왼쪽으로 밀면</b> 삭제할 수 있어요</span></div>
     <div class="help-row"><span class="help-icon">📝</span><span>일정에 <b>메모를 입력</b>하면 시계 바깥에 말풍선으로 표시돼요</span></div>
@@ -277,6 +329,10 @@ main{flex:1;overflow:hidden;position:relative;}
       <button class="btn-close" id="btnClose">✕</button>
     </div>
     <div class="sheet-body">
+      <div class="fg">
+        <label class="fl" for="inDate">날짜</label>
+        <input class="fi" id="inDate" type="date">
+      </div>
       <div class="fg">
         <label class="fl" for="inTitle">일정 이름</label>
         <input class="fi" id="inTitle" type="text" placeholder="예: 아침 루틴, 업무, 점심..." maxlength="30" autocomplete="off">
@@ -337,13 +393,23 @@ const RMAP={daily:'매일',weekday:'평일',weekend:'주말',weekly:'매주'};
 const NS='http://www.w3.org/2000/svg';
 const CX=200,CY=200,R=178,RI=92; // RI = 내부 원 반지름 (흰색)
 
-let schedules = JSON.parse(localStorage.getItem('circ_local')||'[]');
+const TODAY = new Date().toLocaleDateString('sv-SE');
+
+// 기존 일정 마이그레이션 (날짜 없는 항목 → 오늘)
+let schedules = JSON.parse(localStorage.getItem('circ_local')||'[]')
+  .map(s=>({...s, date: s.date||TODAY}));
+localStorage.setItem('circ_local', JSON.stringify(schedules));
+
 let notionSchedules = [];
 let dsNoTime = [];
-// 숨긴 DS 항목 (오늘 날짜 키 → 날짜 바뀌면 자동 초기화)
-const _todayKey = 'circ_hidden_' + new Date().toLocaleDateString('sv-SE');
-let hiddenIds = new Set(JSON.parse(localStorage.getItem(_todayKey)||'[]'));
-function saveHidden(){ localStorage.setItem(_todayKey, JSON.stringify([...hiddenIds])); }
+let currentDate = TODAY;
+
+// 숨긴 DS 항목 (날짜별)
+function hiddenKey(d){ return 'circ_hidden_'+d; }
+function getHidden(d){ return new Set(JSON.parse(localStorage.getItem(hiddenKey(d))||'[]')); }
+function saveHidden(){ localStorage.setItem(hiddenKey(currentDate), JSON.stringify([...hiddenIds])); }
+let hiddenIds = getHidden(TODAY);
+
 let editId=null, selColor=COLORS[0], selRepeat='daily', repeatOn=false;
 
 // ════ DailySchedule 동기화 설정 ════
@@ -392,7 +458,25 @@ function arcOnlyPath(aS,aE){
 
 // ════ 병합된 일정 목록 ════
 function allSchedules(){
-  return [...schedules, ...notionSchedules].filter(s=>!hiddenIds.has(String(s.id)));
+  const h = hiddenIds;
+  return [...schedules, ...notionSchedules].filter(s=>{
+    if(h.has(String(s.id))) return false;
+    if(s.repeat){
+      // 반복 일정: currentDate 기준으로 표시 여부 판단
+      const d = new Date(currentDate);
+      const dow = d.getDay(); // 0=일,1=월...6=토
+      if(s.repeat==='daily') return true;
+      if(s.repeat==='weekday') return dow>=1&&dow<=5;
+      if(s.repeat==='weekend') return dow===0||dow===6;
+      if(s.repeat==='weekly'){
+        // 원래 날짜와 요일 같으면 표시
+        const orig = new Date(s.date||TODAY);
+        return orig.getDay()===dow;
+      }
+      return true;
+    }
+    return (s.date||TODAY) === currentDate;
+  });
 }
 
 // ════ 키워드 → 캐릭터 매핑 ════
@@ -812,8 +896,16 @@ function drawInlineList(){
   const wrap = document.getElementById('inlineList');
   wrap.innerHTML = '';
 
-  const local = [...schedules].filter(s=>!hiddenIds.has(String(s.id))).sort((a,b)=>a.start.localeCompare(b.start));
-  const notion = [...notionSchedules].filter(s=>!hiddenIds.has(String(s.id))).sort((a,b)=>a.start.localeCompare(b.start));
+  const local = schedules.filter(s=>{
+    if(hiddenIds.has(String(s.id))) return false;
+    if(s.repeat) return allSchedules().find(x=>x.id===s.id); // 반복은 allSchedules 결과 사용
+    return (s.date||TODAY)===currentDate;
+  }).sort((a,b)=>a.start.localeCompare(b.start));
+
+  const notion = notionSchedules.filter(s=>{
+    if(hiddenIds.has(String(s.id))) return false;
+    return (s.date||currentDate)===currentDate;
+  }).sort((a,b)=>a.start.localeCompare(b.start));
 
   const empty = !local.length && !notion.length && !dsNoTime.length;
   if(empty){
@@ -979,10 +1071,11 @@ function openSheet(id=null,startTime='',endTime=''){
   editId = id ? String(id) : null;
   const s = editId ? schedules.find(x=>String(x.id)===editId) : null;
   document.getElementById('sheetTitle').textContent = editId ? '일정 수정' : '일정 추가';
-  document.getElementById('inTitle').value  = s?.title  || '';
-  document.getElementById('inMemo').value   = s?.memo   || '';
-  document.getElementById('inStart').value  = s?.start  || startTime;
-  document.getElementById('inEnd').value    = s?.end    || endTime;
+  document.getElementById('inDate').value  = s?.date  || currentDate;
+  document.getElementById('inTitle').value = s?.title || '';
+  document.getElementById('inMemo').value  = s?.memo  || '';
+  document.getElementById('inStart').value = s?.start || startTime;
+  document.getElementById('inEnd').value   = s?.end   || endTime;
   selColor  = s?.color  || COLORS[schedules.length % COLORS.length];
   repeatOn  = !!(s?.repeat);
   selRepeat = s?.repeat || 'daily';
@@ -1022,6 +1115,7 @@ document.getElementById('btnSave').addEventListener('click',()=>{
   if(start===end){showToast('시작과 종료 시간이 같아요');return;}
   const obj = {
     id: editId || uid(),
+    date: document.getElementById('inDate').value || currentDate,
     title, memo: document.getElementById('inMemo').value.trim(),
     start, end, color: selColor,
     repeat: repeatOn ? selRepeat : null
@@ -1095,7 +1189,7 @@ function syncFromDailySchedule(){
       return;
     }
     const ds = JSON.parse(raw);
-    const today = new Date().toLocaleDateString('sv-SE');
+    const today = currentDate;
     const allItems = ds.data||[];
     const todayItems = allItems.filter(p => p.date <= today);
     showToast(`전체 ${allItems.length}개 / 오늘 ${todayItems.length}개`);
@@ -1125,6 +1219,133 @@ function syncFromDailySchedule(){
 document.getElementById('btnNotionSettings').addEventListener('click', syncFromDailySchedule);
 
 // ════ 탭 ════
+// ════ 날짜 네비게이션 ════
+const DAYS_KO = ['일','월','화','수','목','금','토'];
+const MAX_FUTURE = 7;
+
+function addDays(dateStr, n){
+  const d = new Date(dateStr);
+  d.setDate(d.getDate()+n);
+  return d.toLocaleDateString('sv-SE');
+}
+function diffDays(a, b){
+  return Math.round((new Date(a)-new Date(b))/(1000*60*60*24));
+}
+function formatDateNav(dateStr){
+  const d = new Date(dateStr);
+  const diff = diffDays(dateStr, TODAY);
+  const label = diff===0?'오늘':diff===1?'내일':diff===-1?'어제':`${Math.abs(diff)}일${diff>0?'후':'전'}`;
+  return {
+    main: `${d.getMonth()+1}월 ${d.getDate()}일 (${DAYS_KO[d.getDay()]})`,
+    sub: label
+  };
+}
+
+function setCurrentDate(dateStr, dir='none'){
+  // 범위 제한: 오늘 -30일 ~ +7일
+  const minDate = addDays(TODAY, -30);
+  const maxDate = addDays(TODAY, MAX_FUTURE);
+  if(dateStr < minDate || dateStr > maxDate) return;
+
+  currentDate = dateStr;
+  hiddenIds = getHidden(currentDate);
+  updateDateNav();
+  animateClock(dir);
+}
+
+function updateDateNav(){
+  const {main, sub} = formatDateNav(currentDate);
+  document.getElementById('dateNavMain').textContent = main;
+  document.getElementById('dateNavSub').textContent = sub;
+  // 헤더 날짜 업데이트
+  document.getElementById('hdate').textContent = formatDateNav(currentDate).main;
+  // 도트 업데이트
+  renderDateDots();
+  // DailySchedule sync (오늘만)
+  if(currentDate === TODAY) syncFromDailySchedule();
+  else {
+    notionSchedules = [];
+    dsNoTime = [];
+    drawClock();
+    drawInlineList();
+  }
+}
+
+function renderDateDots(){
+  const dots = document.getElementById('dateDots');
+  dots.innerHTML = '';
+  for(let i=0; i<=MAX_FUTURE; i++){
+    const d = addDays(TODAY, i);
+    const dot = document.createElement('div');
+    dot.className = 'date-dot'
+      + (d===TODAY?' today':'')
+      + (d===currentDate?' active':'')
+      + (hasSchedules(d)?' has':'');
+    dot.title = d;
+    dot.addEventListener('click',()=>setCurrentDate(d, d>currentDate?'left':'right'));
+    dots.appendChild(dot);
+  }
+}
+
+function hasSchedules(dateStr){
+  return schedules.some(s=>{
+    if(s.repeat) return true;
+    return (s.date||TODAY)===dateStr;
+  });
+}
+
+// 시계 애니메이션 (슬라이드)
+function animateClock(dir){
+  const sticky = document.getElementById('clockSticky');
+  if(dir==='none'){ drawClock(); drawInlineList(); return; }
+  // 퇴장
+  sticky.classList.add(dir==='left'?'out-left':'out-right');
+  setTimeout(()=>{
+    sticky.classList.remove('out-left','out-right');
+    sticky.classList.add(dir==='left'?'in-right':'in-left');
+    drawClock(); drawInlineList();
+    // 강제 리플로우
+    sticky.offsetHeight;
+    sticky.classList.remove('in-left','in-right');
+  }, 200);
+}
+
+// 버튼
+document.getElementById('btnPrevDay').addEventListener('click',()=>setCurrentDate(addDays(currentDate,-1),'right'));
+document.getElementById('btnNextDay').addEventListener('click',()=>setCurrentDate(addDays(currentDate,1),'left'));
+document.getElementById('btnToday').addEventListener('click',()=>{
+  if(currentDate!==TODAY) setCurrentDate(TODAY, TODAY>currentDate?'left':'right');
+});
+
+// ── 시계 영역 수평 스와이프로 날짜 이동 ──
+let clockSwipe = null;
+const clockArea = document.getElementById('vClock');
+
+clockArea.addEventListener('touchstart', e=>{
+  // 시계 링 위 드래그와 구분: 링 내부면 무시
+  const svg = document.getElementById('clockSvg');
+  const rect = svg.getBoundingClientRect();
+  const t = e.touches[0];
+  const scaleX = 400/rect.width, scaleY = 400/rect.height;
+  const x = (t.clientX-rect.left)*scaleX - CX;
+  const y = (t.clientY-rect.top)*scaleY - CY;
+  const dist = Math.sqrt(x*x+y*y);
+  // 링 영역(RI~R)이면 일정 드래그로 처리, 그 외면 날짜 스와이프
+  if(dist >= RI-10 && dist <= R+20) return;
+  clockSwipe = {startX: t.clientX, startY: t.clientY};
+},{passive:true});
+
+clockArea.addEventListener('touchend', e=>{
+  if(!clockSwipe) return;
+  const t = e.changedTouches[0];
+  const dx = t.clientX - clockSwipe.startX;
+  const dy = t.clientY - clockSwipe.startY;
+  clockSwipe = null;
+  if(Math.abs(dx) < 50 || Math.abs(dy) > Math.abs(dx)*0.7) return;
+  if(dx < 0) setCurrentDate(addDays(currentDate,1),'left');
+  else setCurrentDate(addDays(currentDate,-1),'right');
+},{passive:true});
+
 // ════ 사용법 팝업 ════
 document.getElementById('btnHelp').addEventListener('click',()=>document.getElementById('helpOverlay').classList.add('on'));
 document.getElementById('btnHelpClose').addEventListener('click',()=>document.getElementById('helpOverlay').classList.remove('on'));
@@ -1137,10 +1358,7 @@ function showToast(msg){
 }
 
 // ════ 날짜 표시 ════
-(()=>{
-  const d=new Date(),days=['일','월','화','수','목','금','토'];
-  document.getElementById('hdate').textContent=`${d.getMonth()+1}월 ${d.getDate()}일(${days[d.getDay()]})`;
-})();
+// 날짜는 updateDateNav()에서 처리
 
 // ════ 드래그로 일정 추가 (터치 + 마우스 통합) ════
 const svgEl2=document.getElementById('clockSvg');
@@ -1267,10 +1485,8 @@ svgEl2.addEventListener('mouseup',e=>{
 svgEl2.addEventListener('mouseleave',()=>{removeDragPreview();dragState=null;});
 
 // ════ 초기 실행 ════
-drawClock();
-setInterval(drawClock, 30000);
-// 앱 열리자마자 DailySchedule 자동 동기화
-setTimeout(syncFromDailySchedule, 400);
+updateDateNav(); // 날짜 네비 + drawClock + syncFromDailySchedule 포함
+setInterval(()=>{ if(currentDate===TODAY) drawClock(); }, 30000);
 </script>
 </body>
 </html>
