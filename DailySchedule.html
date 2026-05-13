@@ -617,7 +617,7 @@
         document.getElementById('mainInputForm').style.display = (t === 'favorites' || t === 'progress' || t === 'memo') ? 'none' : 'flex';
         document.getElementById('in-today').placeholder = (t === 'tomorrow') ? '내일 할 일 입력...' : '오늘 할 일 입력...';
         if (t === 'progress') renderProgress();
-        if (t === 'memo') renderMemos();
+        if (t === 'memo') loadMemos();
     }
 
     // ── [수정2] 즐겨찾기 → 오늘탭 이동 시 저장된 시간 반영
@@ -870,26 +870,75 @@
     function changeBook()      { const p=getProgress(); const n=prompt('새 책 제목:',''); if(n){p.reading.book=n;p.reading.pct=0;saveProgress(p);renderProgress();} }
     function addMotherLesson() { const p=getProgress(); if(p.motherLesson.count<40)p.motherLesson.count++; saveProgress(p); renderProgress(); }
 
-    // ── 메모 시스템 ──────────────────────────────────────────────────
-    let memos = JSON.parse(localStorage.getItem('memos_v1')) || [
-        { id: 1, date: '2026-05-09', text: '차량 수리 내역 확인 후 앤트로픽 문의' },
-        { id: 2, date: '2026-05-09', text: '용산구청 에어비앤비 보완' },
-        { id: 3, date: '2026-05-09', text: '네이버플레이스/당근/네이버블로그 정리/명함 정리' },
-        { id: 4, date: '2026-05-09', text: '사진 정리' },
-    ];
-    if (!localStorage.getItem('memos_v1')) localStorage.setItem('memos_v1', JSON.stringify(memos));
+    // ── 메모 시스템 (JSONbin 연동) ────────────────────────────────────
+    const MEMO_BIN_KEY = '$2a$10$y3gWHPgwraqoSOCc/hsLmer/VVbxGqWn6zDw87HRma/xgHjPQjywy';
+    const MEMO_BIN_ID  = '69cf3e8daaba882197bdd202';
+    const MEMO_BIN_URL = `https://api.jsonbin.io/v3/b/${MEMO_BIN_ID}`;
+    let memos = [];
 
-    function saveMemos() { localStorage.setItem('memos_v1', JSON.stringify(memos)); renderMemos(); }
+    async function loadMemos() {
+        const el = document.getElementById('list-memo');
+        if (el) el.innerHTML = '<p style="text-align:center;color:#999;padding:20px;">불러오는 중...</p>';
+        try {
+            const res = await fetch(MEMO_BIN_URL + '/latest', {
+                headers: { 'X-Master-Key': MEMO_BIN_KEY }
+            });
+            const data = await res.json();
+            const remote = (data.record && data.record.memos) ? data.record.memos : [];
+            // JSONbin 형식(ts 필드) → 앱 형식(date 필드)으로 변환
+            memos = remote.map(m => ({
+                id: m.id,
+                date: m.ts ? m.ts.substring(0, 10) : (m.date || ''),
+                text: m.text
+            }));
+            // 최신순 정렬
+            memos.sort((a, b) => b.id - a.id);
+        } catch(e) {
+            // JSONbin 실패 시 localStorage 백업 사용
+            memos = JSON.parse(localStorage.getItem('memos_v1')) || [];
+        }
+        renderMemos();
+    }
 
-    function addMemo() {
+    async function saveMemosToJsonbin() {
+        const payload = {
+            memos: memos.map(m => ({
+                id: m.id,
+                text: m.text,
+                ts: m.date + 'T00:00:00.000Z'
+            }))
+        };
+        // JSONbin에는 기존 데이터를 먼저 가져와서 다른 키(진도표 등)를 유지
+        try {
+            const getRes = await fetch(MEMO_BIN_URL + '/latest', {
+                headers: { 'X-Master-Key': MEMO_BIN_KEY }
+            });
+            const existing = await getRes.json();
+            const record = existing.record || {};
+            record.memos = payload.memos;
+            await fetch(MEMO_BIN_URL, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'X-Master-Key': MEMO_BIN_KEY },
+                body: JSON.stringify(record)
+            });
+        } catch(e) {}
+        // localStorage 백업
+        localStorage.setItem('memos_v1', JSON.stringify(memos));
+        renderMemos();
+    }
+
+    async function addMemo() {
         const i = document.getElementById('in-memo');
         if (!i.value.trim()) return;
         memos.unshift({ id: Date.now(), date: getRawDate(), text: i.value.trim() });
         i.value = '';
-        saveMemos();
+        await saveMemosToJsonbin();
     }
 
-    function deleteMemo(id) { memos = memos.filter(m => m.id !== id); saveMemos(); }
+    async function deleteMemo(id) {
+        memos = memos.filter(m => m.id !== id);
+        await saveMemosToJsonbin();
+    }
 
     function renderMemos() {
         const el = document.getElementById('list-memo');
