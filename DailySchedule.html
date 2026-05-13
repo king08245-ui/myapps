@@ -92,6 +92,19 @@
         .prog-btn.green { background:var(--complete-clr); color:white; border:none; }
         .prog-btn.blue { background:var(--tomorrow-clr); color:white; border:none; }
         .prog-today-tag { display:inline-block; background:#E74C3C; color:white; font-size:9px; font-weight:900; padding:1px 5px; border-radius:6px; margin-left:4px; }
+
+        /* 달력 탭 */
+        .tab-btn[data-tab="cal"].active { color:#E67E22; border-bottom:3px solid #E67E22; }
+        .cal-month-nav { display:flex; justify-content:space-between; align-items:center; padding:8px 12px; background:white; border-bottom:1px solid #eee; flex-shrink:0; }
+        .cal-month-label { font-size:15px; font-weight:900; color:#333; }
+        .cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; padding:6px; overflow-y:auto; }
+        .cal-header-cell { text-align:center; font-size:11px; font-weight:800; color:#888; padding:4px 0; }
+        .cal-day { min-height:54px; background:white; border-radius:5px; padding:3px; border:1px solid #eee; overflow:hidden; box-sizing:border-box; }
+        .cal-day.today { border-color:#E74C3C; background:#FFF5F5; }
+        .cal-day.other-month { opacity:0.3; }
+        .cal-day-num { font-size:11px; font-weight:800; color:#333; display:block; margin-bottom:2px; }
+        .cal-day.today .cal-day-num { color:#E74C3C; }
+        .cal-booking { background:#E67E22; color:white; border-radius:3px; padding:1px 3px; font-size:8.5px; font-weight:800; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-top:1px; }
     </style>
 </head>
 <body>
@@ -115,6 +128,7 @@
         <button class="tab-btn" data-tab="favorites" onclick="openTab('favorites', this)">즐겨찾기</button>
         <button class="tab-btn" data-tab="progress" onclick="openTab('progress', this)">진도표</button>
         <button class="tab-btn" data-tab="memo" onclick="openTab('memo', this)">메모</button>
+        <button class="tab-btn" data-tab="cal" onclick="openTab('cal', this)">달력</button>
     </nav>
 
     <div class="input-form" id="mainInputForm">
@@ -145,6 +159,9 @@
             <button class="btn-action" onclick="addMemo()" style="background:#2C3E50;color:white;border:none;width:50px;margin-left:6px;">추가</button>
         </div>
         <div id="list-memo" class="scroll-area"></div>
+    </section>
+    <section id="tab-cal" class="tab-content" style="flex-direction:column;padding:0;">
+        <div id="cal-container" style="display:flex;flex-direction:column;height:100%;"></div>
     </section>
 </div>
 
@@ -614,10 +631,11 @@
         document.querySelectorAll('.tab-content,.tab-btn').forEach(e=>e.classList.remove('active'));
         document.getElementById(`tab-${t}`).classList.add('active');
         b.classList.add('active');
-        document.getElementById('mainInputForm').style.display = (t === 'favorites' || t === 'progress' || t === 'memo') ? 'none' : 'flex';
+        document.getElementById('mainInputForm').style.display = (t === 'favorites' || t === 'progress' || t === 'memo' || t === 'cal') ? 'none' : 'flex';
         document.getElementById('in-today').placeholder = (t === 'tomorrow') ? '내일 할 일 입력...' : '오늘 할 일 입력...';
         if (t === 'progress') renderProgress();
-        if (t === 'memo') loadMemos();
+        if (t === 'memo') renderMemos();
+        if (t === 'cal') renderCalendar();
     }
 
     // ── [수정2] 즐겨찾기 → 오늘탭 이동 시 저장된 시간 반영
@@ -684,6 +702,7 @@
             running:      { history: [] },
             bulgarian:    { history: [] },
             dumbbell:     { history: [] },
+            memos:        [],
         };
     }
     function getProgress() {
@@ -870,90 +889,133 @@
     function changeBook()      { const p=getProgress(); const n=prompt('새 책 제목:',''); if(n){p.reading.book=n;p.reading.pct=0;saveProgress(p);renderProgress();} }
     function addMotherLesson() { const p=getProgress(); if(p.motherLesson.count<40)p.motherLesson.count++; saveProgress(p); renderProgress(); }
 
-    // ── 메모 시스템 (JSONbin 연동) ────────────────────────────────────
-    const MEMO_BIN_KEY = '$2a$10$y3gWHPgwraqoSOCc/hsLmer/VVbxGqWn6zDw87HRma/xgHjPQjywy';
-    const MEMO_BIN_ID  = '69cf3e8daaba882197bdd202';
-    const MEMO_BIN_URL = `https://api.jsonbin.io/v3/b/${MEMO_BIN_ID}`;
-    let memos = [];
-
-    async function loadMemos() {
-        const el = document.getElementById('list-memo');
-        if (el) el.innerHTML = '<p style="text-align:center;color:#999;padding:20px;">불러오는 중...</p>';
-        try {
-            const res = await fetch(MEMO_BIN_URL + '/latest', {
-                headers: { 'X-Master-Key': MEMO_BIN_KEY }
-            });
-            const data = await res.json();
-            const remote = (data.record && data.record.memos) ? data.record.memos : [];
-            // JSONbin 형식(ts 필드) → 앱 형식(date 필드)으로 변환
-            memos = remote.map(m => ({
-                id: m.id,
-                date: m.ts ? m.ts.substring(0, 10) : (m.date || ''),
-                text: m.text
-            }));
-            // 최신순 정렬
-            memos.sort((a, b) => b.id - a.id);
-        } catch(e) {
-            // JSONbin 실패 시 localStorage 백업 사용
-            memos = JSON.parse(localStorage.getItem('memos_v1')) || [];
-        }
-        renderMemos();
-    }
-
-    async function saveMemosToJsonbin() {
-        const payload = {
-            memos: memos.map(m => ({
-                id: m.id,
-                text: m.text,
-                ts: m.date + 'T00:00:00.000Z'
-            }))
-        };
-        // JSONbin에는 기존 데이터를 먼저 가져와서 다른 키(진도표 등)를 유지
-        try {
-            const getRes = await fetch(MEMO_BIN_URL + '/latest', {
-                headers: { 'X-Master-Key': MEMO_BIN_KEY }
-            });
-            const existing = await getRes.json();
-            const record = existing.record || {};
-            record.memos = payload.memos;
-            await fetch(MEMO_BIN_URL, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json', 'X-Master-Key': MEMO_BIN_KEY },
-                body: JSON.stringify(record)
-            });
-        } catch(e) {}
-        // localStorage 백업
-        localStorage.setItem('memos_v1', JSON.stringify(memos));
-        renderMemos();
-    }
-
-    async function addMemo() {
+    // ── 메모 시스템 (JSONbin 동기화) ─────────────────────────────────
+    function addMemo() {
         const i = document.getElementById('in-memo');
         if (!i.value.trim()) return;
-        memos.unshift({ id: Date.now(), date: getRawDate(), text: i.value.trim() });
+        const p = getProgress();
+        if (!p.memos) p.memos = [];
+        p.memos.unshift({ id: Date.now(), text: i.value.trim(), ts: new Date().toISOString() });
         i.value = '';
-        await saveMemosToJsonbin();
+        saveProgress(p);
+        renderMemos();
     }
 
-    async function deleteMemo(id) {
-        memos = memos.filter(m => m.id !== id);
-        await saveMemosToJsonbin();
+    function deleteMemo(id) {
+        const p = getProgress();
+        p.memos = (p.memos || []).filter(m => m.id !== id);
+        saveProgress(p);
+        renderMemos();
     }
 
     function renderMemos() {
         const el = document.getElementById('list-memo');
         if (!el) return;
-        el.innerHTML = memos.length === 0
+        const p = getProgress();
+        const ms = p.memos || [];
+        el.innerHTML = ms.length === 0
             ? '<p style="text-align:center;color:#999;padding:20px;">메모가 없습니다</p>'
-            : memos.map(m => `
+            : ms.map(m => `
             <div class="memo-item">
                 <div style="flex:1;">
-                    <div class="memo-date">${m.date}</div>
+                    <div class="memo-date">${m.ts ? m.ts.slice(0,10) : ''}</div>
                     <div class="memo-text">${m.text}</div>
                 </div>
                 <button class="btn-action" onclick="deleteMemo(${m.id})" style="color:red;flex-shrink:0;">X</button>
             </div>`).join('');
     }
+    // ── 달력 시스템 ────────────────────────────────────────────────────
+    let calYear = new Date().getFullYear();
+    let calMonth = new Date().getMonth();
+
+    function parseBookingMemos() {
+        const p = getProgress();
+        const bookings = {};
+        (p.memos || []).forEach(m => {
+            const match = m.text.match(/^\[(\d+)\/(\d+)(?:\s+([^\]]+))?\]/);
+            if (!match) return;
+            const mo = parseInt(match[1]), dy = parseInt(match[2]);
+            const timeLabel = match[3] ? match[3].trim() : '';
+            const body = m.text.replace(/^\[[^\]]+\]\s*/, '');
+            const short = (timeLabel ? timeLabel + ' ' : '') + body.split(/\s+/).slice(0, 3).join(' ');
+            const key = `${mo}-${dy}`;
+            if (!bookings[key]) bookings[key] = [];
+            bookings[key].push(short);
+        });
+        return bookings;
+    }
+
+    function renderCalendar() {
+        const el = document.getElementById('cal-container');
+        if (!el) return;
+        const bookings = parseBookingMemos();
+        const today = new Date();
+        const firstDay = new Date(calYear, calMonth, 1);
+        const lastDay = new Date(calYear, calMonth + 1, 0);
+        const startDow = firstDay.getDay();
+        const DOW = ['일','월','화','수','목','금','토'];
+        const DOW_COLORS = ['#E74C3C','#333','#333','#333','#333','#333','#3498DB'];
+
+        let html = `<div class="cal-month-nav">
+            <button class="prog-btn" onclick="calPrev()">◀</button>
+            <span class="cal-month-label">${calYear}년 ${calMonth+1}월</span>
+            <button class="prog-btn" onclick="calNext()">▶</button>
+        </div><div class="cal-grid">`;
+
+        DOW.forEach((d,i) => html += `<div class="cal-header-cell" style="color:${DOW_COLORS[i]}">${d}</div>`);
+
+        for (let i = 0; i < startDow; i++) {
+            const pd = new Date(calYear, calMonth, i - startDow + 1);
+            html += `<div class="cal-day other-month"><span class="cal-day-num">${pd.getDate()}</span></div>`;
+        }
+        for (let d = 1; d <= lastDay.getDate(); d++) {
+            const isToday = today.getFullYear()===calYear && today.getMonth()===calMonth && today.getDate()===d;
+            const dow = new Date(calYear, calMonth, d).getDay();
+            const nc = dow===0 ? 'color:#E74C3C' : dow===6 ? 'color:#3498DB' : '';
+            const key = `${calMonth+1}-${d}`;
+            const pills = (bookings[key] || []).map(b =>
+                `<div class="cal-booking" title="${b}">${b}</div>`).join('');
+            html += `<div class="cal-day${isToday?' today':''}">
+                <span class="cal-day-num" style="${nc}">${d}</span>${pills}</div>`;
+        }
+        const remaining = (7 - ((startDow + lastDay.getDate()) % 7)) % 7;
+        for (let i = 1; i <= remaining; i++)
+            html += `<div class="cal-day other-month"><span class="cal-day-num">${i}</span></div>`;
+
+        html += '</div>';
+        el.innerHTML = html;
+    }
+
+    function calPrev() { if(calMonth===0){calYear--;calMonth=11;}else calMonth--; renderCalendar(); }
+    function calNext() { if(calMonth===11){calYear++;calMonth=0;}else calMonth++; renderCalendar(); }
+
+    // 당일 예약 메모를 오늘 스케줄에 자동 포함
+    (function injectTodayBookings() {
+        const today = new Date();
+        const mo = today.getMonth() + 1, dy = today.getDate();
+        const p = getProgress();
+        const todayBookings = (p.memos || []).filter(m => {
+            const match = m.text.match(/^\[(\d+)\/(\d+)/);
+            return match && parseInt(match[1])===mo && parseInt(match[2])===dy;
+        });
+        if (!todayBookings.length) return;
+        // 이미 추가된 항목 제외 (id로 중복 체크)
+        todayBookings.forEach(bk => {
+            const exists = (storage.data || []).some(t => t.id === bk.id);
+            if (!exists) {
+                storage.data.push({
+                    id: bk.id,
+                    text: bk.text,
+                    date: getRawDate(),
+                    done: false,
+                    color: 2,
+                    timeZone: 0,
+                    memo: '예약'
+                });
+            }
+        });
+        save();
+    })();
     // ─────────────────────────────────────────────────────────────────
 </script>
 </body>
