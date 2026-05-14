@@ -125,6 +125,7 @@
     <nav class="tab-menu">
         <button class="tab-btn active" data-tab="today" onclick="openTab('today', this)">오늘</button>
         <button class="tab-btn" data-tab="tomorrow" onclick="openTab('tomorrow', this)">내일</button>
+        <button class="tab-btn" data-tab="schedule" onclick="openTab('schedule', this)">예약</button>
         <button class="tab-btn" data-tab="favorites" onclick="openTab('favorites', this)">즐겨찾기</button>
         <button class="tab-btn" data-tab="progress" onclick="openTab('progress', this)">진도표</button>
         <button class="tab-btn" data-tab="memo" onclick="openTab('memo', this)">메모</button>
@@ -142,6 +143,9 @@
     </section>
     <section id="tab-tomorrow" class="tab-content">
         <div id="list-tomorrow" class="scroll-area"></div>
+    </section>
+    <section id="tab-schedule" class="tab-content" style="flex-direction:column;">
+        <div id="list-schedule" class="scroll-area" style="padding-top:10px;"></div>
     </section>
     <section id="tab-favorites" class="tab-content">
         <div class="input-form">
@@ -631,11 +635,12 @@
         document.querySelectorAll('.tab-content,.tab-btn').forEach(e=>e.classList.remove('active'));
         document.getElementById(`tab-${t}`).classList.add('active');
         b.classList.add('active');
-        document.getElementById('mainInputForm').style.display = (t === 'favorites' || t === 'progress' || t === 'memo' || t === 'cal') ? 'none' : 'flex';
+        document.getElementById('mainInputForm').style.display = (t === 'favorites' || t === 'progress' || t === 'memo' || t === 'cal' || t === 'schedule') ? 'none' : 'flex';
         document.getElementById('in-today').placeholder = (t === 'tomorrow') ? '내일 할 일 입력...' : '오늘 할 일 입력...';
         if (t === 'progress') renderProgress();
         if (t === 'memo') renderMemos();
         if (t === 'cal') renderCalendar();
+        if (t === 'schedule') { syncSchedules(); renderScheduleList(); }
     }
 
     // ── [수정2] 즐겨찾기 → 오늘탭 이동 시 저장된 시간 반영
@@ -652,7 +657,18 @@
 
     // ── [수정3] 자동반복 체크 후 렌더
     checkAutoRepeat();
+    syncSchedules();   // 텔레그램 일정 자동 동기화 (앱 열 때마다)
     renderAll();
+
+    // 앱이 다시 포커스될 때(다른 앱 보다 돌아올 때)도 일정 동기화
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) {
+            syncSchedules();
+            renderAll();
+            const active = document.querySelector('.tab-btn.active');
+            if (active && active.dataset.tab === 'schedule') renderScheduleList();
+        }
+    });
 
     // ════════════════════════════════════════
     //  진도표 시스템
@@ -703,6 +719,9 @@
             bulgarian:    { history: [] },
             dumbbell:     { history: [] },
             memos:        [],
+            schedules:    [],   // 텔레그램 /일정 으로 들어오는 일정
+            shopping:     [],   // 텔레그램 /사기 (챙기기 앱이 읽음)
+            ideas:        [],   // 텔레그램 /생각 (마인드맵 앱이 읽음)
         };
     }
     function getProgress() {
@@ -931,6 +950,8 @@
     function parseBookingMemos() {
         const p = getProgress();
         const bookings = {};
+
+        // (1) 기존 방식: 메모 중 [M/D ...] 패턴 — 예약문자 워크플로우 하위호환
         (p.memos || []).forEach(m => {
             const match = m.text.match(/^\[(\d+)\/(\d+)(?:\s+([^\]]+))?\]/);
             if (!match) return;
@@ -942,6 +963,19 @@
             if (!bookings[key]) bookings[key] = [];
             bookings[key].push(short);
         });
+
+        // (2) 새 방식: schedules 배열 (텔레그램 /일정) — date: YYYY-MM-DD
+        (p.schedules || []).forEach(s => {
+            if (!s || !s.title || !s.date) return;
+            const parts = s.date.split('-');
+            if (parts.length !== 3) return;
+            const mo = parseInt(parts[1]), dy = parseInt(parts[2]);
+            const key = `${mo}-${dy}`;
+            const short = (s.time ? s.time + ' ' : '') + s.title;
+            if (!bookings[key]) bookings[key] = [];
+            bookings[key].push(short);
+        });
+
         return bookings;
     }
 
@@ -989,33 +1023,94 @@
     function calPrev() { if(calMonth===0){calYear--;calMonth=11;}else calMonth--; renderCalendar(); }
     function calNext() { if(calMonth===11){calYear++;calMonth=0;}else calMonth++; renderCalendar(); }
 
-    // 당일 예약 메모를 오늘 스케줄에 자동 포함
-    (function injectTodayBookings() {
-        const today = new Date();
-        const mo = today.getMonth() + 1, dy = today.getDate();
-        const p = getProgress();
-        const todayBookings = (p.memos || []).filter(m => {
-            const match = m.text.match(/^\[(\d+)\/(\d+)/);
-            return match && parseInt(match[1])===mo && parseInt(match[2])===dy;
-        });
-        if (!todayBookings.length) return;
-        // 이미 추가된 항목 제외 (id로 중복 체크)
-        todayBookings.forEach(bk => {
-            const exists = (storage.data || []).some(t => t.id === bk.id);
-            if (!exists) {
-                storage.data.push({
-                    id: bk.id,
-                    text: bk.text,
-                    date: getRawDate(),
-                    done: false,
-                    color: 2,
-                    timeZone: 0,
-                    memo: '예약'
-                });
-            }
-        });
-        save();
+    // undefined 항목 자동 정리 (과거 버그 잔재 청소 — 안전장치로 유지)
+    (function cleanUndefined() {
+        const before = storage.data.length;
+        storage.data = storage.data.filter(x => x.title);
+        if (storage.data.length !== before) save();
     })();
+
+    // ── 텔레그램 일정(schedules) 동기화 ────────────────────────────────
+    // JSONbin의 schedules 배열을 읽어, 오늘 날짜 일정만 오늘 탭(storage.data)에 합친다.
+    // 날짜 탭은 schedulesCache 전체를 직접 사용한다 (renderScheduleList 참고).
+    let schedulesCache = [];
+
+    function syncSchedules() {
+        try {
+            const p = getProgress();                 // JSONbin 최신 데이터
+            schedulesCache = (p.schedules || []).slice();
+
+            const today = getRawDate();
+
+            // 1) 이전에 텔레그램 일정으로 주입했던 항목 제거 (fromTelegram 표시)
+            storage.data = storage.data.filter(x => !x.fromTelegram);
+
+            // 2) 오늘 날짜 일정만 오늘 탭에 주입 (title 없는 항목은 건너뜀 → undefined 방지)
+            let injected = 0;
+            schedulesCache.forEach(s => {
+                if (!s || !s.title) return;
+                if (s.date !== today) return;
+                storage.data.push({
+                    id: s.id || (Date.now() + Math.random()),
+                    title: s.time ? `${s.time} ${s.title}` : s.title,
+                    date: today,
+                    items: [],
+                    timeZone: s.timeZone || 0,
+                    fromTelegram: true
+                });
+                injected++;
+            });
+
+            if (injected > 0) {
+                localStorage.setItem('dailySchedule_v4', JSON.stringify(storage));
+            }
+        } catch (e) {
+            console.warn('일정 동기화 실패:', e);
+        }
+    }
+
+    // ── 날짜 탭 렌더링 ─────────────────────────────────────────────────
+    // schedulesCache(텔레그램 예약 일정)를 날짜 오름차순으로 보여준다.
+    function renderScheduleList() {
+        const el = document.getElementById('list-schedule');
+        if (!el) return;
+        const today = getRawDate();
+
+        // 날짜 있는 항목만, 과거 너무 지난 건 제외 (오늘 기준 이후 + 오늘)
+        const list = schedulesCache
+            .filter(s => s && s.title && s.date)
+            .filter(s => s.date >= today)
+            .sort((a, b) => (a.date + (a.time||'')).localeCompare(b.date + (b.time||'')));
+
+        if (list.length === 0) {
+            el.innerHTML = '<p style="text-align:center;color:#999;padding:20px;">예약된 일정이 없습니다</p>';
+            return;
+        }
+
+        // 날짜별 그룹핑
+        const groups = {};
+        list.forEach(s => { (groups[s.date] = groups[s.date] || []).push(s); });
+
+        const week = ['일','월','화','수','목','금','토'];
+        el.innerHTML = Object.keys(groups).sort().map(date => {
+            const d = new Date(date);
+            const label = `${d.getMonth()+1}월 ${d.getDate()}일 (${week[d.getDay()]})`;
+            const isToday = date === today;
+            const items = groups[date].map(s => `
+                <div class="memo-item" style="border-left-color:#E67E22;">
+                    <div style="flex:1;">
+                        <div class="memo-text">${s.time ? `<b style="color:#E67E22;">${s.time}</b>  ` : ''}${s.title}</div>
+                    </div>
+                </div>`).join('');
+            return `
+                <div style="margin-bottom:14px;">
+                    <div style="font-size:12px;font-weight:800;color:${isToday?'#E67E22':'#888'};margin-bottom:6px;">
+                        ${label}${isToday ? ' · 오늘' : ''}
+                    </div>
+                    ${items}
+                </div>`;
+        }).join('');
+    }
     // ─────────────────────────────────────────────────────────────────
 </script>
 </body>

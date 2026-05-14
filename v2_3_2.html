@@ -758,36 +758,57 @@
             reader.readAsText(event.target.files[0]);
         }
 
-        // ── 노션 수집함 동기화 ──────────────────────────────────────────────
-        async function notionSyncMindmap() {
-            let url;
-            try { url = new URL('notion_inbox.json', window.location.href).href; }
-            catch(e) { url = 'notion_inbox.json'; }
+        // ── JSONbin 수집함 동기화 (텔레그램 /생각 → ideas 배열) ──────────────
+        const JSONBIN_KEY = '$2a$10$y3gWHPgwraqoSOCc/hsLmer/VVbxGqWn6zDw87HRma/xgHjPQjywy';
+        const JSONBIN_ID  = '69cf3e8daaba882197bdd202';
+        const JSONBIN_URL = 'https://api.jsonbin.io/v3/b/' + JSONBIN_ID;
 
+        // 내부 공용: ideas 배열을 가져와 수집함 노드를 갱신한다.
+        // silent=true 면 alert 없이 조용히 처리 (자동 동기화용)
+        async function syncIdeasInbox(silent) {
             try {
-                const res = await fetch(url);
-                if (!res.ok) throw new Error('파일 없음 (HTTP ' + res.status + ')');
+                const res = await fetch(JSONBIN_URL + '/latest', {
+                    headers: { 'X-Master-Key': JSONBIN_KEY }
+                });
+                if (!res.ok) throw new Error('JSONbin 응답 오류 (HTTP ' + res.status + ')');
                 const json = await res.json();
-                const items = json.items || [];
-                if (items.length === 0) { alert('노션 수집함이 비어있어요!'); return; }
-
-                const synced_at = json.synced_at ? json.synced_at.slice(0,16).replace('T',' ') : '';
+                const data = json.record || {};
+                const items = (data.ideas || []).filter(it => it && it.title);
 
                 if (!currentProjectId) {
-                    alert('먼저 왼쪽에서 프로젝트를 선택해주세요!');
-                    return;
+                    if (!silent) alert('먼저 왼쪽에서 프로젝트를 선택해주세요!');
+                    return false;
                 }
 
                 const existingNodes = graph._nodes.filter(n =>
-                    n.properties && n.properties.content && n.properties.content.startsWith('📥 노션 수집함')
+                    n.properties && n.properties.content &&
+                    n.properties.content.startsWith('📥')
                 );
+
+                // 자동 동기화인데 항목도 없고 기존 수집함도 없으면 → 아무것도 안 함
+                if (silent && items.length === 0 && existingNodes.length === 0) return true;
+
                 existingNodes.forEach(n => graph.remove(n));
+
+                if (items.length === 0) {
+                    if (!silent) alert('수집함이 비어있어요!');
+                    graph.setDirtyCanvas(true, true);
+                    saveCurrentProject(true);
+                    return true;
+                }
+
+                const now = new Date();
+                const stamp = now.getFullYear() + '-' +
+                    String(now.getMonth()+1).padStart(2,'0') + '-' +
+                    String(now.getDate()).padStart(2,'0') + ' ' +
+                    String(now.getHours()).padStart(2,'0') + ':' +
+                    String(now.getMinutes()).padStart(2,'0');
 
                 const headerNode = LiteGraph.createNode('map/text');
                 headerNode.pos = [50, 50];
                 headerNode.size = [280, 60];
                 headerNode.properties.bgColor = '#c0392b';
-                headerNode.properties.content = '📥 노션 수집함 (NEW ' + items.length + ')\n' + synced_at;
+                headerNode.properties.content = '📥 수집함 (' + items.length + ')\n' + stamp;
                 graph.add(headerNode);
 
                 items.forEach((item, i) => {
@@ -803,11 +824,27 @@
                 graph.setDirtyCanvas(true, true);
                 saveCurrentProject(true);
 
-                alert('✅ 노션 수집함 동기화 완료!\n' + items.length + '개 항목\n동기화 시각: ' + synced_at);
-
+                if (!silent) {
+                    alert('✅ 수집함 동기화 완료!\n' + items.length + '개 항목\n' + stamp);
+                }
+                return true;
             } catch(e) {
-                alert('❌ 동기화 실패\n' + e.message + '\n\n먼저 PC에서 notion_sync.py를 실행하고\nnotion_inbox.json 파일을 이 HTML과 같은 폴더에 넣어주세요.');
+                console.warn('수집함 동기화 실패:', e);
+                if (!silent) {
+                    alert('❌ 동기화 실패\n' + e.message + '\n\nGitHub Pages에서 열어야 작동합니다.');
+                }
+                return false;
             }
+        }
+
+        // 수동 동기화 (🔄 버튼)
+        async function notionSyncMindmap() {
+            await syncIdeasInbox(false);
+        }
+
+        // 자동 동기화 (앱 열 때 / 포커스 복귀 시) — 조용히
+        async function autoSyncMindmap() {
+            await syncIdeasInbox(true);
         }
         // ────────────────────────────────────────────────────────────────────
 
@@ -820,7 +857,15 @@
             if (window.innerWidth <= 768) {
                 toggleSidebar(false);
             }
+
+            // 텔레그램 수집함 자동 동기화 (프로젝트 로드 후 약간 대기)
+            setTimeout(autoSyncMindmap, 800);
         };
+
+        // 다른 앱 보다 돌아왔을 때도 자동 동기화
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) autoSyncMindmap();
+        });
 
         window.onresize = () => resizeCanvas();
     </script>
