@@ -1069,21 +1069,136 @@
         }
     }
 
+    // ── 일정 수정/삭제: JSONbin schedules 배열을 직접 갱신 ──────────────
+    // schedule 항목의 문자 체크 상태는 s.msg = {confirm, before, after} 로 저장.
+
+    function saveSchedules(newList) {
+        const p = getProgress();
+        p.schedules = newList;
+        saveProgress(p);
+        schedulesCache = newList.slice();
+        // 오늘 탭/달력도 즉시 갱신
+        syncSchedules();
+        renderAll();
+    }
+
+    // 문자 체크 토글 (confirm | before | after)
+    function toggleScheduleMsg(id, kind) {
+        const p = getProgress();
+        const list = p.schedules || [];
+        const s = list.find(x => String(x.id) === String(id));
+        if (!s) return;
+        if (!s.msg) s.msg = { confirm:false, before:false, after:false };
+        s.msg[kind] = !s.msg[kind];
+        saveSchedules(list);
+        renderScheduleList();
+    }
+
+    // 일정 삭제
+    function deleteSchedule(id) {
+        if (!confirm('이 예약 일정을 삭제할까요?')) return;
+        const p = getProgress();
+        const list = (p.schedules || []).filter(x => String(x.id) !== String(id));
+        saveSchedules(list);
+        renderScheduleList();
+    }
+
+    // 일정 수정 (제목/날짜/시간)
+    function editSchedule(id) {
+        const p = getProgress();
+        const list = p.schedules || [];
+        const s = list.find(x => String(x.id) === String(id));
+        if (!s) return;
+
+        const newTitle = prompt('제목:', s.title || '');
+        if (newTitle === null) return;
+        const newDate = prompt('날짜 (YYYY-MM-DD):', s.date || '');
+        if (newDate === null) return;
+        const newTime = prompt('시간 (HH:MM, 없으면 빈칸):', s.time || '');
+        if (newTime === null) return;
+
+        s.title = newTitle.trim();
+        s.date  = newDate.trim();
+        s.time  = newTime.trim();
+        // timeZone 재계산
+        s.timeZone = timeToZone(s.time);
+        saveSchedules(list);
+        renderScheduleList();
+    }
+
+    // HH:MM → 시간대 코드 (save_item.sh 와 동일 규칙)
+    function timeToZone(hhmm) {
+        if (!hhmm || hhmm.indexOf(':') < 0) return 0;
+        const h = parseInt(hhmm.split(':')[0], 10);
+        if (isNaN(h)) return 0;
+        if (h >= 6  && h < 9)  return 1;
+        if (h >= 9  && h < 12) return 2;
+        if (h >= 12 && h < 15) return 3;
+        if (h >= 15 && h < 18) return 4;
+        if (h >= 18 && h < 21) return 5;
+        if (h >= 21 && h < 24) return 6;
+        return 0;
+    }
+
+    // 일정 전체 추출 (과거 포함 전부) → 텍스트로 복사/공유
+    function exportSchedules() {
+        const list = (schedulesCache || [])
+            .filter(s => s && s.title && s.date)
+            .sort((a, b) => (a.date + (a.time||'')).localeCompare(b.date + (b.time||'')));
+        if (list.length === 0) { alert('추출할 일정이 없습니다.'); return; }
+
+        // CSV 형식: 날짜,시간,제목,확정문자,전날문자,이후문자
+        let csv = '날짜,시간,제목,예약확정문자,전날문자,이후문자\n';
+        list.forEach(s => {
+            const m = s.msg || {};
+            const yn = v => v ? 'O' : 'X';
+            const safe = t => '"' + String(t || '').replace(/"/g, '""') + '"';
+            csv += [s.date, s.time || '', safe(s.title),
+                    yn(m.confirm), yn(m.before), yn(m.after)].join(',') + '\n';
+        });
+
+        // 클립보드 복사 시도 + 화면 표시
+        const win = window.open('', '_blank');
+        if (win) {
+            win.document.write('<pre style="font-size:13px;padding:16px;">' +
+                csv.replace(/</g,'&lt;') + '</pre>');
+            win.document.title = '일정 추출 ' + getRawDate();
+        }
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(csv).then(
+                () => alert('일정 ' + list.length + '건을 클립보드에 복사했습니다.\n(새 창에도 표시됨)'),
+                () => alert('일정 ' + list.length + '건을 새 창에 표시했습니다.')
+            );
+        } else {
+            alert('일정 ' + list.length + '건을 새 창에 표시했습니다.');
+        }
+    }
+
     // ── 날짜 탭 렌더링 ─────────────────────────────────────────────────
-    // schedulesCache(텔레그램 예약 일정)를 날짜 오름차순으로 보여준다.
+    // schedulesCache(예약 일정)를 날짜 오름차순으로 보여준다.
     function renderScheduleList() {
         const el = document.getElementById('list-schedule');
         if (!el) return;
         const today = getRawDate();
 
-        // 날짜 있는 항목만, 과거 너무 지난 건 제외 (오늘 기준 이후 + 오늘)
+        // 다가오는 일정 (오늘 포함 이후)
         const list = schedulesCache
             .filter(s => s && s.title && s.date)
             .filter(s => s.date >= today)
             .sort((a, b) => (a.date + (a.time||'')).localeCompare(b.date + (b.time||'')));
 
+        // 상단 도구 줄 (추출 버튼)
+        const toolbar = `
+            <div style="display:flex;justify-content:flex-end;margin-bottom:10px;">
+                <button onclick="exportSchedules()" style="background:#2C3E50;color:#fff;border:none;
+                    border-radius:6px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;">
+                    📤 전체 추출
+                </button>
+            </div>`;
+
         if (list.length === 0) {
-            el.innerHTML = '<p style="text-align:center;color:#999;padding:20px;">예약된 일정이 없습니다</p>';
+            el.innerHTML = toolbar +
+                '<p style="text-align:center;color:#999;padding:20px;">예약된 일정이 없습니다</p>';
             return;
         }
 
@@ -1092,16 +1207,36 @@
         list.forEach(s => { (groups[s.date] = groups[s.date] || []).push(s); });
 
         const week = ['일','월','화','수','목','금','토'];
-        el.innerHTML = Object.keys(groups).sort().map(date => {
+        const body = Object.keys(groups).sort().map(date => {
             const d = new Date(date);
             const label = `${d.getMonth()+1}월 ${d.getDate()}일 (${week[d.getDay()]})`;
             const isToday = date === today;
-            const items = groups[date].map(s => `
-                <div class="memo-item" style="border-left-color:#E67E22;">
-                    <div style="flex:1;">
-                        <div class="memo-text">${s.time ? `<b style="color:#E67E22;">${s.time}</b>  ` : ''}${s.title}</div>
+            const items = groups[date].map(s => {
+                const m = s.msg || { confirm:false, before:false, after:false };
+                const chip = (on, txt, kind) => `
+                    <span onclick="toggleScheduleMsg('${s.id}','${kind}')"
+                        style="display:inline-block;font-size:11px;font-weight:700;cursor:pointer;
+                        padding:3px 8px;border-radius:10px;margin-right:4px;
+                        background:${on?'#27AE60':'#ECECEC'};color:${on?'#fff':'#999'};">
+                        ${on?'✓':''} ${txt}</span>`;
+                return `
+                <div class="memo-item" style="border-left-color:#E67E22;flex-direction:column;align-items:stretch;gap:6px;">
+                    <div style="display:flex;align-items:flex-start;gap:8px;">
+                        <div style="flex:1;">
+                            <div class="memo-text">${s.time ? `<b style="color:#E67E22;">${s.time}</b>  ` : ''}${s.title}</div>
+                        </div>
+                        <button onclick="editSchedule('${s.id}')" style="background:none;border:none;
+                            cursor:pointer;font-size:14px;padding:2px;">✏️</button>
+                        <button onclick="deleteSchedule('${s.id}')" style="background:none;border:none;
+                            cursor:pointer;font-size:14px;padding:2px;">🗑️</button>
                     </div>
-                </div>`).join('');
+                    <div>
+                        ${chip(m.confirm, '확정문자', 'confirm')}
+                        ${chip(m.before, '전날문자', 'before')}
+                        ${chip(m.after, '이후문자', 'after')}
+                    </div>
+                </div>`;
+            }).join('');
             return `
                 <div style="margin-bottom:14px;">
                     <div style="font-size:12px;font-weight:800;color:${isToday?'#E67E22':'#888'};margin-bottom:6px;">
@@ -1110,6 +1245,8 @@
                     ${items}
                 </div>`;
         }).join('');
+
+        el.innerHTML = toolbar + body;
     }
     // ─────────────────────────────────────────────────────────────────
 </script>

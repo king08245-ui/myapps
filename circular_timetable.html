@@ -994,16 +994,22 @@ function drawInlineList(){
         item.style.transform=`translateX(-100%)`;
         delBg.style.width='100%';
         setTimeout(()=>{
-          if(!isNotion && !isNoTime){
-            // 내 일정 → 실제 삭제
-            schedules = schedules.filter(x=>String(x.id)!==String(s.id));
-            saveLocal();
-            showToast('삭제했어요');
-          } else {
-            // DS 일정 / 시간미정 → 오늘만 숨기기
-            hiddenIds.add(String(s.id));
+          const sid = String(s.id);
+          if(sid.startsWith('bk_')){
+            // 예약 일정 → JSONbin schedules 에서 실제 삭제
+            const realId = sid.slice(3); // 'bk_' 제거
+            deleteBookingFromJsonbin(realId);
+            showToast('예약을 삭제했어요');
+          } else if(sid.startsWith('ds_') || sid.startsWith('ds_nt_') || sid.startsWith('bk_nt_')){
+            // DailySchedule 일정 / 시간미정 → 오늘 목록에서만 숨기기
+            hiddenIds.add(sid);
             saveHidden();
             showToast('오늘 목록에서 숨겼어요');
+          } else {
+            // circular 자체 일정 → 실제 삭제
+            schedules = schedules.filter(x=>String(x.id)!==sid);
+            saveLocal();
+            showToast('삭제했어요');
           }
           drawClock(); drawInlineList();
         },200);
@@ -1019,8 +1025,11 @@ function drawInlineList(){
     },{passive:true});
     item.addEventListener('touchmove',e=>{
       onMove(e.touches[0].clientX, e.touches[0].clientY);
+      // 일정을 가로로 스와이프 중이면 시계영역 날짜넘김으로 전파 차단
+      if(isH) e.stopPropagation();
     },{passive:true});
     item.addEventListener('touchend',e=>{
+      if(isH) e.stopPropagation();
       onEnd(e.changedTouches[0].clientX);
     });
 
@@ -1178,35 +1187,121 @@ const TZ_COLORS = {
   4:'#7c6dfa', 5:'#ff6b9d', 6:'#a29bfe',
 };
 
+// 예약 일정(schedules)용: 기본 3시간 블록 시각 계산
+// time 이 있으면 그 시각부터 3시간, 없으면 timeZone 으로 폴백
+function bookingToStartEnd(s){
+  if(s.time && /^\d{1,2}:\d{2}$/.test(s.time)){
+    const [h,m] = s.time.split(':').map(Number);
+    const startMin = h*60+m;
+    const endMin = startMin + 180; // 기본 3시간
+    const pad = n => String(n).padStart(2,'0');
+    const fmt = mm => `${pad(Math.floor((mm%1440)/60))}:${pad(mm%60)}`;
+    return [fmt(startMin), endMin>=1440 ? '24:00' : fmt(endMin)];
+  }
+  if(s.timeZone && TZ_MAP[s.timeZone]) return TZ_MAP[s.timeZone];
+  return null; // 시간 정보 없음
+}
+
+// JSONbin에서 schedules 배열을 직접 읽는다 (실패 시 progress_v1 캐시 폴백)
+const CIRC_JSONBIN_KEY = '$2a$10$y3gWHPgwraqoSOCc/hsLmer/VVbxGqWn6zDw87HRma/xgHjPQjywy';
+const CIRC_JSONBIN_URL = 'https://api.jsonbin.io/v3/b/69cf3e8daaba882197bdd202';
+
+function fetchSchedulesArray(){
+  // 1) JSONbin 직접 시도
+  try{
+    const xhr = new XMLHttpRequest();
+    xhr.open('GET', CIRC_JSONBIN_URL + '/latest', false);
+    xhr.setRequestHeader('X-Master-Key', CIRC_JSONBIN_KEY);
+    xhr.send();
+    if(xhr.status === 200){
+      const rec = JSON.parse(xhr.responseText).record || {};
+      // 캐시도 갱신해 둠 (DailySchedule과 키 공유)
+      localStorage.setItem('progress_v1', JSON.stringify(rec));
+      return rec.schedules || [];
+    }
+  }catch(e){ /* 네트워크 실패 → 캐시 폴백 */ }
+  // 2) progress_v1 캐시 폴백
+  try{
+    const prog = localStorage.getItem('progress_v1');
+    if(prog) return (JSON.parse(prog).schedules) || [];
+  }catch(e){}
+  return [];
+}
+
+// 예약 일정을 JSONbin schedules 에서 삭제
+function deleteBookingFromJsonbin(realId){
+  try{
+    // GET
+    const get = new XMLHttpRequest();
+    get.open('GET', CIRC_JSONBIN_URL + '/latest', false);
+    get.setRequestHeader('X-Master-Key', CIRC_JSONBIN_KEY);
+    get.send();
+    if(get.status !== 200) throw new Error('읽기 실패');
+    const rec = JSON.parse(get.responseText).record || {};
+    rec.schedules = (rec.schedules || []).filter(s => String(s.id) !== String(realId));
+    // PUT
+    const put = new XMLHttpRequest();
+    put.open('PUT', CIRC_JSONBIN_URL, false);
+    put.setRequestHeader('Content-Type', 'application/json');
+    put.setRequestHeader('X-Master-Key', CIRC_JSONBIN_KEY);
+    put.send(JSON.stringify(rec));
+    // 캐시도 갱신
+    localStorage.setItem('progress_v1', JSON.stringify(rec));
+  }catch(e){
+    showToast('삭제 실패: 네트워크 확인');
+  }
+}
+
 function syncFromDailySchedule(){
   setSyncStatus('loading','동기화 중...');
   try{
-    const raw = localStorage.getItem('dailySchedule_v4');
-    if(!raw){
-      const keys = Object.keys(localStorage).slice(0,5).join(', ') || '(비어있음)';
-      setSyncStatus('err','데이터 없음');
-      showToast('키 없음. localStorage: ' + keys);
-      return;
-    }
-    const ds = JSON.parse(raw);
     const today = currentDate;
-    const allItems = ds.data||[];
-    const todayItems = allItems.filter(p => p.date <= today);
-    showToast(`전체 ${allItems.length}개 / 오늘 ${todayItems.length}개`);
+    let dsCount = 0, bkCount = 0;
+    notionSchedules = [];
+    dsNoTime = [];
 
-    notionSchedules = todayItems
-      .filter(p => p.timeZone && p.timeZone > 0)
-      .map(p => {
-        const [start, end] = TZ_MAP[p.timeZone];
-        return { id:'ds_'+p.id, title:p.title, start, end,
-          color:TZ_COLORS[p.timeZone]||COLORS[0], memo:'', repeat:null, _src:'ds' };
+    // (1) DailySchedule 오늘탭 데이터 (dailySchedule_v4) — 기존 동작 유지
+    const raw = localStorage.getItem('dailySchedule_v4');
+    if(raw){
+      const ds = JSON.parse(raw);
+      const allItems = ds.data || [];
+      const dayItems = allItems.filter(p => p.date === today);
+      dsCount = dayItems.length;
+
+      dayItems.forEach(p => {
+        // fromTelegram 항목은 schedules 에서 다시 잡으므로 여기선 제외 (중복 방지)
+        if(p.fromTelegram) return;
+        if(p.timeZone && p.timeZone > 0){
+          const [start, end] = TZ_MAP[p.timeZone];
+          notionSchedules.push({ id:'ds_'+p.id, title:p.title, start, end,
+            color:TZ_COLORS[p.timeZone]||COLORS[0], memo:'', repeat:null, _src:'ds' });
+        } else {
+          dsNoTime.push({ id:'ds_nt_'+p.id, title:p.title, _src:'ds_notime' });
+        }
       });
+    }
 
-    dsNoTime = todayItems.filter(p => !p.timeZone || p.timeZone === 0)
-      .map(p => ({ id:'ds_nt_'+p.id, title:p.title, _src:'ds_notime' }));
+    // (2) 예약 일정 배열 (schedules) — JSONbin 직접 읽기 (미래 날짜 포함)
+    const schedArr = fetchSchedulesArray();
+    schedArr
+      .filter(s => s && s.title && s.date === today)
+      .forEach(s => {
+        const se = bookingToStartEnd(s);  // 기본 3시간 블록
+        if(se){
+          notionSchedules.push({
+            id:'bk_'+s.id, title:s.title, start:se[0], end:se[1],
+            color: '#E67E22',  // 예약은 주황색으로 구분
+            memo: s.time ? '' : '시간 추정', repeat:null, _src:'booking'
+          });
+          bkCount++;
+        } else {
+          dsNoTime.push({ id:'bk_nt_'+s.id, title:s.title, _src:'booking_notime' });
+        }
+      });
 
     const now = new Date();
     const hm = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+    showToast(`일정 ${dsCount}개 · 예약 ${bkCount}개`);
     setSyncStatus('ok', `${notionSchedules.length + dsNoTime.length}개 · ${hm}`);
     drawClock(); drawInlineList();
   } catch(err) {
@@ -1261,14 +1356,8 @@ function updateDateNav(){
   document.getElementById('hdate').textContent = formatDateNav(currentDate).main;
   // 도트 업데이트
   renderDateDots();
-  // DailySchedule sync (오늘만)
-  if(currentDate === TODAY) syncFromDailySchedule();
-  else {
-    notionSchedules = [];
-    dsNoTime = [];
-    drawClock();
-    drawInlineList();
-  }
+  // DailySchedule + 예약(schedules) 동기화 — 모든 날짜에서 동작
+  syncFromDailySchedule();
 }
 
 function renderDateDots(){
@@ -1288,10 +1377,21 @@ function renderDateDots(){
 }
 
 function hasSchedules(dateStr){
-  return schedules.some(s=>{
+  // (1) circular 자체 일정
+  const hasLocal = schedules.some(s=>{
     if(s.repeat) return true;
     return (s.date||TODAY)===dateStr;
   });
+  if(hasLocal) return true;
+  // (2) 예약 일정 (progress_v1 캐시) — 해당 날짜에 예약 있으면 점 표시
+  try{
+    const prog = localStorage.getItem('progress_v1');
+    if(prog){
+      const arr = (JSON.parse(prog).schedules) || [];
+      if(arr.some(s => s && s.date === dateStr)) return true;
+    }
+  }catch(e){}
+  return false;
 }
 
 // 시계 애니메이션 (슬라이드)
@@ -1322,10 +1422,21 @@ let clockSwipe = null;
 const clockArea = document.getElementById('vClock');
 
 clockArea.addEventListener('touchstart', e=>{
+  const t = e.touches[0];
+  // 일정 목록 영역에서 시작한 터치는 날짜 스와이프로 처리하지 않음
+  // (일정 항목 자체의 좌우 스와이프 삭제와 충돌 방지)
+  const listEl = document.getElementById('inlineList');
+  if(listEl){
+    const lr = listEl.getBoundingClientRect();
+    if(t.clientY >= lr.top && t.clientY <= lr.bottom &&
+       t.clientX >= lr.left && t.clientX <= lr.right){
+      clockSwipe = null;
+      return;
+    }
+  }
   // 시계 링 위 드래그와 구분: 링 내부면 무시
   const svg = document.getElementById('clockSvg');
   const rect = svg.getBoundingClientRect();
-  const t = e.touches[0];
   const scaleX = 400/rect.width, scaleY = 400/rect.height;
   const x = (t.clientX-rect.left)*scaleX - CX;
   const y = (t.clientY-rect.top)*scaleY - CY;
