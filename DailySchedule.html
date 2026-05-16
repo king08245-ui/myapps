@@ -1147,8 +1147,8 @@
             .sort((a, b) => (a.date + (a.time||'')).localeCompare(b.date + (b.time||'')));
         if (list.length === 0) { alert('추출할 일정이 없습니다.'); return; }
 
-        // CSV 형식: 날짜,시간,제목,확정문자,전날문자,이후문자
-        let csv = '날짜,시간,제목,예약확정문자,전날문자,이후문자\n';
+        // CSV 형식: 날짜,시간,제목,확정문자,당일문자,이후문자
+        let csv = '날짜,시간,제목,예약확정문자,당일문자,이후문자\n';
         list.forEach(s => {
             const m = s.msg || {};
             const yn = v => v ? 'O' : 'X';
@@ -1232,7 +1232,7 @@
                     </div>
                     <div>
                         ${chip(m.confirm, '확정문자', 'confirm')}
-                        ${chip(m.before, '전날문자', 'before')}
+                        ${chip(m.before, '당일문자', 'before')}
                         ${chip(m.after, '이후문자', 'after')}
                     </div>
                 </div>`;
