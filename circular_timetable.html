@@ -1274,6 +1274,7 @@ function syncFromDailySchedule(){
         if(p.timeZone && p.timeZone > 0){
           const [start, end] = TZ_MAP[p.timeZone];
           notionSchedules.push({ id:'ds_'+p.id, title:p.title, start, end,
+            date: today,
             color:TZ_COLORS[p.timeZone]||COLORS[0], memo:'', repeat:null, _src:'ds' });
         } else {
           dsNoTime.push({ id:'ds_nt_'+p.id, title:p.title, _src:'ds_notime' });
@@ -1290,6 +1291,7 @@ function syncFromDailySchedule(){
         if(se){
           notionSchedules.push({
             id:'bk_'+s.id, title:s.title, start:se[0], end:se[1],
+            date: today,
             color: '#E67E22',  // 예약은 주황색으로 구분
             memo: s.time ? '' : '시간 추정', repeat:null, _src:'booking'
           });
