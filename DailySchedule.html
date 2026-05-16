@@ -1072,6 +1072,13 @@
     // ── 일정 수정/삭제: JSONbin schedules 배열을 직접 갱신 ──────────────
     // schedule 항목의 문자 체크 상태는 s.msg = {confirm, before, after} 로 저장.
 
+    // 예약 상세 펼치기/접기
+    function toggleScheduleDetail(id) {
+        const el = document.getElementById('sd-' + id);
+        if (!el) return;
+        el.style.display = (el.style.display === 'none') ? 'block' : 'none';
+    }
+
     function saveSchedules(newList) {
         const p = getProgress();
         p.schedules = newList;
@@ -1147,13 +1154,16 @@
             .sort((a, b) => (a.date + (a.time||'')).localeCompare(b.date + (b.time||'')));
         if (list.length === 0) { alert('추출할 일정이 없습니다.'); return; }
 
-        // CSV 형식: 날짜,시간,제목,확정문자,당일문자,이후문자
-        let csv = '날짜,시간,제목,예약확정문자,당일문자,이후문자\n';
+        // CSV 형식: 날짜,시간,제목,크몽번호,이름,전화,주소,가격,확정문자,당일문자,이후문자
+        let csv = '날짜,시간,제목,크몽번호,이름,전화,주소,가격,예약확정문자,당일문자,이후문자\n';
         list.forEach(s => {
             const m = s.msg || {};
+            const dt = s.detail || {};
             const yn = v => v ? 'O' : 'X';
             const safe = t => '"' + String(t || '').replace(/"/g, '""') + '"';
             csv += [s.date, s.time || '', safe(s.title),
+                    safe(dt.kmongNo), safe(dt.name), safe(dt.phone),
+                    safe(dt.address), safe(dt.amount),
                     yn(m.confirm), yn(m.before), yn(m.after)].join(',') + '\n';
         });
 
@@ -1214,22 +1224,41 @@
             const items = groups[date].map(s => {
                 const m = s.msg || { confirm:false, before:false, after:false };
                 const chip = (on, txt, kind) => `
-                    <span onclick="toggleScheduleMsg('${s.id}','${kind}')"
+                    <span onclick="event.stopPropagation();toggleScheduleMsg('${s.id}','${kind}')"
                         style="display:inline-block;font-size:11px;font-weight:700;cursor:pointer;
                         padding:3px 8px;border-radius:10px;margin-right:4px;
                         background:${on?'#27AE60':'#ECECEC'};color:${on?'#fff':'#999'};">
                         ${on?'✓':''} ${txt}</span>`;
+
+                // 예약 상세 (booking.py가 넣은 detail) — 접이식
+                const dt = s.detail || {};
+                const rows = [];
+                if (dt.kmongNo) rows.push(['크몽번호', dt.kmongNo]);
+                if (dt.name)    rows.push(['이름', dt.name]);
+                if (dt.phone)   rows.push(['전화', dt.phone]);
+                if (dt.address) rows.push(['주소', dt.address]);
+                if (dt.amount)  rows.push(['가격', dt.amount]);
+                if (dt.product) rows.push(['제품', dt.product]);
+                const hasDetail = rows.length > 0;
+                const detailHtml = hasDetail ? `
+                    <div id="sd-${s.id}" style="display:none;margin-top:4px;padding:8px 10px;
+                        background:#FBF7F2;border-radius:6px;font-size:12px;line-height:1.7;">
+                        ${rows.map(r => `<div><b style="color:#888;display:inline-block;width:54px;">${r[0]}</b>${r[1]}</div>`).join('')}
+                    </div>` : '';
+
                 return `
                 <div class="memo-item" style="border-left-color:#E67E22;flex-direction:column;align-items:stretch;gap:6px;">
-                    <div style="display:flex;align-items:flex-start;gap:8px;">
+                    <div style="display:flex;align-items:flex-start;gap:8px;${hasDetail?'cursor:pointer;':''}"
+                        ${hasDetail?`onclick="toggleScheduleDetail('${s.id}')"`:''}>
                         <div style="flex:1;">
-                            <div class="memo-text">${s.time ? `<b style="color:#E67E22;">${s.time}</b>  ` : ''}${s.title}</div>
+                            <div class="memo-text">${s.time ? `<b style="color:#E67E22;">${s.time}</b>  ` : ''}${s.title}${hasDetail?' <span style="color:#bbb;font-size:11px;">▾</span>':''}</div>
                         </div>
-                        <button onclick="editSchedule('${s.id}')" style="background:none;border:none;
+                        <button onclick="event.stopPropagation();editSchedule('${s.id}')" style="background:none;border:none;
                             cursor:pointer;font-size:14px;padding:2px;">✏️</button>
-                        <button onclick="deleteSchedule('${s.id}')" style="background:none;border:none;
+                        <button onclick="event.stopPropagation();deleteSchedule('${s.id}')" style="background:none;border:none;
                             cursor:pointer;font-size:14px;padding:2px;">🗑️</button>
                     </div>
+                    ${detailHtml}
                     <div>
                         ${chip(m.confirm, '확정문자', 'confirm')}
                         ${chip(m.before, '당일문자', 'before')}
