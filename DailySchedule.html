@@ -125,7 +125,6 @@
     <nav class="tab-menu">
         <button class="tab-btn active" data-tab="today" onclick="openTab('today', this)">오늘</button>
         <button class="tab-btn" data-tab="tomorrow" onclick="openTab('tomorrow', this)">내일</button>
-        <button class="tab-btn" data-tab="schedule" onclick="openTab('schedule', this)">예약</button>
         <button class="tab-btn" data-tab="favorites" onclick="openTab('favorites', this)">즐겨찾기</button>
         <button class="tab-btn" data-tab="progress" onclick="openTab('progress', this)">진도표</button>
         <button class="tab-btn" data-tab="memo" onclick="openTab('memo', this)">메모</button>
@@ -143,9 +142,6 @@
     </section>
     <section id="tab-tomorrow" class="tab-content">
         <div id="list-tomorrow" class="scroll-area"></div>
-    </section>
-    <section id="tab-schedule" class="tab-content" style="flex-direction:column;">
-        <div id="list-schedule" class="scroll-area" style="padding-top:10px;"></div>
     </section>
     <section id="tab-favorites" class="tab-content">
         <div class="input-form">
@@ -635,12 +631,11 @@
         document.querySelectorAll('.tab-content,.tab-btn').forEach(e=>e.classList.remove('active'));
         document.getElementById(`tab-${t}`).classList.add('active');
         b.classList.add('active');
-        document.getElementById('mainInputForm').style.display = (t === 'favorites' || t === 'progress' || t === 'memo' || t === 'cal' || t === 'schedule') ? 'none' : 'flex';
+        document.getElementById('mainInputForm').style.display = (t === 'favorites' || t === 'progress' || t === 'memo' || t === 'cal') ? 'none' : 'flex';
         document.getElementById('in-today').placeholder = (t === 'tomorrow') ? '내일 할 일 입력...' : '오늘 할 일 입력...';
         if (t === 'progress') renderProgress();
         if (t === 'memo') renderMemos();
         if (t === 'cal') renderCalendar();
-        if (t === 'schedule') { syncSchedules(); renderScheduleList(); }
     }
 
     // ── [수정2] 즐겨찾기 → 오늘탭 이동 시 저장된 시간 반영
@@ -657,18 +652,7 @@
 
     // ── [수정3] 자동반복 체크 후 렌더
     checkAutoRepeat();
-    syncSchedules();   // 텔레그램 일정 자동 동기화 (앱 열 때마다)
     renderAll();
-
-    // 앱이 다시 포커스될 때(다른 앱 보다 돌아올 때)도 일정 동기화
-    document.addEventListener('visibilitychange', () => {
-        if (!document.hidden) {
-            syncSchedules();
-            renderAll();
-            const active = document.querySelector('.tab-btn.active');
-            if (active && active.dataset.tab === 'schedule') renderScheduleList();
-        }
-    });
 
     // ════════════════════════════════════════
     //  진도표 시스템
@@ -719,9 +703,6 @@
             bulgarian:    { history: [] },
             dumbbell:     { history: [] },
             memos:        [],
-            schedules:    [],   // 텔레그램 /일정 으로 들어오는 일정
-            shopping:     [],   // 텔레그램 /사기 (챙기기 앱이 읽음)
-            ideas:        [],   // 텔레그램 /생각 (마인드맵 앱이 읽음)
         };
     }
     function getProgress() {
@@ -950,8 +931,6 @@
     function parseBookingMemos() {
         const p = getProgress();
         const bookings = {};
-
-        // (1) 기존 방식: 메모 중 [M/D ...] 패턴 — 예약문자 워크플로우 하위호환
         (p.memos || []).forEach(m => {
             const match = m.text.match(/^\[(\d+)\/(\d+)(?:\s+([^\]]+))?\]/);
             if (!match) return;
@@ -963,19 +942,6 @@
             if (!bookings[key]) bookings[key] = [];
             bookings[key].push(short);
         });
-
-        // (2) 새 방식: schedules 배열 (텔레그램 /일정) — date: YYYY-MM-DD
-        (p.schedules || []).forEach(s => {
-            if (!s || !s.title || !s.date) return;
-            const parts = s.date.split('-');
-            if (parts.length !== 3) return;
-            const mo = parseInt(parts[1]), dy = parseInt(parts[2]);
-            const key = `${mo}-${dy}`;
-            const short = (s.time ? s.time + ' ' : '') + s.title;
-            if (!bookings[key]) bookings[key] = [];
-            bookings[key].push(short);
-        });
-
         return bookings;
     }
 
@@ -1023,260 +989,71 @@
     function calPrev() { if(calMonth===0){calYear--;calMonth=11;}else calMonth--; renderCalendar(); }
     function calNext() { if(calMonth===11){calYear++;calMonth=0;}else calMonth++; renderCalendar(); }
 
-    // undefined 항목 자동 정리 (과거 버그 잔재 청소 — 안전장치로 유지)
+    // undefined 항목 자동 정리
     (function cleanUndefined() {
         const before = storage.data.length;
         storage.data = storage.data.filter(x => x.title);
         if (storage.data.length !== before) save();
     })();
 
-    // ── 텔레그램 일정(schedules) 동기화 ────────────────────────────────
-    // JSONbin의 schedules 배열을 읽어, 오늘 날짜 일정만 오늘 탭(storage.data)에 합친다.
-    // 날짜 탭은 schedulesCache 전체를 직접 사용한다 (renderScheduleList 참고).
-    let schedulesCache = [];
+    // JSONbin schedules + memos → 오늘 탭 자동 주입 (비동기, 항상 최신 데이터)
+    (function injectTodayBookings() {
+        const todayStr = getRawDate();
+        const today = new Date();
+        const mo = today.getMonth() + 1, dy = today.getDate();
 
-    function syncSchedules() {
-        try {
-            const p = getProgress();                 // JSONbin 최신 데이터
-            schedulesCache = (p.schedules || []).slice();
+        function doInject(p) {
+            let changed = false;
 
-            const today = getRawDate();
-
-            // 1) 이전에 텔레그램 일정으로 주입했던 항목 제거 (fromTelegram 표시)
-            storage.data = storage.data.filter(x => !x.fromTelegram);
-
-            // 2) 오늘 날짜 일정만 오늘 탭에 주입 (title 없는 항목은 건너뜀 → undefined 방지)
-            let injected = 0;
-            schedulesCache.forEach(s => {
-                if (!s || !s.title) return;
-                if (s.date !== today) return;
-                storage.data.push({
-                    id: s.id || (Date.now() + Math.random()),
-                    title: s.time ? `${s.time} ${s.title}` : s.title,
-                    date: today,
-                    items: [],
-                    timeZone: s.timeZone || 0,
-                    fromTelegram: true
-                });
-                injected++;
+            // 1) memos: [M/D ...] 형식 중 오늘 날짜
+            (p.memos || []).forEach(bk => {
+                const match = (bk.text || '').match(/^\[(\d+)\/(\d+)/);
+                if (!match) return;
+                if (parseInt(match[1]) !== mo || parseInt(match[2]) !== dy) return;
+                const exists = (storage.data || []).some(t => t.id === bk.id);
+                if (!exists) {
+                    storage.data.push({ id: bk.id, title: bk.text, date: todayStr, items: [], timeZone: 0 });
+                    changed = true;
+                }
             });
 
-            if (injected > 0) {
-                localStorage.setItem('dailySchedule_v4', JSON.stringify(storage));
-            }
-        } catch (e) {
-            console.warn('일정 동기화 실패:', e);
-        }
-    }
+            // 2) schedules: date === todayStr
+            (p.schedules || []).forEach(s => {
+                if (s.date !== todayStr) return;
+                const sid = 'sched_' + s.id;
+                const exists = (storage.data || []).some(t => t.id === sid);
+                if (!exists) {
+                    const timeLabel = s.time ? ' ' + s.time : '';
+                    storage.data.push({ id: sid, title: s.title + timeLabel, date: todayStr, items: [], timeZone: s.timeZone || 0 });
+                    changed = true;
+                }
+            });
 
-    // ── 일정 수정/삭제: JSONbin schedules 배열을 직접 갱신 ──────────────
-    // schedule 항목의 문자 체크 상태는 s.msg = {confirm, before, after} 로 저장.
-
-    // 예약 상세 펼치기/접기
-    function toggleScheduleDetail(id) {
-        const el = document.getElementById('sd-' + id);
-        if (!el) return;
-        el.style.display = (el.style.display === 'none') ? 'block' : 'none';
-    }
-
-    function saveSchedules(newList) {
-        const p = getProgress();
-        p.schedules = newList;
-        saveProgress(p);
-        schedulesCache = newList.slice();
-        // 오늘 탭/달력도 즉시 갱신
-        syncSchedules();
-        renderAll();
-    }
-
-    // 문자 체크 토글 (confirm | before | after)
-    function toggleScheduleMsg(id, kind) {
-        const p = getProgress();
-        const list = p.schedules || [];
-        const s = list.find(x => String(x.id) === String(id));
-        if (!s) return;
-        if (!s.msg) s.msg = { confirm:false, before:false, after:false };
-        s.msg[kind] = !s.msg[kind];
-        saveSchedules(list);
-        renderScheduleList();
-    }
-
-    // 일정 삭제
-    function deleteSchedule(id) {
-        if (!confirm('이 예약 일정을 삭제할까요?')) return;
-        const p = getProgress();
-        const list = (p.schedules || []).filter(x => String(x.id) !== String(id));
-        saveSchedules(list);
-        renderScheduleList();
-    }
-
-    // 일정 수정 (제목/날짜/시간)
-    function editSchedule(id) {
-        const p = getProgress();
-        const list = p.schedules || [];
-        const s = list.find(x => String(x.id) === String(id));
-        if (!s) return;
-
-        const newTitle = prompt('제목:', s.title || '');
-        if (newTitle === null) return;
-        const newDate = prompt('날짜 (YYYY-MM-DD):', s.date || '');
-        if (newDate === null) return;
-        const newTime = prompt('시간 (HH:MM, 없으면 빈칸):', s.time || '');
-        if (newTime === null) return;
-
-        s.title = newTitle.trim();
-        s.date  = newDate.trim();
-        s.time  = newTime.trim();
-        // timeZone 재계산
-        s.timeZone = timeToZone(s.time);
-        saveSchedules(list);
-        renderScheduleList();
-    }
-
-    // HH:MM → 시간대 코드 (save_item.sh 와 동일 규칙)
-    function timeToZone(hhmm) {
-        if (!hhmm || hhmm.indexOf(':') < 0) return 0;
-        const h = parseInt(hhmm.split(':')[0], 10);
-        if (isNaN(h)) return 0;
-        if (h >= 6  && h < 9)  return 1;
-        if (h >= 9  && h < 12) return 2;
-        if (h >= 12 && h < 15) return 3;
-        if (h >= 15 && h < 18) return 4;
-        if (h >= 18 && h < 21) return 5;
-        if (h >= 21 && h < 24) return 6;
-        return 0;
-    }
-
-    // 일정 전체 추출 (과거 포함 전부) → 텍스트로 복사/공유
-    function exportSchedules() {
-        const list = (schedulesCache || [])
-            .filter(s => s && s.title && s.date)
-            .sort((a, b) => (a.date + (a.time||'')).localeCompare(b.date + (b.time||'')));
-        if (list.length === 0) { alert('추출할 일정이 없습니다.'); return; }
-
-        // CSV 형식: 날짜,시간,제목,크몽번호,이름,전화,주소,가격,확정문자,당일문자,이후문자
-        let csv = '날짜,시간,제목,크몽번호,이름,전화,주소,가격,예약확정문자,당일문자,이후문자\n';
-        list.forEach(s => {
-            const m = s.msg || {};
-            const dt = s.detail || {};
-            const yn = v => v ? 'O' : 'X';
-            const safe = t => '"' + String(t || '').replace(/"/g, '""') + '"';
-            csv += [s.date, s.time || '', safe(s.title),
-                    safe(dt.kmongNo), safe(dt.name), safe(dt.phone),
-                    safe(dt.address), safe(dt.amount),
-                    yn(m.confirm), yn(m.before), yn(m.after)].join(',') + '\n';
-        });
-
-        // 클립보드 복사 시도 + 화면 표시
-        const win = window.open('', '_blank');
-        if (win) {
-            win.document.write('<pre style="font-size:13px;padding:16px;">' +
-                csv.replace(/</g,'&lt;') + '</pre>');
-            win.document.title = '일정 추출 ' + getRawDate();
-        }
-        if (navigator.clipboard) {
-            navigator.clipboard.writeText(csv).then(
-                () => alert('일정 ' + list.length + '건을 클립보드에 복사했습니다.\n(새 창에도 표시됨)'),
-                () => alert('일정 ' + list.length + '건을 새 창에 표시했습니다.')
-            );
-        } else {
-            alert('일정 ' + list.length + '건을 새 창에 표시했습니다.');
-        }
-    }
-
-    // ── 날짜 탭 렌더링 ─────────────────────────────────────────────────
-    // schedulesCache(예약 일정)를 날짜 오름차순으로 보여준다.
-    function renderScheduleList() {
-        const el = document.getElementById('list-schedule');
-        if (!el) return;
-        const today = getRawDate();
-
-        // 다가오는 일정 (오늘 포함 이후)
-        const list = schedulesCache
-            .filter(s => s && s.title && s.date)
-            .filter(s => s.date >= today)
-            .sort((a, b) => (a.date + (a.time||'')).localeCompare(b.date + (b.time||'')));
-
-        // 상단 도구 줄 (추출 버튼)
-        const toolbar = `
-            <div style="display:flex;justify-content:flex-end;margin-bottom:10px;">
-                <button onclick="exportSchedules()" style="background:#2C3E50;color:#fff;border:none;
-                    border-radius:6px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;">
-                    📤 전체 추출
-                </button>
-            </div>`;
-
-        if (list.length === 0) {
-            el.innerHTML = toolbar +
-                '<p style="text-align:center;color:#999;padding:20px;">예약된 일정이 없습니다</p>';
-            return;
+            if (changed) save();
         }
 
-        // 날짜별 그룹핑
-        const groups = {};
-        list.forEach(s => { (groups[s.date] = groups[s.date] || []).push(s); });
-
-        const week = ['일','월','화','수','목','금','토'];
-        const body = Object.keys(groups).sort().map(date => {
-            const d = new Date(date);
-            const label = `${d.getMonth()+1}월 ${d.getDate()}일 (${week[d.getDay()]})`;
-            const isToday = date === today;
-            const items = groups[date].map(s => {
-                const m = s.msg || { confirm:false, before:false, after:false };
-                const chip = (on, txt, kind) => `
-                    <span onclick="event.stopPropagation();toggleScheduleMsg('${s.id}','${kind}')"
-                        style="display:inline-block;font-size:11px;font-weight:700;cursor:pointer;
-                        padding:3px 8px;border-radius:10px;margin-right:4px;
-                        background:${on?'#27AE60':'#ECECEC'};color:${on?'#fff':'#999'};">
-                        ${on?'✓':''} ${txt}</span>`;
-
-                // 예약 상세 (booking.py가 넣은 detail) — 접이식
-                const dt = s.detail || {};
-                const rows = [];
-                if (dt.kmongNo) rows.push(['크몽번호', dt.kmongNo]);
-                if (dt.name)    rows.push(['이름', dt.name]);
-                if (dt.phone)   rows.push(['전화', dt.phone]);
-                if (dt.address) rows.push(['주소', dt.address]);
-                if (dt.amount)  rows.push(['가격', dt.amount]);
-                if (dt.product) rows.push(['제품', dt.product]);
-                const hasDetail = rows.length > 0;
-                const detailHtml = hasDetail ? `
-                    <div id="sd-${s.id}" style="display:none;margin-top:4px;padding:8px 10px;
-                        background:#FBF7F2;border-radius:6px;font-size:12px;line-height:1.7;">
-                        ${rows.map(r => `<div><b style="color:#888;display:inline-block;width:54px;">${r[0]}</b>${r[1]}</div>`).join('')}
-                    </div>` : '';
-
-                return `
-                <div class="memo-item" style="border-left-color:#E67E22;flex-direction:column;align-items:stretch;gap:6px;">
-                    <div style="display:flex;align-items:flex-start;gap:8px;${hasDetail?'cursor:pointer;':''}"
-                        ${hasDetail?`onclick="toggleScheduleDetail('${s.id}')"`:''}>
-                        <div style="flex:1;">
-                            <div class="memo-text">${s.time ? `<b style="color:#E67E22;">${s.time}</b>  ` : ''}${s.title}${hasDetail?' <span style="color:#bbb;font-size:11px;">▾</span>':''}</div>
-                        </div>
-                        <button onclick="event.stopPropagation();editSchedule('${s.id}')" style="background:none;border:none;
-                            cursor:pointer;font-size:14px;padding:2px;">✏️</button>
-                        <button onclick="event.stopPropagation();deleteSchedule('${s.id}')" style="background:none;border:none;
-                            cursor:pointer;font-size:14px;padding:2px;">🗑️</button>
-                    </div>
-                    ${detailHtml}
-                    <div>
-                        ${chip(m.confirm, '확정문자', 'confirm')}
-                        ${chip(m.before, '당일문자', 'before')}
-                        ${chip(m.after, '이후문자', 'after')}
-                    </div>
-                </div>`;
-            }).join('');
-            return `
-                <div style="margin-bottom:14px;">
-                    <div style="font-size:12px;font-weight:800;color:${isToday?'#E67E22':'#888'};margin-bottom:6px;">
-                        ${label}${isToday ? ' · 오늘' : ''}
-                    </div>
-                    ${items}
-                </div>`;
-        }).join('');
-
-        el.innerHTML = toolbar + body;
-    }
+        // 비동기로 JSONbin 최신 데이터 fetch 후 주입 (캐시 폴백 없이)
+        try {
+            const xhr = new XMLHttpRequest();
+            xhr.open('GET', JSONBIN_URL + '/latest', true);
+            xhr.setRequestHeader('X-Master-Key', JSONBIN_KEY);
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    const data = JSON.parse(xhr.responseText).record;
+                    localStorage.setItem('progress_v1', JSON.stringify(data));
+                    doInject(data);
+                } else {
+                    doInject(JSON.parse(localStorage.getItem('progress_v1')) || {});
+                }
+            };
+            xhr.onerror = function() {
+                doInject(JSON.parse(localStorage.getItem('progress_v1')) || {});
+            };
+            xhr.send();
+        } catch(e) {
+            doInject(JSON.parse(localStorage.getItem('progress_v1')) || {});
+        }
+    })();
     // ─────────────────────────────────────────────────────────────────
 </script>
 </body>
