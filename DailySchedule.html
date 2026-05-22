@@ -93,6 +93,15 @@
         .prog-btn.blue { background:var(--tomorrow-clr); color:white; border:none; }
         .prog-today-tag { display:inline-block; background:#E74C3C; color:white; font-size:9px; font-weight:900; padding:1px 5px; border-radius:6px; margin-left:4px; }
 
+        /* 예약 탭 */
+        .tab-btn[data-tab="booking"].active { color:#8E44AD; border-bottom:3px solid #8E44AD; }
+        .booking-date-group { margin-bottom:12px; }
+        .booking-date-label { font-size:11px; font-weight:900; color:#8E44AD; padding:4px 10px; background:#F3E5F5; border-radius:4px; margin-bottom:4px; }
+        .booking-card { background:white; border:1px solid #eee; border-left:4px solid #8E44AD; border-radius:6px; padding:10px 12px; margin-bottom:5px; }
+        .booking-title { font-size:13.5px; font-weight:bold; color:#333; }
+        .booking-time { font-size:11px; color:#8E44AD; font-weight:800; margin-top:2px; }
+        .booking-empty { text-align:center; color:#aaa; font-size:13px; padding:40px 0; }
+
         /* 달력 탭 */
         .tab-btn[data-tab="cal"].active { color:#E67E22; border-bottom:3px solid #E67E22; }
         .cal-month-nav { display:flex; justify-content:space-between; align-items:center; padding:8px 12px; background:white; border-bottom:1px solid #eee; flex-shrink:0; }
@@ -128,6 +137,7 @@
         <button class="tab-btn" data-tab="favorites" onclick="openTab('favorites', this)">즐겨찾기</button>
         <button class="tab-btn" data-tab="progress" onclick="openTab('progress', this)">진도표</button>
         <button class="tab-btn" data-tab="memo" onclick="openTab('memo', this)">메모</button>
+        <button class="tab-btn" data-tab="booking" onclick="openTab('booking', this); renderBookingTab()">예약</button>
         <button class="tab-btn" data-tab="cal" onclick="openTab('cal', this)">달력</button>
     </nav>
 
@@ -159,6 +169,9 @@
             <button class="btn-action" onclick="addMemo()" style="background:#2C3E50;color:white;border:none;width:50px;margin-left:6px;">추가</button>
         </div>
         <div id="list-memo" class="scroll-area"></div>
+    </section>
+    <section id="tab-booking" class="tab-content">
+        <div id="list-booking" class="scroll-area"></div>
     </section>
     <section id="tab-cal" class="tab-content" style="flex-direction:column;padding:0;">
         <div id="cal-container" style="display:flex;flex-direction:column;height:100%;"></div>
@@ -988,6 +1001,47 @@
 
     function calPrev() { if(calMonth===0){calYear--;calMonth=11;}else calMonth--; renderCalendar(); }
     function calNext() { if(calMonth===11){calYear++;calMonth=0;}else calMonth++; renderCalendar(); }
+
+    function renderBookingTab() {
+        const el = document.getElementById('list-booking');
+        if (!el) return;
+        el.innerHTML = '<div class="booking-empty">불러오는 중...</div>';
+        const today = getRawDate();
+        try {
+            const xhr = new XMLHttpRequest();
+            xhr.open('GET', JSONBIN_URL + '/latest', true);
+            xhr.setRequestHeader('X-Master-Key', JSONBIN_KEY);
+            xhr.onload = function() {
+                if (xhr.status !== 200) { el.innerHTML = '<div class="booking-empty">불러오기 실패</div>'; return; }
+                const schedules = (JSON.parse(xhr.responseText).record.schedules || [])
+                    .filter(s => s.date >= today)
+                    .sort((a, b) => (a.date + (a.time||'')) < (b.date + (b.time||'')) ? -1 : 1);
+                if (!schedules.length) { el.innerHTML = '<div class="booking-empty">예정된 예약이 없습니다</div>'; return; }
+                const groups = {};
+                schedules.forEach(s => {
+                    if (!groups[s.date]) groups[s.date] = [];
+                    groups[s.date].push(s);
+                });
+                const DOW = ['일','월','화','수','목','금','토'];
+                let html = '';
+                Object.keys(groups).sort().forEach(date => {
+                    const d = new Date(date);
+                    const dow = DOW[d.getDay()];
+                    const isToday = date === today;
+                    const label = `${d.getMonth()+1}/${d.getDate()}(${dow})${isToday ? ' 오늘' : ''}`;
+                    html += `<div class="booking-date-group"><div class="booking-date-label">${label}</div>`;
+                    groups[date].forEach(s => {
+                        const timeStr = s.time ? s.time : '시간미정';
+                        html += `<div class="booking-card"><div class="booking-title">${s.title}</div><div class="booking-time">${timeStr}</div></div>`;
+                    });
+                    html += '</div>';
+                });
+                el.innerHTML = html;
+            };
+            xhr.onerror = function() { el.innerHTML = '<div class="booking-empty">네트워크 오류</div>'; };
+            xhr.send();
+        } catch(e) { el.innerHTML = '<div class="booking-empty">오류: ' + e.message + '</div>'; }
+    }
 
     // undefined 항목 자동 정리
     (function cleanUndefined() {
