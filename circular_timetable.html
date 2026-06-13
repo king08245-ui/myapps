@@ -419,7 +419,82 @@ let editId=null, selColor=COLORS[0], selRepeat='daily', repeatOn=false;
 let dragState=null; // {startAngle, previewEl}
 
 // ════ 유틸 ════
-function saveLocal(){localStorage.setItem('circ_local',JSON.stringify(schedules));}
+// circular 자체 일정을 JSONbin circular_routines 와 양방향 동기화
+// (localStorage 'circ_local' 은 오프라인 캐시로 유지)
+let routinesSyncTimer = null;
+let routinesSyncing = false;
+
+function saveLocal(){
+  localStorage.setItem('circ_local', JSON.stringify(schedules));
+  // 입력이 연이어 들어올 수 있어 디바운스 — 마지막 변경 1초 후 JSONbin 푸시
+  clearTimeout(routinesSyncTimer);
+  routinesSyncTimer = setTimeout(pushRoutinesToJsonbin, 1000);
+}
+
+async function pushRoutinesToJsonbin(){
+  if(routinesSyncing) return;
+  routinesSyncing = true;
+  try{
+    // 현재 JSONbin 데이터 GET
+    const get = await fetch(CIRC_JSONBIN_URL + '/latest',
+      { headers: {'X-Master-Key': CIRC_JSONBIN_KEY} });
+    if(!get.ok) throw new Error('GET '+get.status);
+    const rec = (await get.json()).record || {};
+    rec.circular_routines = schedules.slice();
+    // PUT
+    const put = await fetch(CIRC_JSONBIN_URL, {
+      method:'PUT',
+      headers: {'Content-Type':'application/json','X-Master-Key': CIRC_JSONBIN_KEY},
+      body: JSON.stringify(rec)
+    });
+    if(!put.ok) throw new Error('PUT '+put.status);
+    // 캐시 갱신
+    localStorage.setItem('progress_v1', JSON.stringify(rec));
+  }catch(e){
+    // 동기화 실패해도 로컬은 이미 저장됨 — 다음 변경 시 재시도
+    console.warn('routines 동기화 실패(로컬은 저장됨):', e);
+  }finally{
+    routinesSyncing = false;
+  }
+}
+
+// JSONbin에서 circular_routines 가져와 다른 기기에서 만든 일정 합치기
+async function pullRoutinesFromJsonbin(){
+  try{
+    const res = await fetch(CIRC_JSONBIN_URL + '/latest',
+      { headers: {'X-Master-Key': CIRC_JSONBIN_KEY} });
+    if(!res.ok) return;
+    const rec = (await res.json()).record || {};
+    const remote = rec.circular_routines || [];
+    // 같은 id면 ts 새로운 쪽 우선. 없는 id 추가.
+    const map = new Map();
+    schedules.forEach(s => map.set(String(s.id), s));
+    let changed = false;
+    remote.forEach(r => {
+      if(!r || !r.id) return;
+      const key = String(r.id);
+      const cur = map.get(key);
+      if(!cur){
+        map.set(key, r);
+        changed = true;
+      } else {
+        const rt = r.ts || 0, ct = cur.ts || 0;
+        if(rt > ct){ map.set(key, r); changed = true; }
+      }
+    });
+    if(changed){
+      schedules = Array.from(map.values()).map(s=>({...s, date: s.date||TODAY}));
+      localStorage.setItem('circ_local', JSON.stringify(schedules));
+      // 캐시 갱신
+      localStorage.setItem('progress_v1', JSON.stringify(rec));
+      // 화면이 이미 그려져 있으면 다시 그림
+      if(typeof drawClock === 'function'){ drawClock(); drawInlineList(); }
+    }
+  }catch(e){
+    console.warn('routines pull 실패:', e);
+  }
+}
+
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
 function timeToMins(t){const[h,m]=t.split(':').map(Number);return h*60+m;}
 function minsToTime(m){const mm=((m%1440)+1440)%1440;return `${String(Math.floor(mm/60)).padStart(2,'0')}:${String(mm%60).padStart(2,'0')}`;}
@@ -1127,7 +1202,8 @@ document.getElementById('btnSave').addEventListener('click',()=>{
     date: document.getElementById('inDate').value || currentDate,
     title, memo: document.getElementById('inMemo').value.trim(),
     start, end, color: selColor,
-    repeat: repeatOn ? selRepeat : null
+    repeat: repeatOn ? selRepeat : null,
+    ts: Date.now()  // 다중 기기 동기화: 나중 수정이 이김
   };
   if(editId){
     const i = schedules.findIndex(x=>String(x.id)===editId);
@@ -1600,6 +1676,12 @@ svgEl2.addEventListener('mouseleave',()=>{removeDragPreview();dragState=null;});
 // ════ 초기 실행 ════
 updateDateNav(); // 날짜 네비 + drawClock + syncFromDailySchedule 포함
 setInterval(()=>{ if(currentDate===TODAY) drawClock(); }, 30000);
+
+// 다른 기기에서 만든 자체 일정 자동 수신 (앱 열 때 + 다른 앱 보다 돌아올 때)
+pullRoutinesFromJsonbin();
+document.addEventListener('visibilitychange', () => {
+  if(!document.hidden) pullRoutinesFromJsonbin();
+});
 </script>
 </body>
 </html>
