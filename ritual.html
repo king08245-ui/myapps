@@ -240,13 +240,28 @@ function findToday(rec){
   debugLog.push(`후보 ${candidates.length}개 발견`);
   candidates.forEach((c, i) => debugLog.push(`  [${i}] "${c.title}" (${c.src})`));
 
-  // act 강제 지정이면 그것에 맞는 것 우선
+  // 후보 선택 우선순위:
+  // 1순위: forceAct(URL 파라미터)에 맞는 후보
+  // 2순위: 인식 가능한 활동 키워드(러닝/낚시/공부 등)가 들어간 후보 — 시간 빠른 순
+  // 3순위: 첫 후보 (아무거나)
   let chosen;
   if(forceAct){
-    const f = candidates.find(c => detectActivity(c.title) === forceAct);
-    chosen = f || candidates[0] || null;
+    chosen = candidates.find(c => detectActivity(c.title) === forceAct) || null;
   } else {
-    chosen = candidates[0] || null;
+    const recognized = candidates.filter(c => detectActivity(c.title) !== null);
+    if(recognized.length > 0){
+      // 시간 빠른 순 정렬 (time 있는 것 먼저, 같으면 그대로)
+      recognized.sort((a, b) => {
+        const ta = a.time || '99:99';
+        const tb = b.time || '99:99';
+        return ta.localeCompare(tb);
+      });
+      chosen = recognized[0];
+      debugLog.push(`인식된 활동 ${recognized.length}개 중 첫 번째 선택`);
+    } else {
+      chosen = null;
+      debugLog.push(`인식된 활동 없음 — 후보들 다 일반 일정`);
+    }
   }
 
   if(debug){
@@ -612,11 +627,21 @@ async function init(){
     // 오늘 활동 찾기
     const activity = findToday(rec);
     if(!activity){
+      // 일정이 아예 없는지, 의식 가능한 활동이 없는지 구분
+      const today = todayStr();
+      const totalToday = (rec.schedules || []).filter(s => s && s.date === today).length
+                       + (rec.circular_routines || []).filter(s => s && (s.date === today || s.repeat)).length;
+      const msg = totalToday > 0
+        ? `오늘 일정 ${totalToday}개 중 의식 가능한 활동이 없어요`
+        : '오늘 예정된 활동이 없어요';
+      const sub = totalToday > 0
+        ? '일정 제목에 "러닝/낚시/공부" 같은 키워드를 넣어주세요'
+        : '일정을 먼저 만들어주세요';
       document.getElementById('root').innerHTML = `
         <div class="card status">
           <div class="big">📅</div>
-          <div class="h1" style="margin-bottom:8px;">오늘 예정된 활동이 없어요</div>
-          <div class="sub">일정을 먼저 만들어주세요</div>
+          <div class="h1" style="margin-bottom:8px;">${msg}</div>
+          <div class="sub">${sub}</div>
         </div>
       `;
       return;
