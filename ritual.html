@@ -193,24 +193,37 @@ function todayStr(){
 function findToday(rec){
   const params = new URLSearchParams(location.search);
   const forceAct = params.get('act');
+  const debug = params.get('debug') === '1';
   const today = todayStr();
 
   const candidates = [];
+  const debugLog = [];
+  debugLog.push(`오늘 날짜: ${today}`);
+  debugLog.push(`schedules 개수: ${(rec.schedules || []).length}`);
+  debugLog.push(`circular_routines 개수: ${(rec.circular_routines || []).length}`);
+
   // schedules (단발)
-  (rec.schedules || []).forEach(s => {
+  (rec.schedules || []).forEach((s, i) => {
     if(!s || !s.title) return;
+    debugLog.push(`[sched ${i}] "${s.title}" date="${s.date}"`);
     if(s.date === today) candidates.push({ src:'schedules', ...s });
   });
   // circular_routines (반복)
-  (rec.circular_routines || []).forEach(s => {
+  (rec.circular_routines || []).forEach((s, i) => {
     if(!s || !s.title) return;
+    debugLog.push(`[routine ${i}] "${s.title}" date="${s.date}" repeat=${JSON.stringify(s.repeat)}`);
     if(s.repeat){
-      // 반복 일정 — 오늘 요일 매칭 (단순화: daily=매일, weekly=같은요일)
+      // 반복 일정 — 오늘 요일 매칭
       const d = new Date();
-      const dow = d.getDay();
+      const dow = d.getDay();  // 일=0, 월=1, ... 토=6
       const created = s.date ? new Date(s.date) : d;
       if(s.repeat === 'daily' || s.repeat === '매일'){
         candidates.push({ src:'routine', ...s, date: today });
+      } else if(s.repeat === 'weekday' || s.repeat === '평일'){
+        // 평일 (월~금)
+        if(dow >= 1 && dow <= 5) candidates.push({ src:'routine', ...s, date: today });
+      } else if(s.repeat === 'weekend' || s.repeat === '주말'){
+        if(dow === 0 || dow === 6) candidates.push({ src:'routine', ...s, date: today });
       } else if(s.repeat === 'weekly' || s.repeat === '매주'){
         if(created.getDay() === dow) candidates.push({ src:'routine', ...s, date: today });
       } else if(Array.isArray(s.repeat)){
@@ -224,13 +237,30 @@ function findToday(rec){
     }
   });
 
+  debugLog.push(`후보 ${candidates.length}개 발견`);
+  candidates.forEach((c, i) => debugLog.push(`  [${i}] "${c.title}" (${c.src})`));
+
   // act 강제 지정이면 그것에 맞는 것 우선
+  let chosen;
   if(forceAct){
     const f = candidates.find(c => detectActivity(c.title) === forceAct);
-    if(f) return f;
+    chosen = f || candidates[0] || null;
+  } else {
+    chosen = candidates[0] || null;
   }
-  // 첫 후보 반환 (없으면 null)
-  return candidates[0] || null;
+
+  if(debug){
+    document.getElementById('root').innerHTML = `
+      <div class="card">
+        <div class="h1" style="margin-bottom:12px;">디버그 정보</div>
+        <pre style="font-size:11px; line-height:1.6; white-space:pre-wrap; word-break:break-all; background:#FAF7F1; padding:12px; border-radius:8px;">${debugLog.join('\n')}</pre>
+        <div style="font-size:13px; margin-top:14px;">선택된 활동: ${chosen ? `"${chosen.title}"` : '없음'}</div>
+      </div>
+    `;
+    return null;  // 디버그 모드는 의식 진행 안 함
+  }
+
+  return chosen;
 }
 
 // ════ 템플릿 기본값 (JSONbin에 ritual_templates 없을 때 폴백) ════════
