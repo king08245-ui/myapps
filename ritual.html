@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>의식</title>
+<style>
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+body {
+  margin: 0; padding: 16px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  background: #F5F3EE;
+  color: #2A2A28;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 420px; margin: 0 auto; }
+.card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 20px 18px;
+  margin-bottom: 14px;
+  border: 0.5px solid rgba(0,0,0,0.08);
+}
+.title-row { text-align: center; margin-bottom: 16px; }
+.eyebrow { font-size: 11px; color: #888; letter-spacing: 1.5px; margin-bottom: 6px; font-weight: 500; }
+.h1 { font-size: 20px; font-weight: 600; margin: 0 0 4px; }
+.sub { font-size: 13px; color: #6B6B68; margin: 0; }
+
+/* 목표 3층 */
+.goal-stack { display: flex; flex-direction: column; gap: 10px; }
+.goal-row {
+  background: #FAF7F1;
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+.goal-label { font-size: 11px; color: #888; margin-bottom: 4px; letter-spacing: 0.5px; }
+.goal-value { font-size: 14px; font-weight: 500; line-height: 1.5; }
+.goal-bar { background: #E7E2D7; height: 5px; border-radius: 3px; margin-top: 8px; overflow: hidden; }
+.goal-bar-fill { height: 100%; background: #4A8FD9; transition: width 0.5s ease; }
+.goal-bar-fill.success { background: #4FAE7A; }
+
+/* 주간 동그라미 */
+.week-dots { display: flex; justify-content: center; gap: 8px; margin: 4px 0; }
+.dot {
+  width: 30px; height: 30px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 500;
+}
+.dot.done { background: #DEF1E5; color: #2E7A4F; }
+.dot.now { background: #DDE8F7; color: #2A5FA0; border: 1.5px solid #4A8FD9; }
+.dot.pending { background: #ECE9E2; color: #A6A39B; }
+
+/* 준비물 그리드 (바비 인형식) */
+.prep-stage {
+  position: relative;
+  width: 280px; height: 280px;
+  margin: 14px auto 6px;
+}
+.prep-slot {
+  position: absolute;
+  width: 62px; height: 62px;
+  background: #fff;
+  border: 0.5px solid rgba(0,0,0,0.15);
+  border-radius: 12px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: transform 0.15s, opacity 0.2s, background 0.2s;
+  user-select: none;
+}
+.prep-slot:active { transform: scale(0.95); }
+.prep-slot.checked { background: #DEF1E5; opacity: 0.55; }
+.prep-icon { font-size: 26px; line-height: 1; }
+.prep-label { font-size: 9px; color: #888; margin-top: 3px; }
+.prep-slot.checked .prep-label { color: #2E7A4F; }
+
+/* 가운데 사람 */
+.center-me {
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  width: 104px; height: 104px;
+  border-radius: 50%;
+  background: #fff;
+  border: 0.5px solid rgba(0,0,0,0.12);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 50px;
+}
+
+.prep-count {
+  text-align: center;
+  font-size: 13px;
+  color: #6B6B68;
+  margin-bottom: 14px;
+}
+
+/* 버튼 */
+.btn {
+  width: 100%;
+  padding: 14px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  background: #2A2A28;
+  color: #fff;
+  font-family: inherit;
+  transition: opacity 0.2s, background 0.2s;
+}
+.btn:active { opacity: 0.85; }
+.btn:disabled { background: #D5D2CA; color: #fff; cursor: not-allowed; }
+.btn.secondary { background: #fff; color: #2A2A28; border: 0.5px solid rgba(0,0,0,0.15); }
+
+/* 종료 화면 */
+.done-icon { font-size: 56px; text-align: center; margin: 8px 0 4px; }
+.delta-row {
+  display: flex; justify-content: space-between; align-items: baseline;
+  padding: 10px 0;
+  border-bottom: 0.5px solid rgba(0,0,0,0.06);
+  font-size: 14px;
+}
+.delta-row:last-child { border-bottom: none; }
+.delta-row .label { color: #6B6B68; font-size: 13px; }
+.delta-row .val { font-weight: 500; }
+.delta-row .add { color: #2E7A4F; font-weight: 600; font-size: 13px; margin-left: 6px; }
+
+/* 에러/로딩 */
+.status {
+  text-align: center;
+  padding: 24px 16px;
+  color: #6B6B68;
+  font-size: 14px;
+}
+.status .big { font-size: 22px; margin-bottom: 8px; }
+
+/* 작은 도움말 */
+.hint { font-size: 11px; color: #A6A39B; text-align: center; margin-top: 8px; }
+</style>
+</head>
+<body>
+<div class="wrap" id="root">
+  <div class="status"><div class="big">⏳</div>불러오는 중...</div>
+</div>
+
+<script>
+// ════ JSONbin 설정 ════════════════════════════════════════════════
+const KEY  = '$2a$10$y3gWHPgwraqoSOCc/hsLmer/VVbxGqWn6zDw87HRma/xgHjPQjywy';
+const BIN  = '69cf3e8daaba882197bdd202';
+const URL_ = 'https://api.jsonbin.io/v3/b/' + BIN;
+
+// ════ 활동 종류 인식 ════════════════════════════════════════════════
+// title 에 어떤 키워드가 있으면 어떤 ritual_templates 키를 쓸지
+function detectActivity(title){
+  if(!title) return null;
+  const t = title.toLowerCase();
+  // 키워드 우선순위 (긴 것 먼저)
+  const map = [
+    ['러닝', 'running'], ['running', 'running'], ['뛰기', 'running'],
+    ['헬스', 'gym'], ['운동', 'gym'],
+    ['낚시', 'fishing'],
+    ['공부', 'study'], ['스터디', 'study'],
+    ['전단지', 'flyer']
+  ];
+  for(const [kw, key] of map){
+    if(t.includes(kw)) return key;
+  }
+  return null;
+}
+
+// ════ JSONbin GET/PUT ═══════════════════════════════════════════════
+async function loadAll(){
+  const res = await fetch(URL_ + '/latest', { headers: { 'X-Master-Key': KEY }});
+  if(!res.ok) throw new Error('JSONbin 응답 오류 ' + res.status);
+  return (await res.json()).record || {};
+}
+async function saveAll(rec){
+  const res = await fetch(URL_, {
+    method: 'PUT',
+    headers: { 'Content-Type':'application/json', 'X-Master-Key': KEY },
+    body: JSON.stringify(rec)
+  });
+  if(!res.ok) throw new Error('저장 실패 ' + res.status);
+}
+
+// ════ 오늘 활동 찾기 ════════════════════════════════════════════════
+// URL 파라미터 우선: ?act=running&id=xxx
+// 없으면 오늘 날짜의 schedules / circular_routines 에서 첫 번째 활동
+function todayStr(){
+  return new Date().toLocaleDateString('sv-SE'); // YYYY-MM-DD
+}
+function findToday(rec){
+  const params = new URLSearchParams(location.search);
+  const forceAct = params.get('act');
+  const today = todayStr();
+
+  const candidates = [];
+  // schedules (단발)
+  (rec.schedules || []).forEach(s => {
+    if(!s || !s.title) return;
+    if(s.date === today) candidates.push({ src:'schedules', ...s });
+  });
+  // circular_routines (반복)
+  (rec.circular_routines || []).forEach(s => {
+    if(!s || !s.title) return;
+    if(s.repeat){
+      // 반복 일정 — 오늘 요일 매칭 (단순화: daily=매일, weekly=같은요일)
+      const d = new Date();
+      const dow = d.getDay();
+      const created = s.date ? new Date(s.date) : d;
+      if(s.repeat === 'daily' || s.repeat === '매일'){
+        candidates.push({ src:'routine', ...s, date: today });
+      } else if(s.repeat === 'weekly' || s.repeat === '매주'){
+        if(created.getDay() === dow) candidates.push({ src:'routine', ...s, date: today });
+      } else if(Array.isArray(s.repeat)){
+        if(s.repeat.includes(dow)) candidates.push({ src:'routine', ...s, date: today });
+      } else {
+        // 알 수 없는 repeat — 일단 포함
+        candidates.push({ src:'routine', ...s, date: today });
+      }
+    } else if(s.date === today){
+      candidates.push({ src:'routine', ...s });
+    }
+  });
+
+  // act 강제 지정이면 그것에 맞는 것 우선
+  if(forceAct){
+    const f = candidates.find(c => detectActivity(c.title) === forceAct);
+    if(f) return f;
+  }
+  // 첫 후보 반환 (없으면 null)
+  return candidates[0] || null;
+}
+
+// ════ 템플릿 기본값 (JSONbin에 ritual_templates 없을 때 폴백) ════════
+const DEFAULT_TEMPLATES = {
+  running: {
+    label: '러닝',
+    icon: '🏃',
+    prep: [
+      { key:'top',    icon:'👕',  label:'반팔',   pos:'right' },
+      { key:'shorts', icon:'🩳',  label:'반바지', pos:'left' },
+      { key:'hip',    icon:'👜',  label:'힙색',   pos:'bottomLeft' },
+      { key:'phone',  icon:'📱',  label:'핸드폰', pos:'bottomRight' },
+      { key:'phones', icon:'🎧',  label:'헤드폰', pos:'topLeft' },
+      { key:'cap',    icon:'🧢',  label:'모자',   pos:'top' },
+      { key:'sun',    icon:'🕶️', label:'썬글라스', pos:'topRight' },
+      { key:'socks',  icon:'🧦',  label:'양말',   pos:'bottom' }
+    ],
+    goals: {
+      longterm: { text:'10km 한 번에 달리기', months:3 },
+      monthly:  { type:'count', target:20, unit:'회' },
+      weekly:   { target:5, unit:'회' }
+    },
+    logKey: 'running_log'
+  }
+};
+
+// ════ 진행도 계산 ═══════════════════════════════════════════════════
+function calcProgress(rec, activityKey){
+  const log = rec[ activityKey === 'running' ? 'running_log' : (activityKey+'_log') ] || [];
+  const now = new Date();
+  const yyyy = now.getFullYear();
+  const mm   = now.getMonth();
+  // 이번 주 (월~일)
+  const today = new Date(yyyy, mm, now.getDate());
+  const dow   = (today.getDay() + 6) % 7; // 월=0
+  const weekStart = new Date(today); weekStart.setDate(today.getDate() - dow);
+  const weekEnd   = new Date(weekStart); weekEnd.setDate(weekStart.getDate() + 6);
+
+  const inMonth = log.filter(e => {
+    const d = new Date(e.date);
+    return d.getFullYear() === yyyy && d.getMonth() === mm;
+  });
+  const inWeek = log.filter(e => {
+    const d = new Date(e.date);
+    return d >= weekStart && d <= new Date(weekEnd.getFullYear(), weekEnd.getMonth(), weekEnd.getDate(), 23, 59, 59);
+  });
+
+  return {
+    monthCount: inMonth.length,
+    weekCount:  inWeek.length,
+    monthEntries: inMonth,
+    weekEntries:  inWeek
+  };
+}
+
+// ════ 화면 — STEP 1: 준비 ═══════════════════════════════════════════
+function renderPrep(activity, template, progress){
+  const root = document.getElementById('root');
+  const g = template.goals;
+  const monthDone = progress.monthCount;
+  const monthTarget = g.monthly.target;
+  const weekDone = progress.weekCount;
+  const weekTarget = g.weekly.target;
+
+  // 주간 도트 (목표 횟수만큼)
+  const dots = [];
+  for(let i = 1; i <= weekTarget; i++){
+    let cls = 'pending';
+    if(i <= weekDone) cls = 'done';
+    else if(i === weekDone + 1) cls = 'now';
+    dots.push(`<div class="dot ${cls}">${cls==='done' ? '✓' : i}</div>`);
+  }
+
+  // 준비물 슬롯 위치
+  const positions = {
+    top:         'left:50%; top:0; transform:translateX(-50%);',
+    topRight:    'right:30px; top:32px;',
+    right:       'right:0; top:50%; transform:translateY(-50%);',
+    bottomRight: 'right:30px; bottom:32px;',
+    bottom:      'left:50%; bottom:0; transform:translateX(-50%);',
+    bottomLeft:  'left:30px; bottom:32px;',
+    left:        'left:0; top:50%; transform:translateY(-50%);',
+    topLeft:     'left:30px; top:32px;'
+  };
+
+  const prepSlots = template.prep.map(p => `
+    <div class="prep-slot" data-key="${p.key}" data-label="${p.label}" style="${positions[p.pos] || positions.top}">
+      <div class="prep-icon">${p.icon}</div>
+      <div class="prep-label">${p.label}</div>
+    </div>
+  `).join('');
+
+  root.innerHTML = `
+    <div class="card">
+      <div class="title-row">
+        <div class="eyebrow">오늘의 ${template.label}</div>
+        <div class="h1">이번 주 ${weekDone + 1}번째</div>
+        <div class="sub">${activity.time || ''} 출발 · ${activity.title}</div>
+      </div>
+      <div class="week-dots">${dots.join('')}</div>
+    </div>
+
+    <div class="card">
+      <div class="goal-stack">
+        <div class="goal-row">
+          <div class="goal-label">3개월 목표</div>
+          <div class="goal-value">${g.longterm.text}</div>
+        </div>
+        <div class="goal-row">
+          <div class="goal-label">이번 달</div>
+          <div class="goal-value">${monthDone} / ${monthTarget}${g.monthly.unit}</div>
+          <div class="goal-bar"><div class="goal-bar-fill" style="width:${Math.min(100, monthDone/monthTarget*100)}%"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="prep-stage">
+        ${prepSlots}
+        <div class="center-me">${template.icon}</div>
+      </div>
+      <div class="prep-count" id="prepCount">0 / ${template.prep.length} 준비됨</div>
+      <button class="btn" id="goBtn" disabled>출발</button>
+      <div class="hint">준비물을 탭해서 체크하세요</div>
+    </div>
+  `;
+
+  // 인터랙션
+  const slots = root.querySelectorAll('.prep-slot');
+  const countEl = document.getElementById('prepCount');
+  const goBtn = document.getElementById('goBtn');
+  const total = slots.length;
+  let done = 0;
+
+  slots.forEach(s => {
+    const orig = s.innerHTML;
+    s.dataset.orig = orig;
+    s.addEventListener('click', () => {
+      const on = s.dataset.on === '1';
+      if(on){
+        s.dataset.on = '0';
+        s.classList.remove('checked');
+        s.innerHTML = s.dataset.orig;
+        done--;
+      } else {
+        s.dataset.on = '1';
+        s.classList.add('checked');
+        s.innerHTML = `<div class="prep-icon">✓</div><div class="prep-label">${s.dataset.label}</div>`;
+        done++;
+      }
+      countEl.textContent = `${done} / ${total} 준비됨`;
+      goBtn.disabled = (done !== total);
+    });
+  });
+
+  goBtn.addEventListener('click', () => {
+    renderStart(activity, template, progress);
+  });
+}
+
+// ════ 화면 — STEP 2: 시작 의식 ══════════════════════════════════════
+function renderStart(activity, template, progress){
+  const root = document.getElementById('root');
+  const g = template.goals;
+  const weekDone = progress.weekCount;
+  const weekTarget = g.weekly.target;
+  const monthDone = progress.monthCount;
+  const monthTarget = g.monthly.target;
+
+  const dots = [];
+  for(let i = 1; i <= weekTarget; i++){
+    let cls = 'pending';
+    if(i <= weekDone) cls = 'done';
+    else if(i === weekDone + 1) cls = 'now';
+    dots.push(`<div class="dot ${cls}">${cls==='done' ? '✓' : i}</div>`);
+  }
+
+  root.innerHTML = `
+    <div class="card" style="text-align:center;">
+      <div class="eyebrow">시작 의식</div>
+      <div style="font-size:64px; margin:12px 0 4px;">${template.icon}</div>
+      <div class="h1">${template.label} 시작합니다</div>
+      <div class="sub" style="margin-bottom:18px;">이번 주 ${weekDone + 1}번째 · 목표 ${weekTarget}회</div>
+
+      <div class="goal-row" style="text-align:left; margin-bottom:12px;">
+        <div class="goal-label">3개월 목표</div>
+        <div class="goal-value">${g.longterm.text}</div>
+      </div>
+
+      <div class="goal-row" style="text-align:left; margin-bottom:16px;">
+        <div class="goal-label">이번 달 진행</div>
+        <div class="goal-value">${monthDone} / ${monthTarget}${g.monthly.unit} 완료</div>
+        <div class="goal-bar"><div class="goal-bar-fill" style="width:${Math.min(100, monthDone/monthTarget*100)}%"></div></div>
+      </div>
+
+      <div class="week-dots">${dots.join('')}</div>
+      <div class="hint" style="margin-bottom:16px;">이번 주 목표</div>
+
+      <button class="btn" id="startBtn">출발</button>
+    </div>
+  `;
+  document.getElementById('startBtn').addEventListener('click', () => {
+    // 시작 시각 기록 (localStorage)
+    const sessionKey = 'ritual_session_' + activity.id;
+    localStorage.setItem(sessionKey, JSON.stringify({
+      startedAt: new Date().toISOString(),
+      activity: detectActivity(activity.title),
+      title: activity.title
+    }));
+    renderInProgress(activity, template, progress);
+  });
+}
+
+// ════ 화면 — STEP 3: 진행 중 (대기) ═════════════════════════════════
+function renderInProgress(activity, template, progress){
+  const root = document.getElementById('root');
+  root.innerHTML = `
+    <div class="card" style="text-align:center;">
+      <div class="eyebrow">진행 중</div>
+      <div style="font-size:80px; margin:24px 0 8px;">${template.icon}</div>
+      <div class="h1">${template.label} 중</div>
+      <div class="sub" style="margin-bottom:24px;">끝나면 아래 버튼을 눌러주세요</div>
+      <button class="btn" id="doneBtn">완료</button>
+    </div>
+    <div class="card" style="text-align:center;">
+      <div class="hint">실수로 시작했다면</div>
+      <button class="btn secondary" id="cancelBtn" style="margin-top:8px;">취소</button>
+    </div>
+  `;
+  document.getElementById('doneBtn').addEventListener('click', async () => {
+    await recordCompletion(activity, template);
+    renderEnd(activity, template);
+  });
+  document.getElementById('cancelBtn').addEventListener('click', () => {
+    if(confirm('이번 의식을 취소할까요? 기록되지 않습니다.')){
+      const sessionKey = 'ritual_session_' + activity.id;
+      localStorage.removeItem(sessionKey);
+      renderCancelled(template);
+    }
+  });
+}
+
+// ════ 완료 기록 → JSONbin ════════════════════════════════════════════
+async function recordCompletion(activity, template){
+  try{
+    const rec = await loadAll();
+    const logKey = template.logKey || (detectActivity(activity.title) + '_log');
+    if(!rec[logKey]) rec[logKey] = [];
+
+    const sessionKey = 'ritual_session_' + activity.id;
+    const session = JSON.parse(localStorage.getItem(sessionKey) || '{}');
+
+    rec[logKey].push({
+      id: Date.now(),
+      date: todayStr(),
+      title: activity.title,
+      activity: detectActivity(activity.title),
+      startedAt: session.startedAt || null,
+      completedAt: new Date().toISOString()
+    });
+    await saveAll(rec);
+    localStorage.removeItem(sessionKey);
+    return true;
+  }catch(e){
+    alert('기록 저장 실패: ' + e.message + '\n다시 시도해주세요.');
+    return false;
+  }
+}
+
+// ════ 화면 — STEP 4: 종료 의식 ══════════════════════════════════════
+async function renderEnd(activity, template){
+  // 다시 로드해서 방금 추가한 기록 반영
+  const rec = await loadAll();
+  const actKey = detectActivity(activity.title);
+  const progress = calcProgress(rec, actKey);
+
+  const g = template.goals;
+  const weekDone = progress.weekCount;
+  const weekTarget = g.weekly.target;
+  const monthDone = progress.monthCount;
+  const monthTarget = g.monthly.target;
+  const remaining = Math.max(0, weekTarget - weekDone);
+
+  const dots = [];
+  for(let i = 1; i <= weekTarget; i++){
+    let cls = 'pending';
+    if(i <= weekDone) cls = 'done';
+    dots.push(`<div class="dot ${cls}">${cls==='done' ? '✓' : i}</div>`);
+  }
+
+  const root = document.getElementById('root');
+  root.innerHTML = `
+    <div class="card" style="text-align:center;">
+      <div class="eyebrow">종료 의식</div>
+      <div class="done-icon">✓</div>
+      <div class="h1">${weekDone}번째 완료</div>
+      <div class="sub" style="margin-bottom:18px;">${
+        remaining === 0
+          ? '이번 주 목표 달성했어요'
+          : `목표 ${weekTarget}회까지 ${remaining}번 남았습니다`
+      }</div>
+
+      <div style="text-align:left;">
+        <div class="delta-row">
+          <span class="label">오늘 한 일</span>
+          <span class="val">${template.label} 1회 <span class="add">+1</span></span>
+        </div>
+        <div class="delta-row">
+          <span class="label">이번 달</span>
+          <span class="val">${monthDone} / ${monthTarget}${g.monthly.unit}</span>
+        </div>
+        <div class="delta-row">
+          <span class="label">이번 주</span>
+          <span class="val">${weekDone} / ${weekTarget}회</span>
+        </div>
+      </div>
+
+      <div style="margin: 18px 0 4px;">
+        <div class="week-dots">${dots.join('')}</div>
+      </div>
+
+      <div class="goal-row" style="text-align:left; margin: 16px 0 8px;">
+        <div class="goal-label">3개월 목표</div>
+        <div class="goal-value">${g.longterm.text}</div>
+      </div>
+
+      <div class="sub" style="margin-top:18px;">수고하셨어요</div>
+    </div>
+  `;
+}
+
+// 취소 화면
+function renderCancelled(template){
+  const root = document.getElementById('root');
+  root.innerHTML = `
+    <div class="card" style="text-align:center;">
+      <div style="font-size:48px; margin:16px 0 8px;">↩︎</div>
+      <div class="h1">취소되었습니다</div>
+      <div class="sub" style="margin-top:8px;">기록되지 않았어요</div>
+    </div>
+  `;
+}
+
+// ════ 시작 ═════════════════════════════════════════════════════════
+async function init(){
+  try{
+    const rec = await loadAll();
+
+    // 오늘 활동 찾기
+    const activity = findToday(rec);
+    if(!activity){
+      document.getElementById('root').innerHTML = `
+        <div class="card status">
+          <div class="big">📅</div>
+          <div class="h1" style="margin-bottom:8px;">오늘 예정된 활동이 없어요</div>
+          <div class="sub">일정을 먼저 만들어주세요</div>
+        </div>
+      `;
+      return;
+    }
+
+    // 활동 종류 인식
+    const actKey = detectActivity(activity.title);
+    if(!actKey){
+      document.getElementById('root').innerHTML = `
+        <div class="card status">
+          <div class="big">🤔</div>
+          <div class="h1" style="margin-bottom:8px;">활동을 인식 못 했어요</div>
+          <div class="sub">"${activity.title}" — 러닝/낚시/공부 같은 키워드를 일정 제목에 넣어주세요</div>
+        </div>
+      `;
+      return;
+    }
+
+    // 템플릿 가져오기 (JSONbin 우선, 폴백 기본값)
+    const templates = rec.ritual_templates || {};
+    const template = templates[actKey] || DEFAULT_TEMPLATES[actKey];
+    if(!template){
+      document.getElementById('root').innerHTML = `
+        <div class="card status">
+          <div class="big">⚙️</div>
+          <div class="h1" style="margin-bottom:8px;">${actKey} 템플릿이 없어요</div>
+          <div class="sub">ritual_templates 에 ${actKey} 를 추가해주세요</div>
+        </div>
+      `;
+      return;
+    }
+
+    // 진행도 계산
+    const progress = calcProgress(rec, actKey);
+
+    // 중간에 끊겼던 세션 복구
+    const sessionKey = 'ritual_session_' + activity.id;
+    const session = localStorage.getItem(sessionKey);
+    if(session){
+      // 이미 시작했음 → 진행 중 화면
+      renderInProgress(activity, template, progress);
+    } else {
+      // 준비부터
+      renderPrep(activity, template, progress);
+    }
+  }catch(e){
+    document.getElementById('root').innerHTML = `
+      <div class="card status">
+        <div class="big">⚠️</div>
+        <div class="h1" style="margin-bottom:8px;">불러오기 실패</div>
+        <div class="sub">${e.message}</div>
+      </div>
+    `;
+  }
+}
+
+init();
+</script>
+</body>
+</html>
