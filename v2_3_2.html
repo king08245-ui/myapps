@@ -669,7 +669,7 @@
                 const n = LiteGraph.createNode("map/text");
                 // [수정1] 초기 높이 = 1줄
                 n.size = [200, NODE_LINE_HEIGHT + NODE_PAD_H];
-                n.pos = [coord[0] - n.size[0]/2, coord[1] - n.size[1]/2];
+                n.pos = [coord[0], coord[1]];
                 graph.add(n);
                 setTimeout(() => n.openEditor(true), 50);
             } else {
