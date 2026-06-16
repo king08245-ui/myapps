@@ -96,7 +96,7 @@ main{flex:1;overflow:hidden;position:relative;}
 /* ── 시계 sticky ── */
 .clock-wrap{display:flex;flex-direction:column;align-items:center;padding:0;}
 .clock-sticky{position:sticky;top:0;z-index:20;background:var(--bg);width:100%;display:flex;flex-direction:column;align-items:center;padding:0 0 2px;}
-.clock-outer{position:relative;width:min(99vw,460px);height:min(99vw,460px);flex-shrink:0;}
+.clock-outer{position:relative;width:99vw;height:99vw;max-width:80vh;max-height:80vh;flex-shrink:0;}
 #clockSvg{width:100%;height:100%;display:block;touch-action:none;}
 .clock-center-info{position:absolute;top:42%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;width:140px;}
 .clock-time{font-family:'DM Mono',monospace;font-size:31px;font-weight:500;color:#1a1a2e;line-height:1.1;}
