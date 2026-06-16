@@ -96,7 +96,7 @@ main{flex:1;overflow:hidden;position:relative;}
 /* ── 시계 sticky ── */
 .clock-wrap{display:flex;flex-direction:column;align-items:center;padding:0;}
 .clock-sticky{position:sticky;top:0;z-index:20;background:var(--bg);width:100%;display:flex;flex-direction:column;align-items:center;padding:0 0 2px;}
-.clock-outer{position:relative;width:min(95vw,95vh);height:min(95vw,95vh);flex-shrink:0;}
+.clock-outer{position:relative;width:min(99vw,99vh);height:min(99vw,99vh);flex-shrink:0;}
 #clockSvg{width:100%;height:100%;display:block;touch-action:none;}
 .clock-center-info{position:absolute;top:42%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;width:140px;}
 .clock-time{font-family:'DM Mono',monospace;font-size:31px;font-weight:500;color:#1a1a2e;line-height:1.1;}
@@ -293,7 +293,7 @@ main{flex:1;overflow:hidden;position:relative;}
       <!-- 시계: sticky -->
       <div class="clock-sticky" id="clockSticky">
         <div class="clock-outer">
-          <svg id="clockSvg" viewBox="-40 -40 480 480" xmlns="http://www.w3.org/2000/svg"></svg>
+          <svg id="clockSvg" viewBox="-30 -30 460 460" xmlns="http://www.w3.org/2000/svg"></svg>
           <div class="clock-center-info">
             <div class="clock-time" id="nowTime">--:--</div>
             <div class="clock-sub">현재 시각</div>
