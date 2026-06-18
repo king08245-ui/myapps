@@ -234,6 +234,10 @@ main{flex:1;overflow:hidden;position:relative;}
 .repeat-opts.on{display:flex;}
 .repbtn{padding:5px 10px;border-radius:7px;border:1px solid var(--b2);background:var(--s3);color:var(--t2);font-size:12px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;transition:all .1s;}
 .repbtn.on{background:var(--acc);color:#fff;border-color:var(--acc);}
+.weekday-row{display:none;width:100%;gap:4px;margin-top:6px;justify-content:space-between;}
+.weekday-row.on{display:flex;}
+.wdbtn{flex:1;padding:7px 0;border-radius:7px;border:1px solid var(--b2);background:var(--s3);color:var(--t2);font-size:12px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;transition:all .1s;}
+.wdbtn.on{background:var(--acc);color:#fff;border-color:var(--acc);font-weight:600;}
 .btn-save{width:100%;padding:13px;background:var(--acc);border:none;border-radius:12px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;margin-top:6px;font-family:'Noto Sans KR',sans-serif;transition:opacity .1s,transform .1s;}
 .btn-save:active{opacity:.85;transform:scale(.98);}
 
@@ -375,6 +379,16 @@ main{flex:1;overflow:hidden;position:relative;}
           <button class="repbtn" data-rep="weekday">평일</button>
           <button class="repbtn" data-rep="weekend">주말</button>
           <button class="repbtn" data-rep="weekly">매주</button>
+          <button class="repbtn" data-rep="custom">요일선택</button>
+          <div class="weekday-row" id="weekdayRow">
+            <button class="wdbtn" data-dow="0">일</button>
+            <button class="wdbtn" data-dow="1">월</button>
+            <button class="wdbtn" data-dow="2">화</button>
+            <button class="wdbtn" data-dow="3">수</button>
+            <button class="wdbtn" data-dow="4">목</button>
+            <button class="wdbtn" data-dow="5">금</button>
+            <button class="wdbtn" data-dow="6">토</button>
+          </div>
         </div>
       </div>
       <button class="btn-save" id="btnSave">저장</button>
@@ -389,7 +403,7 @@ main{flex:1;overflow:hidden;position:relative;}
 <script>
 // ════ 상수 & 상태 ════
 const COLORS=['#7c6dfa','#ff6b9d','#ffd166','#4ecdc4','#ff9f43','#a29bfe','#70e1f5','#ff6b6b'];
-const RMAP={daily:'매일',weekday:'평일',weekend:'주말',weekly:'매주'};
+const RMAP={daily:'매일',weekday:'평일',weekend:'주말',weekly:'매주',custom:'요일선택'};
 const NS='http://www.w3.org/2000/svg';
 const CX=200,CY=200,R=178,RI=92; // RI = 내부 원 반지름 (흰색)
 
@@ -411,6 +425,7 @@ function saveHidden(){ localStorage.setItem(hiddenKey(currentDate), JSON.stringi
 let hiddenIds = getHidden(TODAY);
 
 let editId=null, selColor=COLORS[0], selRepeat='daily', repeatOn=false;
+let selWeekdays=[]; // 요일선택 시 [0..6] 배열 (일=0 ~ 토=6)
 
 // ════ DailySchedule 동기화 설정 ════
 // localStorage 키: 'dailySchedule_v4' (DailySchedule 앱과 동일)
@@ -458,7 +473,8 @@ async function pushRoutinesToJsonbin(){
   }
 }
 
-// JSONbin에서 circular_routines 가져와 다른 기기에서 만든 일정 합치기
+// JSONbin에서 circular_routines 가져와 로컬을 그대로 갱신
+// (병합 시도하면 삭제가 전파 안 되는 버그가 있어 단순 덮어쓰기로 함)
 async function pullRoutinesFromJsonbin(){
   try{
     const res = await fetch(CIRC_JSONBIN_URL + '/latest',
@@ -466,30 +482,23 @@ async function pullRoutinesFromJsonbin(){
     if(!res.ok) return;
     const rec = (await res.json()).record || {};
     const remote = rec.circular_routines || [];
-    // 같은 id면 ts 새로운 쪽 우선. 없는 id 추가.
-    const map = new Map();
-    schedules.forEach(s => map.set(String(s.id), s));
-    let changed = false;
-    remote.forEach(r => {
-      if(!r || !r.id) return;
-      const key = String(r.id);
-      const cur = map.get(key);
-      if(!cur){
-        map.set(key, r);
-        changed = true;
-      } else {
-        const rt = r.ts || 0, ct = cur.ts || 0;
-        if(rt > ct){ map.set(key, r); changed = true; }
-      }
-    });
-    if(changed){
-      schedules = Array.from(map.values()).map(s=>({...s, date: s.date||TODAY}));
-      localStorage.setItem('circ_local', JSON.stringify(schedules));
-      // 캐시 갱신
-      localStorage.setItem('progress_v1', JSON.stringify(rec));
-      // 화면이 이미 그려져 있으면 다시 그림
-      if(typeof drawClock === 'function'){ drawClock(); drawInlineList(); }
+
+    // 로컬 schedules 를 remote 와 비교 — 다르면 통째로 교체
+    const localStr = JSON.stringify(schedules);
+    const remoteStr = JSON.stringify(remote);
+    if(localStr === remoteStr) return;  // 같으면 패스
+
+    // 진행 중인 편집(오버레이 열려있음)이면 덮어쓰지 않음 — 사용자 작업 보호
+    const overlay = document.getElementById('overlay');
+    if(overlay && overlay.classList.contains('on')){
+      console.log('편집 시트 열림 — pull 건너뜀');
+      return;
     }
+
+    schedules = remote.map(s => ({...s, date: s.date || TODAY}));
+    localStorage.setItem('circ_local', JSON.stringify(schedules));
+    localStorage.setItem('progress_v1', JSON.stringify(rec));
+    if(typeof drawClock === 'function'){ drawClock(); drawInlineList(); }
   }catch(e){
     console.warn('routines pull 실패:', e);
   }
@@ -547,6 +556,10 @@ function allSchedules(){
         // 원래 날짜와 요일 같으면 표시
         const orig = new Date(s.date||TODAY);
         return orig.getDay()===dow;
+      }
+      // 요일 배열 형태: [1,3,5] 같은 식
+      if(Array.isArray(s.repeat)){
+        return s.repeat.includes(dow);
       }
       return true;
     }
@@ -1162,10 +1175,22 @@ function openSheet(id=null,startTime='',endTime=''){
   document.getElementById('inEnd').value   = s?.end   || endTime;
   selColor  = s?.color  || COLORS[schedules.length % COLORS.length];
   repeatOn  = !!(s?.repeat);
-  selRepeat = s?.repeat || 'daily';
+  // 기존 repeat 형태 인식: 문자열(daily/weekday/...) 또는 배열([0..6])
+  if(Array.isArray(s?.repeat)){
+    selRepeat = 'custom';
+    selWeekdays = s.repeat.slice();
+  } else {
+    selRepeat = s?.repeat || 'daily';
+    selWeekdays = [];
+  }
   document.getElementById('toggleRepeat').classList.toggle('on', repeatOn);
   document.getElementById('repeatOpts').classList.toggle('on', repeatOn);
   document.querySelectorAll('.repbtn').forEach(b=>b.classList.toggle('on', b.dataset.rep===selRepeat));
+  // 요일 행 표시 여부 + 요일 버튼 상태
+  document.getElementById('weekdayRow').classList.toggle('on', selRepeat==='custom');
+  document.querySelectorAll('.wdbtn').forEach(b=>{
+    b.classList.toggle('on', selWeekdays.includes(parseInt(b.dataset.dow)));
+  });
   buildColorRow();
   document.getElementById('overlay').classList.add('on');
   setTimeout(()=>document.getElementById('inTitle').focus(), 350);
@@ -1183,6 +1208,16 @@ document.getElementById('toggleRepeat').addEventListener('click',function(){
 document.querySelectorAll('.repbtn').forEach(b=>b.addEventListener('click',function(){
   selRepeat=this.dataset.rep;
   document.querySelectorAll('.repbtn').forEach(x=>x.classList.remove('on'));this.classList.add('on');
+  // 요일선택일 때만 요일 행 표시
+  document.getElementById('weekdayRow').classList.toggle('on', selRepeat==='custom');
+}));
+// 요일 버튼 토글
+document.querySelectorAll('.wdbtn').forEach(b=>b.addEventListener('click',function(){
+  const dow = parseInt(this.dataset.dow);
+  const idx = selWeekdays.indexOf(dow);
+  if(idx>=0) selWeekdays.splice(idx,1);
+  else selWeekdays.push(dow);
+  this.classList.toggle('on');
 }));
 document.querySelectorAll('.qbtn').forEach(b=>b.addEventListener('click',()=>{
   const s=document.getElementById('inStart').value;
@@ -1197,12 +1232,25 @@ document.getElementById('btnSave').addEventListener('click',()=>{
   if(!title){showToast('일정 이름을 입력하세요');return;}
   if(!start||!end){showToast('시작/종료 시간을 입력하세요');return;}
   if(start===end){showToast('시작과 종료 시간이 같아요');return;}
+  // repeat 값: 요일선택은 배열로, 나머지는 문자열로
+  let repeatVal = null;
+  if(repeatOn){
+    if(selRepeat === 'custom'){
+      if(selWeekdays.length === 0){
+        showToast('반복할 요일을 하나 이상 선택하세요');
+        return;
+      }
+      repeatVal = selWeekdays.slice().sort((a,b)=>a-b);
+    } else {
+      repeatVal = selRepeat;
+    }
+  }
   const obj = {
     id: editId || uid(),
     date: document.getElementById('inDate').value || currentDate,
     title, memo: document.getElementById('inMemo').value.trim(),
     start, end, color: selColor,
-    repeat: repeatOn ? selRepeat : null,
+    repeat: repeatVal,
     ts: Date.now()  // 다중 기기 동기화: 나중 수정이 이김
   };
   if(editId){
