@@ -155,47 +155,66 @@ body {
 
 .item-row {
   display: flex; align-items: center;
-  padding: 10px 10px; gap: 8px; min-height: 46px;
+  padding: 14px 12px; gap: 10px; min-height: 70px;
 }
 .item-expand-zone {
   flex: 1; display: flex; align-items: center;
   gap: 8px; cursor: pointer; min-width: 0;
 }
 .item-star {
-  font-size: 18px; cursor: pointer; flex-shrink: 0;
+  font-size: 26px; cursor: pointer; flex-shrink: 0;
   color: var(--text3); user-select: none;
-  transition: transform 0.2s, color 0.2s; padding: 2px;
+  transition: transform 0.2s, color 0.2s; padding: 4px;
 }
 .item-star.active { color: var(--star); }
 .item-star:active { transform: scale(1.4); }
 
+.item-check {
+  width: 28px; height: 28px; flex-shrink: 0;
+  margin: 0 6px 0 2px;
+  cursor: pointer;
+  accent-color: #2EBE6D;
+}
+
 .item-text {
-  flex: 1; font-size: 14px; line-height: 1.4;
+  flex: 1; font-size: 17px; line-height: 1.4;
   word-break: break-word; color: var(--text); min-width: 0;
 }
 .item-expand-icon {
-  font-size: 10px; color: var(--text3); flex-shrink: 0;
+  font-size: 13px; color: var(--text3); flex-shrink: 0;
   transition: transform 0.22s;
 }
 .item.open .item-expand-icon { transform: rotate(90deg); }
 
 .sub-count {
-  font-size: 10px; background: var(--surface3);
-  border-radius: 10px; padding: 1px 7px; color: var(--text3); flex-shrink: 0;
+  font-size: 12px; background: var(--surface3);
+  border-radius: 10px; padding: 2px 9px; color: var(--text3); flex-shrink: 0;
 }
 .sub-count.has-done { color: var(--success); border: 1px solid #1a3a2a; }
 
-.item-actions { display: flex; gap: 4px; flex-shrink: 0; }
+.item-actions { display: flex; gap: 5px; flex-shrink: 0; align-items: center; }
 .ibtn {
   background: var(--surface3); border: 1px solid var(--border);
-  color: var(--text2); font-size: 10px; padding: 4px 7px;
-  border-radius: 6px; cursor: pointer; white-space: nowrap;
+  color: var(--text2); font-size: 13px; padding: 7px 11px;
+  border-radius: 7px; cursor: pointer; white-space: nowrap;
   font-family: inherit; transition: all 0.12s;
 }
 .ibtn:active { transform: scale(0.92); }
 .ibtn.ok  { color: var(--success); border-color: #1a3a2a; }
 .ibtn.bad { color: var(--danger);  border-color: #3a1f1f; }
 .ibtn.blue { color: var(--accent2); border-color: #2d2560; }
+
+/* 위/아래 이동 전용: 크고 컬러 채워진 버튼 (모바일 터치 친화) */
+.ibtn.arrow-up, .ibtn.arrow-down {
+  width: 40px; height: 40px; padding: 0;
+  font-size: 20px; font-weight: 700;
+  color: #fff; border: none;
+  display: flex; align-items: center; justify-content: center;
+}
+.ibtn.arrow-up   { background: #E53935; }   /* 빨강 — 위 */
+.ibtn.arrow-down { background: #1E88E5; }   /* 파랑 — 아래 */
+.ibtn.arrow-up:active   { background: #B71C1C; }
+.ibtn.arrow-down:active { background: #0D47A1; }
 
 .item-edit-input {
   flex: 1; background: var(--surface3); border: 1px solid var(--accent);
@@ -351,7 +370,7 @@ body {
   <div class="title-row">
     <span class="app-title">챙기기</span>
     <div class="header-btns">
-      <button class="hbtn" onclick="notionSync()" style="background:#7c6af7;color:#fff;border-color:#7c6af7;">🔄 동기화</button>
+      <button class="hbtn" onclick="notionSync()" style="background:#7c6af7;color:#fff;border-color:#7c6af7;">🔄 노션</button>
       <button class="hbtn primary" onclick="backup()">💾 백업</button>
       <button class="hbtn" onclick="document.getElementById('file-input').click()">📂 불러오기</button>
       <button class="hbtn danger" onclick="resetAll()">🗑 초기화</button>
@@ -362,14 +381,16 @@ body {
       <input class="new-item-input" id="newInput" type="text"
         placeholder="새 항목 입력 후 Enter…"
         inputmode="text" enterkeyhint="done"
+        autofocus
         onkeydown="handleInputKey(event)">
       <button class="add-btn" onclick="addItem()">+</button>
     </div>
   </div>
   <div class="tabs">
-    <div class="tab active" onclick="switchTab(0,this)">챙길것</div>
-    <div class="tab" onclick="switchTab(1,this)">1일여행</div>
-    <div class="tab" onclick="switchTab(2,this)">정기행사</div>
+    <div class="tab active" onclick="switchTab(0,this)">메모</div>
+    <div class="tab" onclick="switchTab(1,this)">쇼핑</div>
+    <div class="tab" onclick="switchTab(2,this)">1일여행</div>
+    <div class="tab" onclick="switchTab(3,this)">정기행사</div>
   </div>
 </div>
 
@@ -406,7 +427,8 @@ body {
 // ══════════════════════════════════════════════
 let state = {
   tabs: [
-    { name:'챙길것',   items:[] },
+    { name:'메모',     items:[] },
+    { name:'쇼핑',     items:[] },
     { name:'1일여행',  items:[] },
     { name:'정기행사', items:[], groups:[] }
   ],
@@ -429,21 +451,36 @@ function esc(s) {
 //  STORAGE
 // ══════════════════════════════════════════════
 function save() {
-  localStorage.setItem('chaengigi_v2', JSON.stringify(state));
+  localStorage.setItem('chaengigi_v3', JSON.stringify(state));
 }
 
 function load() {
-  const d = localStorage.getItem('chaengigi_v2') || localStorage.getItem('chaengigi_v1');
-  if (!d) return;
-  try {
-    state = JSON.parse(d);
-    if (!state.tabs[2].groups) state.tabs[2].groups = [];
-    state.tabs.forEach(t => t.items.forEach(i => {
-      if (!i.subItems) i.subItems = [];
-    }));
-    // 하위호환: 옛 정적 JSON 동기화 항목(fromNotion) 제거 — 이제 fromTelegram 사용
-    state.tabs[0].items = state.tabs[0].items.filter(x => !x.fromNotion);
-  } catch(e) {}
+  // v3 우선, 없으면 v2/v1 데이터 마이그레이션
+  const v3 = localStorage.getItem('chaengigi_v3');
+  if (v3) {
+    try { state = JSON.parse(v3); }
+    catch(e) {}
+  } else {
+    const old = localStorage.getItem('chaengigi_v2') || localStorage.getItem('chaengigi_v1');
+    if (old) {
+      try {
+        const oldState = JSON.parse(old);
+        // 기존 3개 탭 데이터 → 새 4개 탭 구조로
+        // [챙길것, 1일여행, 정기행사] → [메모(=챙길것), 쇼핑(새), 1일여행, 정기행사]
+        state.tabs[0].items = (oldState.tabs?.[0]?.items) || [];
+        state.tabs[1].items = []; // 쇼핑은 새로
+        state.tabs[2].items = (oldState.tabs?.[1]?.items) || [];
+        state.tabs[3].items = (oldState.tabs?.[2]?.items) || [];
+        state.tabs[3].groups = (oldState.tabs?.[2]?.groups) || [];
+        save(); // 새 키에 저장
+      } catch(e) {}
+    }
+  }
+  // 정합성 보정
+  if (!state.tabs[3].groups) state.tabs[3].groups = [];
+  state.tabs.forEach(t => t.items.forEach(i => {
+    if (!i.subItems) i.subItems = [];
+  }));
 }
 
 // ══════════════════════════════════════════════
@@ -474,6 +511,13 @@ function switchTab(idx, el) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
   render();
+  // 메모/쇼핑 탭이면 입력창에 자동 포커스 (키보드 즉시 노출)
+  if (idx === 0 || idx === 1) {
+    setTimeout(() => {
+      const inp = document.getElementById('newInput');
+      if (inp) inp.focus();
+    }, 50);
+  }
 }
 
 // ══════════════════════════════════════════════
@@ -484,7 +528,7 @@ function render() {
   area.innerHTML = '';
   const tab = state.tabs[state.currentTab];
 
-  if (state.currentTab === 2) {
+  if (state.currentTab === 3) {
     renderJeongi(area, tab);
   } else {
     if (!tab.items.length) {
@@ -629,16 +673,32 @@ function buildItemEl(item, isJeongi) {
   div.className = 'item' + (item.done ? ' done' : '') + (item.open ? ' open' : '');
   div.id = 'item-' + item.id;
 
+  const isMemo = (state.currentTab === 0);   // 메모 탭
+  const isShop = (state.currentTab === 1);   // 쇼핑 탭
+
   /* ── main row ── */
   const row = document.createElement('div');
   row.className = 'item-row';
 
-  // star
-  const star = document.createElement('span');
-  star.className = 'item-star' + (item.star ? ' active' : '');
-  star.textContent = '★';
-  star.onclick = e => { e.stopPropagation(); toggleStar(item.id); };
-  row.appendChild(star);
+  // 메모/쇼핑 탭: 별표 대신 체크박스 (체크 = 삭제)
+  if (isMemo || isShop) {
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.className = 'item-check';
+    cb.onclick = e => {
+      e.stopPropagation();
+      // 체크하면 즉시 삭제
+      deleteItemImmediate(item.id);
+    };
+    row.appendChild(cb);
+  } else {
+    // star (기존 동작)
+    const star = document.createElement('span');
+    star.className = 'item-star' + (item.star ? ' active' : '');
+    star.textContent = '★';
+    star.onclick = e => { e.stopPropagation(); toggleStar(item.id); };
+    row.appendChild(star);
+  }
 
   if (item.editing) {
     const inp = document.createElement('input');
@@ -682,8 +742,19 @@ function buildItemEl(item, isJeongi) {
 
     const acts = document.createElement('div');
     acts.className = 'item-actions';
+
+    // 메모/쇼핑 탭: 위 아래 이동 화살표 (큰 컬러 버튼)
+    if (isMemo || isShop) {
+      acts.appendChild(mkbtn('↑', 'arrow-up',   () => moveItem(item.id, -1)));
+      acts.appendChild(mkbtn('↓', 'arrow-down', () => moveItem(item.id,  1)));
+    }
+    // 메모 탭만: 쇼핑으로 이동 버튼
+    if (isMemo) {
+      acts.appendChild(mkbtn('🛒', '', () => moveToShopping(item.id)));
+    }
+
     acts.appendChild(mkbtn('수정', '', () => startEdit(item.id)));
-    if (isJeongi && item.star && (state.tabs[2].groups||[]).length) {
+    if (isJeongi && item.star && (state.tabs[3].groups||[]).length) {
       acts.appendChild(mkbtn('그룹▾','blue', () => openMovePopup(item.id)));
     }
     row.appendChild(acts);
@@ -907,13 +978,13 @@ function cancelEdit(id) {
 function deleteItem(id) {
   const curTab = state.tabs[state.currentTab];
   const item = curTab.items.find(i => i.id === id);
-  const isStarredAndInOtherTab = item && item.star && state.currentTab !== 2;
+  const isStarredAndInOtherTab = item && item.star && state.currentTab !== 3;
 
   if (isStarredAndInOtherTab) {
     // 정기행사에 복사된 항목은 남겨두고, 현재 탭에서만 삭제
     // 정기행사의 복사본에서 별표를 해제하지 않음 — 독립적으로 유지
     curTab.items = curTab.items.filter(i => i.id !== id);
-  } else if (state.currentTab === 2) {
+  } else if (state.currentTab === 3) {
     // 정기행사에서 삭제하는 경우: 정기행사에서만 제거
     curTab.items = curTab.items.filter(i => i.id !== id);
   } else {
@@ -997,18 +1068,49 @@ function toggleStar(id) {
   if (!item) return;
   item.star = !item.star;
 
-  if (item.star && state.currentTab !== 2) {
-    const jeongi = state.tabs[2];
+  if (item.star && state.currentTab !== 3) {
+    const jeongi = state.tabs[3];
     if (!jeongi.items.find(i => i.id === id)) {
       jeongi.items.push(JSON.parse(JSON.stringify({ ...item, groupId: null })));
     }
   }
-  if (!item.star && state.currentTab !== 2) {
-    state.tabs[2].items = state.tabs[2].items.filter(i => i.id !== id);
+  if (!item.star && state.currentTab !== 3) {
+    state.tabs[3].items = state.tabs[3].items.filter(i => i.id !== id);
   }
-  const jItem = state.tabs[2].items.find(i => i.id === id);
+  const jItem = state.tabs[3].items.find(i => i.id === id);
   if (jItem) jItem.star = item.star;
 
+  save(); render();
+}
+
+// 즉시 삭제 (메모/쇼핑 탭 체크박스)
+function deleteItemImmediate(id) {
+  const tab = state.tabs[state.currentTab];
+  tab.items = tab.items.filter(i => i.id !== id);
+  save(); render();
+}
+
+// 위/아래 한 칸 이동
+function moveItem(id, delta) {
+  const tab = state.tabs[state.currentTab];
+  const idx = tab.items.findIndex(i => i.id === id);
+  if (idx < 0) return;
+  const newIdx = idx + delta;
+  if (newIdx < 0 || newIdx >= tab.items.length) return;
+  const [it] = tab.items.splice(idx, 1);
+  tab.items.splice(newIdx, 0, it);
+  save(); render();
+}
+
+// 메모 → 쇼핑으로 이동 (메모에서는 사라짐)
+function moveToShopping(id) {
+  const memoTab = state.tabs[0];
+  const shopTab = state.tabs[1];
+  const idx = memoTab.items.findIndex(i => i.id === id);
+  if (idx < 0) return;
+  const [it] = memoTab.items.splice(idx, 1);
+  // 쇼핑 탭 맨 위에 추가
+  shopTab.items.unshift(it);
   save(); render();
 }
 
@@ -1027,7 +1129,7 @@ function closeGroupPopup(e) {
 function confirmGroup() {
   const val = document.getElementById('groupNameInput').value.trim();
   if (!val) return;
-  const jeongi = state.tabs[2];
+  const jeongi = state.tabs[3];
   if (!jeongi.groups) jeongi.groups = [];
   jeongi.groups.push({ id: uid(), name: val });
   document.getElementById('groupPopup').classList.remove('show');
@@ -1036,7 +1138,7 @@ function confirmGroup() {
 
 function openMovePopup(itemId) {
   movingItemId = itemId;
-  const jeongi = state.tabs[2];
+  const jeongi = state.tabs[3];
   const list = document.getElementById('moveGroupList');
   list.innerHTML = '';
   if (!jeongi.groups || !jeongi.groups.length) {
@@ -1062,7 +1164,7 @@ function closeMovePopup(e) {
     document.getElementById('movePopup').classList.remove('show');
 }
 function moveToGroup(groupId) {
-  const jeongi = state.tabs[2];
+  const jeongi = state.tabs[3];
   const item = jeongi.items.find(i => i.id === movingItemId);
   if (item) item.groupId = groupId;
   movingItemId = null;
@@ -1102,7 +1204,7 @@ function loadFile(event) {
   reader.onload = e => {
     try {
       state = JSON.parse(e.target.result);
-      if (!state.tabs[2].groups) state.tabs[2].groups = [];
+      if (!state.tabs[3].groups) state.tabs[3].groups = [];
       state.tabs.forEach(t => t.items.forEach(i => { if(!i.subItems) i.subItems = []; }));
       save(); render();
     } catch { alert('올바른 백업 파일이 아니에요.'); }
@@ -1113,56 +1215,40 @@ function loadFile(event) {
 
 
 // ══════════════════════════════════════════════
-//  JSONbin 동기화 (텔레그램 /사기 → shopping 배열)
+//  노션 동기화
 // ══════════════════════════════════════════════
-const JSONBIN_KEY = '$2a$10$y3gWHPgwraqoSOCc/hsLmer/VVbxGqWn6zDw87HRma/xgHjPQjywy';
-const JSONBIN_ID  = '69cf3e8daaba882197bdd202';
-const JSONBIN_URL = 'https://api.jsonbin.io/v3/b/' + JSONBIN_ID;
+async function notionSync() {
+  let url;
+  try { url = new URL('shopping_sync.json', window.location.href).href; }
+  catch(e) { url = 'shopping_sync.json'; }
 
-// 조용한 자동 동기화 (앱 열 때 / 포커스 복귀 시) — alert 없음
-async function autoSync() {
   try {
-    const res = await fetch(JSONBIN_URL + '/latest', {
-      headers: { 'X-Master-Key': JSONBIN_KEY }
-    });
-    if (!res.ok) return false;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('파일 없음 (HTTP ' + res.status + ')');
     const json = await res.json();
-    const data = json.record || {};
-    const items = data.shopping || [];
+    const synced_at = json.synced_at ? json.synced_at.slice(0,16).replace('T',' ') : '';
+    const items = json.items || [];
 
-    // 기존 JSONbin 동기화 항목만 제거 (fromTelegram: true)
-    state.tabs[0].items = state.tabs[0].items.filter(x => !x.fromTelegram);
+    // 기존 노션 동기화 항목만 제거 (fromNotion: true)
+    state.tabs[0].items = state.tabs[0].items.filter(x => !x.fromNotion);
 
-    // 새 항목 추가 (title 없는 항목은 건너뜀)
+    // 새 항목 추가
     items.forEach(item => {
-      if (!item || !item.title) return;
       state.tabs[0].items.push({
-        id: uid(),
+        id: Date.now() + Math.random(),
         text: item.title,
         done: false,
         star: false,
         subItems: [],
-        fromTelegram: true
+        fromNotion: true
       });
     });
 
     save();
     render();
-    return true;
-  } catch (e) {
-    console.warn('자동 동기화 실패:', e);
-    return false;
-  }
-}
-
-// 수동 동기화 (🔄 버튼) — 결과를 alert로 알려줌
-async function notionSync() {
-  const ok = await autoSync();
-  if (ok) {
-    const count = state.tabs[0].items.filter(x => x.fromTelegram).length;
-    alert('✅ 동기화 완료!\n텔레그램 장바구니 ' + count + '개');
-  } else {
-    alert('❌ 동기화 실패\n인터넷 연결을 확인해주세요.\n(GitHub Pages에서 열어야 작동합니다)');
+    alert('✅ 노션 동기화 완료!\n장바구니 ' + items.length + '개\n동기화 시각: ' + synced_at);
+  } catch(e) {
+    alert('❌ 동기화 실패\n' + e.message + '\n\n먼저 PC에서 notion_sync.py를 실행하고\nshopping_sync.json 파일을 이 HTML과 같은 폴더에 넣어주세요.');
   }
 }
 
@@ -1184,12 +1270,6 @@ function resetAll() {
 // ══════════════════════════════════════════════
 load();
 render();
-autoSync();   // 텔레그램 장바구니 자동 동기화 (앱 열 때)
-
-// 다른 앱 보다 돌아왔을 때도 자동 동기화
-document.addEventListener('visibilitychange', () => {
-  if (!document.hidden) autoSync();
-});
 </script>
 </body>
 </html>
