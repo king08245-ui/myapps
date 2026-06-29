@@ -93,6 +93,101 @@ main{flex:1;overflow:hidden;position:relative;}
 .view{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;display:none;}
 .view.on{display:block;}
 
+/* 탭 바 */
+.view-tabs{display:flex;background:var(--s1);border-bottom:1px solid var(--b1);flex-shrink:0;}
+.view-tabs .tab{
+  flex:1;padding:8px 4px;background:transparent;border:none;color:var(--t2);
+  font-family:'Noto Sans KR',sans-serif;font-size:13px;font-weight:500;
+  cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;
+}
+.view-tabs .tab:hover{color:var(--t1);}
+.view-tabs .tab.on{color:var(--acc);border-bottom-color:var(--acc);font-weight:700;}
+
+/* 빈 화면 (곧 추가될 자리) */
+.placeholder{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:80px 20px;text-align:center;color:var(--t2);
+}
+.ph-icon{font-size:48px;margin-bottom:16px;opacity:0.5;}
+.ph-title{font-size:18px;font-weight:600;color:var(--t1);margin-bottom:8px;}
+.ph-sub{font-size:13px;color:var(--t2);}
+
+/* 주간 시계 — 4×2 그리드, 마지막 1칸은 빈칸 */
+.week-clocks-grid{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:12px;
+}
+
+.week-cell{
+  background:var(--s1);border-radius:12px;padding:10px;
+  border:1px solid var(--b1);
+  display:flex;flex-direction:column;align-items:center;
+  width:100%;
+}
+.week-cell.today{border-color:var(--acc);background:var(--s2);}
+.week-cell-label{
+  display:flex;align-items:baseline;gap:6px;margin-bottom:8px;
+  font-family:'Noto Sans KR',sans-serif;
+}
+.week-cell-dow{font-size:16px;font-weight:700;color:var(--t1);}
+.week-cell-date{font-size:12px;color:var(--t2);}
+.week-cell-today{
+  font-size:11px;color:var(--acc);background:rgba(74,143,217,0.15);
+  padding:1px 7px;border-radius:8px;font-weight:600;
+}
+.week-cell-svg{width:100%;aspect-ratio:1;}
+
+/* 모바일 (좁은 화면): 1열로 쌓기 */
+@media (max-width: 767px){
+  .week-clocks-grid{grid-template-columns:1fr;}
+  .week-cell{max-width:none;}
+}
+
+/* 주간 표 (격자) */
+.grid-header{padding:8px 12px;border-bottom:1px solid var(--b1);background:var(--s1);}
+.grid-legend{display:flex;gap:14px;align-items:center;font-size:11px;color:var(--t2);}
+.legend-item{display:flex;align-items:center;gap:5px;}
+.legend-box{width:12px;height:12px;border-radius:3px;display:inline-block;}
+.legend-box.free{background:#fff3a8;border:1px solid #e6d770;}
+.legend-box.busy{background:#7AB0FF;border:1px solid #5a8fde;}
+
+.grid-wrap{padding:6px;overflow-x:auto;}
+.week-grid{
+  display:grid;
+  grid-template-columns:46px repeat(7, 1fr);
+  gap:1px;background:var(--b1);
+  border:1px solid var(--b1);border-radius:6px;
+  min-width:520px;
+  font-family:'Noto Sans KR',sans-serif;
+}
+.gh-corner,.gh-day,.gh-time{
+  background:var(--s1);padding:4px 2px;text-align:center;
+  font-size:11px;color:var(--t2);
+}
+.gh-day{font-weight:700;color:var(--t1);}
+.gh-day.today{color:var(--acc);}
+.gh-day .gh-day-date{font-size:9px;color:var(--t2);font-weight:400;display:block;}
+.gh-time{font-family:'DM Mono',monospace;font-size:9px;line-height:1;padding:2px;color:var(--t3);}
+.gh-time.hour{color:var(--t2);font-weight:600;}
+
+.cell{
+  background:var(--s2);min-height:14px;height:14px;
+  position:relative;
+}
+.cell.free{background:#fff3a8;}
+.cell.busy{background:#7AB0FF;}
+.cell.busy-start{
+  border-top-left-radius:4px;border-top-right-radius:4px;
+}
+.cell.busy-end{
+  border-bottom-left-radius:4px;border-bottom-right-radius:4px;
+}
+.cell-label{
+  position:absolute;left:2px;right:2px;top:1px;
+  font-size:9px;color:#fff;line-height:1.1;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font-weight:500;text-shadow:0 1px 1px rgba(0,0,0,0.3);
+}
+
 /* ── 시계 sticky ── */
 .clock-wrap{display:flex;flex-direction:column;align-items:center;padding:0;}
 .clock-sticky{position:sticky;top:0;z-index:20;background:var(--bg);width:100%;display:flex;flex-direction:column;align-items:center;padding:0 0 2px;}
@@ -288,7 +383,11 @@ main{flex:1;overflow:hidden;position:relative;}
 <!-- 7일 도트 인디케이터 -->
 <div class="date-dots" id="dateDots"></div>
 
-<nav class="view-tabs" style="display:none;"></nav>
+<nav class="view-tabs">
+  <button class="tab on" data-view="vClock">일 일</button>
+  <button class="tab" data-view="vWeek">주간 시계</button>
+  <button class="tab" data-view="vGrid">주간 표</button>
+</nav>
 
 <main>
   <div class="view on" id="vClock" style="overflow-y:auto;">
@@ -311,6 +410,20 @@ main{flex:1;overflow:hidden;position:relative;}
       <!-- 목록 -->
       <div class="inline-list" id="inlineList"></div>
     </div>
+  </div>
+
+  <div class="view" id="vWeek" style="overflow-y:auto;">
+    <div class="week-clocks-grid" id="weekClocksGrid"></div>
+  </div>
+
+  <div class="view" id="vGrid" style="overflow-y:auto;">
+    <div class="grid-header">
+      <div class="grid-legend">
+        <span class="legend-item"><span class="legend-box free"></span>여유시간 (06–18시)</span>
+        <span class="legend-item"><span class="legend-box busy"></span>일정</span>
+      </div>
+    </div>
+    <div class="grid-wrap" id="gridWrap"></div>
   </div>
 </main>
 
@@ -545,29 +658,27 @@ function arcOnlyPath(aS,aE){
 }
 
 // ════ 병합된 일정 목록 ════
-function allSchedules(){
-  const h = hiddenIds;
+function allSchedules(forDate){
+  const targetDate = forDate || currentDate;
+  const h = forDate ? new Set() : hiddenIds;  // 다른 날짜용은 hidden 무시
   return [...schedules, ...notionSchedules].filter(s=>{
     if(h.has(String(s.id))) return false;
     if(s.repeat){
-      // 반복 일정: currentDate 기준으로 표시 여부 판단
-      const d = new Date(currentDate);
-      const dow = d.getDay(); // 0=일,1=월...6=토
+      const d = new Date(targetDate);
+      const dow = d.getDay();
       if(s.repeat==='daily') return true;
       if(s.repeat==='weekday') return dow>=1&&dow<=5;
       if(s.repeat==='weekend') return dow===0||dow===6;
       if(s.repeat==='weekly'){
-        // 원래 날짜와 요일 같으면 표시
         const orig = new Date(s.date||TODAY);
         return orig.getDay()===dow;
       }
-      // 요일 배열 형태: [1,3,5] 같은 식
       if(Array.isArray(s.repeat)){
         return s.repeat.includes(dow);
       }
       return true;
     }
-    return (s.date||TODAY) === currentDate;
+    return (s.date||TODAY) === targetDate;
   });
 }
 
@@ -884,6 +995,177 @@ function drawClock(){
   document.getElementById('nowTime').textContent=`${hh}:${mm}`;
 
   drawInlineList();
+}
+
+// ════ 미니 시계 (주간 시계 탭용) ════════════════════════════════════
+// drawClock 의 압축 버전 — 다른 날짜 시계를 작게 그리기
+function drawMiniClock(svg, dateStr){
+  svg.innerHTML = '';
+  // 배경 원
+  svg.appendChild(svgEl('circle',{cx:CX,cy:CY,r:R,fill:'#13131c',stroke:'rgba(255,255,255,0.05)','stroke-width':'1'}));
+
+  // 일정 블록
+  allSchedules(dateStr).forEach(s=>{
+    const aS=timeToAngle(s.start);
+    const aE=timeToAngle(s.end);
+    const c=s.color||COLORS[0];
+    svg.appendChild(svgEl('path',{d:wedgePath(aS,aE),fill:hexRgba(c,0.22)}));
+    svg.appendChild(svgEl('path',{d:arcOnlyPath(aS,aE),fill:'none',stroke:c,'stroke-width':'3.5','stroke-linecap':'round'}));
+    let sweep=aE-aS; if(sweep<=0)sweep+=360;
+    const mid=aS+sweep/2;
+    if(sweep>=18){
+      const lr=pol((R+RI)/2, mid);
+      const lbl=svgEl('text',{x:lr[0],y:lr[1],fill:c,'font-size':'14','text-anchor':'middle','dominant-baseline':'middle','font-family':'Noto Sans KR,sans-serif','font-weight':'600'});
+      lbl.textContent=s.title.length>4?s.title.slice(0,3)+'…':s.title;
+      svg.appendChild(lbl);
+    }
+  });
+
+  // 내부 흰 원
+  svg.appendChild(svgEl('circle',{cx:CX,cy:CY,r:RI,fill:'#ffffff',stroke:'rgba(0,0,0,0.06)','stroke-width':'1'}));
+
+  // 눈금 (6시간 단위만 — 0/6/12/18)
+  for(let h=0;h<24;h+=6){
+    const a=(h/24)*360-90;
+    const o=pol(R-1,a), i=pol(R-13,a);
+    svg.appendChild(svgEl('line',{x1:o[0],y1:o[1],x2:i[0],y2:i[1],stroke:'rgba(255,255,255,0.4)','stroke-width':'1.5','stroke-linecap':'round'}));
+    const np=pol(R-22,a);
+    const num=svgEl('text',{x:np[0],y:np[1],fill:'rgba(255,255,255,.75)','font-size':'14','font-weight':'600','text-anchor':'middle','dominant-baseline':'middle','font-family':'DM Mono,monospace'});
+    num.textContent=String(h).padStart(2,'0');
+    svg.appendChild(num);
+  }
+
+  // 오늘이면 현재 시각 바늘
+  if(dateStr === TODAY){
+    const now=new Date();
+    const na=((now.getHours()+now.getMinutes()/60)/24)*360-90;
+    const np=pol(R-4,na);
+    svg.appendChild(svgEl('line',{x1:CX,y1:CY,x2:np[0],y2:np[1],stroke:'#ff4444','stroke-width':'2.5','stroke-linecap':'round'}));
+    svg.appendChild(svgEl('circle',{cx:CX,cy:CY,r:'5',fill:'#ff4444'}));
+  }
+}
+
+// 주간 시계 탭 그리기 — 오늘 포함 7일
+function drawWeekClocks(){
+  const container = document.getElementById('weekClocksGrid');
+  if(!container) return;
+  container.innerHTML = '';
+
+  const today = new Date(TODAY);
+  for(let i = 0; i < 7; i++){
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    const dateStr = d.toLocaleDateString('sv-SE');
+    const dayLabel = ['일','월','화','수','목','금','토'][d.getDay()];
+    const dateLabel = `${d.getMonth()+1}/${d.getDate()}`;
+    const isToday = dateStr === TODAY;
+
+    const cell = document.createElement('div');
+    cell.className = 'week-cell' + (isToday ? ' today' : '');
+    cell.innerHTML = `
+      <div class="week-cell-label">
+        <span class="week-cell-dow">${dayLabel}</span>
+        <span class="week-cell-date">${dateLabel}</span>
+        ${isToday ? '<span class="week-cell-today">오늘</span>' : ''}
+      </div>
+      <svg class="week-cell-svg" viewBox="-30 -30 460 460" xmlns="http://www.w3.org/2000/svg"></svg>
+    `;
+    container.appendChild(cell);
+    drawMiniClock(cell.querySelector('svg'), dateStr);
+  }
+}
+
+// ════ 주간 표 (격자) ════════════════════════════════════════════════
+// 30분 × 48행 × 7일 격자. 일정은 칠하고, 06-18시 빈 칸은 연노랑.
+// 오늘부터 7일 (요일은 매일 바뀜)
+function drawWeekGrid(){
+  const container = document.getElementById('gridWrap');
+  if(!container) return;
+
+  // 오늘부터 7일치 날짜와 일정 미리 계산
+  const today = new Date(TODAY);
+  const days = [];
+  for(let i = 0; i < 7; i++){
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    const dateStr = d.toLocaleDateString('sv-SE');
+    days.push({
+      date: dateStr,
+      dow: ['일','월','화','수','목','금','토'][d.getDay()],
+      label: `${d.getMonth()+1}/${d.getDate()}`,
+      isToday: dateStr === TODAY,
+      schedules: allSchedules(dateStr)
+    });
+  }
+
+  // 격자 만들기
+  const grid = document.createElement('div');
+  grid.className = 'week-grid';
+
+  // 헤더 행: 빈칸 + 월~일
+  grid.appendChild(makeEl('div','gh-corner','시간'));
+  days.forEach(day => {
+    const h = document.createElement('div');
+    h.className = 'gh-day' + (day.isToday ? ' today' : '');
+    h.innerHTML = `${day.dow}<span class="gh-day-date">${day.label}</span>`;
+    grid.appendChild(h);
+  });
+
+  // 시간 행: 00:00 ~ 23:30 (30분 단위, 48행)
+  for(let slot = 0; slot < 48; slot++){
+    const slotMin = slot * 30;
+    const hh = Math.floor(slotMin / 60);
+    const mm = slotMin % 60;
+    const isHour = mm === 0;
+    const timeLabel = isHour ? String(hh).padStart(2,'0') + ':00' : '';
+    const th = document.createElement('div');
+    th.className = 'gh-time' + (isHour ? ' hour' : '');
+    th.textContent = timeLabel;
+    grid.appendChild(th);
+
+    // 7일치 칸
+    days.forEach(day => {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      const slotStart = slotMin;
+      const slotEnd = slotMin + 30;
+
+      // 이 칸에 걸치는 일정 찾기
+      const busy = day.schedules.find(s => {
+        const sM = timeToMins(s.start);
+        let eM = timeToMins(s.end);
+        if(eM <= sM) eM += 1440; // 자정 넘김
+        return sM < slotEnd && eM > slotStart;
+      });
+
+      if(busy){
+        cell.classList.add('busy');
+        cell.style.background = busy.color || '#7AB0FF';
+        // 일정의 첫 칸이면 라벨 표시
+        const startSlot = Math.floor(timeToMins(busy.start) / 30);
+        if(slot === startSlot){
+          const lbl = document.createElement('div');
+          lbl.className = 'cell-label';
+          lbl.textContent = busy.title;
+          cell.appendChild(lbl);
+        }
+      } else if(slotMin >= 360 && slotMin < 1080){
+        // 06:00 ~ 18:00 빈 칸 → 여유시간
+        cell.classList.add('free');
+      }
+      grid.appendChild(cell);
+    });
+  }
+
+  container.innerHTML = '';
+  container.appendChild(grid);
+}
+
+function makeEl(tag, cls, text){
+  const e = document.createElement(tag);
+  if(cls) e.className = cls;
+  if(text !== undefined) e.textContent = text;
+  return e;
 }
 
 // 링 바깥 말풍선 그리기
@@ -1733,6 +2015,20 @@ setInterval(()=>{ if(currentDate===TODAY) drawClock(); }, 30000);
 pullRoutinesFromJsonbin();
 document.addEventListener('visibilitychange', () => {
   if(!document.hidden) pullRoutinesFromJsonbin();
+});
+
+// ════ 탭 전환 ═══════════════════════════════════════════════════════
+document.querySelectorAll('.view-tabs .tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const target = btn.dataset.view;
+    // 탭 활성화 표시
+    document.querySelectorAll('.view-tabs .tab').forEach(b => b.classList.toggle('on', b === btn));
+    // view 전환
+    document.querySelectorAll('main > .view').forEach(v => v.classList.toggle('on', v.id === target));
+    // view별 콘텐츠 렌더링
+    if(target === 'vWeek') drawWeekClocks();
+    if(target === 'vGrid') drawWeekGrid();
+  });
 });
 </script>
 </body>
