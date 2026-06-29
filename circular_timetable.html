@@ -150,13 +150,13 @@ main{flex:1;overflow:hidden;position:relative;}
 .legend-box.free{background:#fff3a8;border:1px solid #e6d770;}
 .legend-box.busy{background:#7AB0FF;border:1px solid #5a8fde;}
 
-.grid-wrap{padding:6px;overflow-x:auto;}
+.grid-wrap{padding:6px;overflow-x:hidden;}
 .week-grid{
   display:grid;
-  grid-template-columns:46px repeat(7, 1fr);
+  grid-template-columns:38px repeat(7, 1fr);
   gap:1px;background:var(--b1);
   border:1px solid var(--b1);border-radius:6px;
-  min-width:520px;
+  width:100%;
   font-family:'Noto Sans KR',sans-serif;
 }
 .gh-corner,.gh-day,.gh-time{
@@ -182,11 +182,23 @@ main{flex:1;overflow:hidden;position:relative;}
   border-bottom-left-radius:4px;border-bottom-right-radius:4px;
 }
 .cell-label{
-  position:absolute;left:2px;right:2px;top:1px;
-  font-size:9px;color:#fff;line-height:1.1;
+  position:absolute;left:1px;right:1px;top:1px;
+  font-size:8px;color:#fff;line-height:1.1;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
   font-weight:500;text-shadow:0 1px 1px rgba(0,0,0,0.3);
 }
+
+/* 현재 시간 표시 라인 — 주간 표 첫째 열(오늘)만 가로지름 */
+.now-line{
+  position:absolute;left:0;right:0;height:2px;
+  background:#ff4444;pointer-events:none;z-index:5;
+  box-shadow:0 0 4px rgba(255,68,68,0.6);
+}
+.now-line::before{
+  content:'';position:absolute;left:-4px;top:-3px;
+  width:8px;height:8px;border-radius:50%;background:#ff4444;
+}
+.grid-wrap{position:relative;}
 
 /* ── 시계 sticky ── */
 .clock-wrap{display:flex;flex-direction:column;align-items:center;padding:0;}
@@ -1159,7 +1171,65 @@ function drawWeekGrid(){
 
   container.innerHTML = '';
   container.appendChild(grid);
+  positionNowLine();
 }
+
+// 주간 표의 현재 시간 빨간 라인 위치 계산 + 표시
+function positionNowLine(){
+  const container = document.getElementById('gridWrap');
+  if(!container) return;
+  const grid = container.querySelector('.week-grid');
+  if(!grid) return;
+
+  // 기존 라인 제거
+  container.querySelectorAll('.now-line').forEach(el => el.remove());
+
+  // 그리드의 첫 칸(헤더 다음 줄, 첫 데이터 셀) 위치 기준으로 계산
+  const cells = grid.querySelectorAll('.cell');
+  if(cells.length === 0) return;
+
+  // 첫 데이터 셀(00:00 첫째 날)과 마지막 데이터 셀의 위치
+  const firstCell = cells[0];
+  const lastCell = cells[7]; // 두번째 행의 첫 칸 (00:30 첫째 날) - 한 슬롯 높이 계산용
+  const firstRect = firstCell.getBoundingClientRect();
+  const slotHeight = lastCell ? (lastCell.getBoundingClientRect().top - firstRect.top) : 14;
+
+  const containerRect = container.getBoundingClientRect();
+  const gridRect = grid.getBoundingClientRect();
+
+  // 현재 시각 → 분
+  const now = new Date();
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const slotFloat = nowMin / 30; // 슬롯 단위 (00:30 = 1.0, 01:15 = 2.5)
+
+  // 첫 셀의 컨테이너 기준 top + 슬롯만큼 이동
+  const top = (firstRect.top - containerRect.top) + (slotFloat * slotHeight);
+
+  // 가로 범위: 첫 데이터 셀의 왼쪽 ~ 그 셀의 오른쪽 (오늘 = 첫째 열만)
+  const left = firstRect.left - containerRect.left;
+  const width = firstRect.width;
+
+  const line = document.createElement('div');
+  line.className = 'now-line';
+  line.style.top = top + 'px';
+  line.style.left = left + 'px';
+  line.style.right = 'auto';
+  line.style.width = width + 'px';
+  container.appendChild(line);
+}
+
+// 주간 표가 활성 상태일 때만 1분마다 라인 갱신
+let nowLineTimer = null;
+function startNowLineTimer(){
+  if(nowLineTimer) clearInterval(nowLineTimer);
+  nowLineTimer = setInterval(() => {
+    const vGrid = document.getElementById('vGrid');
+    if(vGrid && vGrid.classList.contains('on')){
+      positionNowLine();
+    }
+  }, 60000);
+}
+startNowLineTimer();
 
 function makeEl(tag, cls, text){
   const e = document.createElement(tag);
