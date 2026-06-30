@@ -216,6 +216,64 @@ body {
 .ibtn.arrow-up:active   { background: #B71C1C; }
 .ibtn.arrow-down:active { background: #0D47A1; }
 
+/* 선택된 항목 강조 */
+.item.selected {
+  outline: 2px solid #4a8fd9;
+  outline-offset: -2px;
+  background: rgba(74, 143, 217, 0.08);
+}
+
+/* 하단 고정 액션바 (메모/쇼핑 탭 전용) */
+.action-bar {
+  position: fixed; left: 0; right: 0; bottom: 0;
+  background: var(--surface2, #1a1a24);
+  border-top: 1px solid var(--border, #2a2a35);
+  padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+  display: none;
+  flex-direction: column; gap: 6px;
+  z-index: 50;
+  box-shadow: 0 -4px 16px rgba(0,0,0,0.3);
+}
+.action-bar.show { display: flex; }
+.action-bar-info {
+  font-size: 12px; color: var(--text2, #aaa); text-align: center;
+}
+.action-bar-btns {
+  display: flex; gap: 8px; justify-content: center;
+}
+.abtn {
+  flex: 1; max-width: 80px;
+  height: 48px;
+  border: none; border-radius: 8px; cursor: pointer;
+  font-family: inherit; font-size: 18px; font-weight: 700;
+  color: #fff; transition: all 0.12s;
+  display: flex; align-items: center; justify-content: center;
+}
+.abtn:disabled { opacity: 0.35; cursor: not-allowed; }
+.abtn:active:not(:disabled) { transform: scale(0.95); }
+.abtn.arrow-up   { background: #E53935; }
+.abtn.arrow-down { background: #1E88E5; }
+.abtn.cart       { background: #43A047; font-size: 15px; }
+.abtn.edit       { background: #757575; font-size: 14px; }
+
+/* 콘텐츠 영역에 액션바 높이만큼 여유 (가려지지 않게) */
+.content.with-action-bar { padding-bottom: 100px; }
+
+/* 탭 이동 팝업 */
+.popup-tab-list {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 12px 0;
+}
+.popup-tab-btn {
+  background: var(--surface3, #2a2a3a); color: var(--text, #eee);
+  border: 1px solid var(--border, #3a3a45);
+  padding: 14px; border-radius: 8px;
+  font-family: inherit; font-size: 15px;
+  cursor: pointer; text-align: left;
+  transition: all 0.12s;
+}
+.popup-tab-btn:active { background: var(--surface, #1a1a24); transform: scale(0.98); }
+
 .item-edit-input {
   flex: 1; background: var(--surface3); border: 1px solid var(--accent);
   border-radius: 6px; color: var(--text); font-family: inherit;
@@ -397,6 +455,32 @@ body {
 <div class="content" id="contentArea"></div>
 <input type="file" id="file-input" accept=".json" onchange="loadFile(event)">
 
+<!-- 하단 고정 액션바 (메모/쇼핑 탭 전용) -->
+<div class="action-bar" id="actionBar">
+  <div class="action-bar-info" id="actionBarInfo">선택된 항목 없음</div>
+  <div class="action-bar-btns">
+    <button class="abtn arrow-up"   id="abUp"   onclick="actionMove(-1)">↑</button>
+    <button class="abtn arrow-down" id="abDown" onclick="actionMove(1)">↓</button>
+    <button class="abtn cart"       id="abCart" onclick="openMoveTabPopup()">🛒→</button>
+    <button class="abtn edit"       id="abEdit" onclick="actionEdit()">수정</button>
+  </div>
+</div>
+
+<!-- 탭 이동 팝업 (메모에서 다른 탭으로) -->
+<div class="popup-overlay" id="moveTabPopup" onclick="closeMoveTabPopup(event)">
+  <div class="popup">
+    <div class="popup-title">어디로 보낼까요?</div>
+    <div class="popup-tab-list">
+      <button class="popup-tab-btn" onclick="moveSelectedTo(1)">🛒 쇼핑</button>
+      <button class="popup-tab-btn" onclick="moveSelectedTo(2)">🧳 1일여행</button>
+      <button class="popup-tab-btn" onclick="moveSelectedTo(3)">📅 정기행사</button>
+    </div>
+    <div class="popup-btns">
+      <button class="popup-btn cancel" onclick="document.getElementById('moveTabPopup').classList.remove('show')">취소</button>
+    </div>
+  </div>
+</div>
+
 <!-- Move popup -->
 <div class="popup-overlay" id="movePopup" onclick="closeMovePopup(event)">
   <div class="popup">
@@ -435,6 +519,23 @@ let state = {
   currentTab: 0
 };
 let movingItemId = null;
+
+// 선택된 항목 id 집합 (메모/쇼핑 탭 액션바용)
+let selectedIds = new Set();
+function isSelected(id){ return selectedIds.has(id); }
+function toggleSelected(id){
+  if(selectedIds.has(id)) selectedIds.delete(id);
+  else selectedIds.add(id);
+  updateActionBar();
+  // 항목 요소만 갱신 (전체 render 안 함)
+  const el = document.getElementById('item-' + id);
+  if(el) el.classList.toggle('selected', isSelected(id));
+}
+function clearSelection(){
+  selectedIds.clear();
+  document.querySelectorAll('.item.selected').forEach(el => el.classList.remove('selected'));
+  updateActionBar();
+}
 
 function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2,7);
@@ -495,12 +596,14 @@ function addItem() {
   const text = input.value.trim();
   if (!text) return;
   const tab = state.tabs[state.currentTab];
-  tab.items.push({
+  tab.items.unshift({
     id: uid(), text, star: false, done: false,
     groupId: null, editing: false, open: false, subItems: []
   });
   input.value = '';
   save(); render();
+  // 연속 입력을 위해 포커스 유지
+  setTimeout(() => input.focus(), 0);
 }
 
 // ══════════════════════════════════════════════
@@ -508,6 +611,7 @@ function addItem() {
 // ══════════════════════════════════════════════
 function switchTab(idx, el) {
   state.currentTab = idx;
+  selectedIds.clear(); // 탭 바뀌면 선택 초기화
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
   render();
@@ -533,10 +637,11 @@ function render() {
   } else {
     if (!tab.items.length) {
       area.innerHTML = '<div class="empty-msg">항목이 없어요<br>위에서 추가해보세요!</div>';
-      return;
+    } else {
+      tab.items.forEach(item => area.appendChild(makeSwipeWrap(item, false)));
     }
-    tab.items.forEach(item => area.appendChild(makeSwipeWrap(item, false)));
   }
+  updateActionBar();
 }
 
 function renderJeongi(area, tab) {
@@ -670,7 +775,7 @@ function makeSwipeWrap(item, isJeongi) {
 // ══════════════════════════════════════════════
 function buildItemEl(item, isJeongi) {
   const div = document.createElement('div');
-  div.className = 'item' + (item.done ? ' done' : '') + (item.open ? ' open' : '');
+  div.className = 'item' + (item.done ? ' done' : '') + (item.open ? ' open' : '') + (isSelected(item.id) ? ' selected' : '');
   div.id = 'item-' + item.id;
 
   const isMemo = (state.currentTab === 0);   // 메모 탭
@@ -719,7 +824,13 @@ function buildItemEl(item, isJeongi) {
     // expand zone
     const zone = document.createElement('div');
     zone.className = 'item-expand-zone';
-    zone.onclick = () => toggleOpen(item.id);
+    // 메모/쇼핑 탭: 항목 탭 → 선택 토글
+    // 그 외 탭: 기존 동작 (확장)
+    if (isMemo || isShop) {
+      zone.onclick = () => toggleSelected(item.id);
+    } else {
+      zone.onclick = () => toggleOpen(item.id);
+    }
 
     const txt = document.createElement('span');
     txt.className = 'item-text';
@@ -743,19 +854,13 @@ function buildItemEl(item, isJeongi) {
     const acts = document.createElement('div');
     acts.className = 'item-actions';
 
-    // 메모/쇼핑 탭: 위 아래 이동 화살표 (큰 컬러 버튼)
-    if (isMemo || isShop) {
-      acts.appendChild(mkbtn('↑', 'arrow-up',   () => moveItem(item.id, -1)));
-      acts.appendChild(mkbtn('↓', 'arrow-down', () => moveItem(item.id,  1)));
-    }
-    // 메모 탭만: 쇼핑으로 이동 버튼
-    if (isMemo) {
-      acts.appendChild(mkbtn('🛒', '', () => moveToShopping(item.id)));
-    }
-
-    acts.appendChild(mkbtn('수정', '', () => startEdit(item.id)));
-    if (isJeongi && item.star && (state.tabs[3].groups||[]).length) {
-      acts.appendChild(mkbtn('그룹▾','blue', () => openMovePopup(item.id)));
+    // 메모/쇼핑 탭은 항목별 버튼 없음 (하단 액션바가 처리)
+    // 다른 탭은 기존 수정/그룹 버튼 유지
+    if (!isMemo && !isShop) {
+      acts.appendChild(mkbtn('수정', '', () => startEdit(item.id)));
+      if (isJeongi && item.star && (state.tabs[3].groups||[]).length) {
+        acts.appendChild(mkbtn('그룹▾','blue', () => openMovePopup(item.id)));
+      }
     }
     row.appendChild(acts);
   }
@@ -1115,6 +1220,114 @@ function moveToShopping(id) {
 }
 
 // ══════════════════════════════════════════════
+//  ACTION BAR (메모/쇼핑 탭 전용 하단 액션바)
+// ══════════════════════════════════════════════
+function updateActionBar(){
+  const bar = document.getElementById('actionBar');
+  if(!bar) return;
+  const isMemoOrShop = (state.currentTab === 0 || state.currentTab === 1);
+  const content = document.getElementById('contentArea');
+
+  if(!isMemoOrShop){
+    bar.classList.remove('show');
+    if(content) content.classList.remove('with-action-bar');
+    return;
+  }
+
+  bar.classList.add('show');
+  if(content) content.classList.add('with-action-bar');
+
+  const n = selectedIds.size;
+  const info = document.getElementById('actionBarInfo');
+  info.textContent = n === 0 ? '항목을 탭해서 선택하세요' : `${n}개 선택됨`;
+
+  // 버튼 활성/비활성
+  const disable = (n === 0);
+  document.getElementById('abUp').disabled = disable;
+  document.getElementById('abDown').disabled = disable;
+  document.getElementById('abEdit').disabled = (n !== 1); // 수정은 1개만
+  // 쇼핑 탭에서는 🛒 버튼 자체 숨김 (메모 탭에서만 의미 있음)
+  const cartBtn = document.getElementById('abCart');
+  if(state.currentTab === 0){
+    cartBtn.style.display = '';
+    cartBtn.disabled = disable;
+  } else {
+    cartBtn.style.display = 'none';
+  }
+}
+
+// 액션바: 선택된 항목들 위/아래로 한 칸씩
+function actionMove(delta){
+  const tab = state.tabs[state.currentTab];
+  // 선택된 항목들의 현재 인덱스
+  const selectedIdxs = [];
+  tab.items.forEach((it, i) => { if(selectedIds.has(it.id)) selectedIdxs.push(i); });
+  if(selectedIdxs.length === 0) return;
+
+  if(delta < 0){
+    // 위로: 첫 번째 선택 항목이 0이 아니어야
+    if(selectedIdxs[0] === 0) return;
+    // 위에서부터 처리 (인덱스가 작은 것부터)
+    selectedIdxs.forEach(i => {
+      const [it] = tab.items.splice(i, 1);
+      tab.items.splice(i - 1, 0, it);
+    });
+  } else {
+    // 아래로: 마지막 선택 항목이 끝이 아니어야
+    if(selectedIdxs[selectedIdxs.length - 1] === tab.items.length - 1) return;
+    // 아래에서부터 처리 (인덱스가 큰 것부터)
+    for(let k = selectedIdxs.length - 1; k >= 0; k--){
+      const i = selectedIdxs[k];
+      const [it] = tab.items.splice(i, 1);
+      tab.items.splice(i + 1, 0, it);
+    }
+  }
+  save(); render();
+}
+
+// 액션바: 수정 (선택 1개일 때만)
+function actionEdit(){
+  if(selectedIds.size !== 1) return;
+  const id = Array.from(selectedIds)[0];
+  clearSelection();
+  startEdit(id);
+}
+
+// 탭 이동 팝업 열기
+function openMoveTabPopup(){
+  if(selectedIds.size === 0) return;
+  document.getElementById('moveTabPopup').classList.add('show');
+}
+function closeMoveTabPopup(e){
+  if(e.target.id === 'moveTabPopup') e.target.classList.remove('show');
+}
+
+// 선택된 항목들을 대상 탭으로 이동
+function moveSelectedTo(targetTabIdx){
+  if(selectedIds.size === 0) return;
+  const srcTab = state.tabs[state.currentTab];
+  const dstTab = state.tabs[targetTabIdx];
+
+  // 선택된 항목 객체들 모으기 (현재 순서 유지)
+  const moving = [];
+  srcTab.items = srcTab.items.filter(it => {
+    if(selectedIds.has(it.id)){
+      moving.push(it);
+      return false;
+    }
+    return true;
+  });
+  // 대상 탭 맨 위에 추가 (현재 순서 그대로)
+  for(let k = moving.length - 1; k >= 0; k--){
+    dstTab.items.unshift(moving[k]);
+  }
+
+  selectedIds.clear();
+  document.getElementById('moveTabPopup').classList.remove('show');
+  save(); render();
+}
+
+// ══════════════════════════════════════════════
 //  GROUP
 // ══════════════════════════════════════════════
 function openGroupPopup() {
@@ -1270,6 +1483,24 @@ function resetAll() {
 // ══════════════════════════════════════════════
 load();
 render();
+
+// 초기 포커스 시도 (데스크탑에선 동작, 모바일은 사용자 제스처 필요할 수 있음)
+const _initInp = document.getElementById('newInput');
+if(_initInp){
+  setTimeout(() => _initInp.focus(), 100);
+
+  // 모바일: 화면을 처음 어디든 한 번 터치하면 입력창에 포커스
+  // (이미 다른 입력 중이거나 버튼/항목 터치면 제외)
+  let _firstTouchDone = false;
+  document.addEventListener('touchstart', (e) => {
+    if(_firstTouchDone) return;
+    // 입력창이나 버튼, 항목을 직접 터치한 경우는 그쪽이 우선
+    const t = e.target;
+    if(t.tagName === 'INPUT' || t.tagName === 'BUTTON' || t.closest('.item') || t.closest('.tab')) return;
+    _firstTouchDone = true;
+    _initInp.focus();
+  }, { passive: true });
+}
 </script>
 </body>
 </html>
