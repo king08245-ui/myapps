@@ -188,6 +188,48 @@ main{flex:1;overflow:hidden;position:relative;}
   font-weight:500;text-shadow:0 1px 1px rgba(0,0,0,0.3);
 }
 
+/* 목표 탭 */
+.goals-wrap{
+  padding:14px 14px 30px;
+  display:flex;flex-direction:column;gap:10px;
+  min-height:100%;
+}
+.goals-header{
+  display:flex;align-items:baseline;justify-content:space-between;
+  gap:10px;
+}
+.goals-title{
+  font-size:16px;font-weight:700;color:var(--t1);
+  font-family:'Noto Sans KR',sans-serif;
+}
+.goals-status{
+  font-size:11px;color:var(--t3);
+  font-family:'Noto Sans KR',sans-serif;
+}
+.goals-status.saving{color:var(--acc);}
+.goals-status.saved{color:#4FAE7A;}
+.goals-status.error{color:#E55050;}
+.goals-textarea{
+  flex:1;min-height:280px;
+  background:var(--s1);color:var(--t1);
+  border:1px solid var(--b1);border-radius:10px;
+  padding:14px;
+  font-family:'Noto Sans KR',sans-serif;
+  font-size:15px;line-height:1.7;
+  resize:vertical;
+  width:100%;box-sizing:border-box;
+}
+.goals-textarea:focus{
+  outline:none;border-color:var(--acc);
+}
+.goals-textarea::placeholder{
+  color:var(--t3);line-height:1.7;
+}
+.goals-hint{
+  font-size:11px;color:var(--t3);text-align:center;
+  font-family:'Noto Sans KR',sans-serif;
+}
+
 /* 현재 시간 표시 라인 — 주간 표 첫째 열(오늘)만 가로지름 */
 .now-line{
   position:absolute;left:0;right:0;height:2px;
@@ -399,6 +441,7 @@ main{flex:1;overflow:hidden;position:relative;}
   <button class="tab on" data-view="vClock">일 일</button>
   <button class="tab" data-view="vWeek">주간 시계</button>
   <button class="tab" data-view="vGrid">주간 표</button>
+  <button class="tab" data-view="vGoals">목표</button>
 </nav>
 
 <main>
@@ -436,6 +479,21 @@ main{flex:1;overflow:hidden;position:relative;}
       </div>
     </div>
     <div class="grid-wrap" id="gridWrap"></div>
+  </div>
+
+  <div class="view" id="vGoals" style="overflow-y:auto;">
+    <div class="goals-wrap">
+      <div class="goals-header">
+        <div class="goals-title">최종 목표</div>
+        <div class="goals-status" id="goalsStatus">로드 중...</div>
+      </div>
+      <textarea
+        id="goalsTextarea"
+        class="goals-textarea"
+        placeholder="여기에 원하는 만큼 목표를 적어두세요.&#10;&#10;예시:&#10;• 3개월 안에 10km 한 번에 달리기&#10;• 월 매출 500만원&#10;• 매일 책 한 챕터씩 읽기&#10;&#10;시계를 볼 때마다 이 목표를 떠올리세요."
+      ></textarea>
+      <div class="goals-hint">자동 저장됨 · 모든 기기에서 공유</div>
+    </div>
   </div>
 </main>
 
@@ -631,6 +689,104 @@ async function pullRoutinesFromJsonbin(){
   }catch(e){
     console.warn('routines pull 실패:', e);
   }
+}
+
+// ════ 목표 텍스트 동기화 ════════════════════════════════════════════
+// JSONbin에 goals_text (문자열) 한 개로 저장. 모든 기기 공유.
+let goalsSyncTimer = null;
+let goalsSyncing = false;
+let goalsLastSaved = '';
+
+function setGoalsStatus(state, msg){
+  const el = document.getElementById('goalsStatus');
+  if(!el) return;
+  el.className = 'goals-status ' + (state || '');
+  el.textContent = msg || '';
+}
+
+async function pullGoalsFromJsonbin(){
+  try{
+    const res = await fetch(CIRC_JSONBIN_URL + '/latest',
+      { headers: {'X-Master-Key': CIRC_JSONBIN_KEY} });
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const rec = (await res.json()).record || {};
+    const remoteText = rec.goals_text || '';
+    const ta = document.getElementById('goalsTextarea');
+    if(!ta) return;
+
+    // 사용자가 편집 중(focus)이면 덮어쓰지 않음 — 입력 중 데이터 손실 방지
+    if(document.activeElement === ta && ta.value !== remoteText){
+      // 편집 중인 텍스트는 그대로 두되, 상태만 알림
+      setGoalsStatus('', '편집 중 (저장 대기)');
+      return;
+    }
+
+    if(ta.value !== remoteText){
+      ta.value = remoteText;
+    }
+    goalsLastSaved = remoteText;
+
+    // 저장 시각 표시
+    const now = new Date();
+    const hm = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+    setGoalsStatus('saved', `최근 동기화 ${hm}`);
+
+    // localStorage 캐시
+    localStorage.setItem('circ_goals_cache', remoteText);
+  }catch(e){
+    console.warn('goals pull 실패:', e);
+    // 실패 시 캐시에서 복구
+    const cached = localStorage.getItem('circ_goals_cache');
+    const ta = document.getElementById('goalsTextarea');
+    if(cached && ta && !ta.value){
+      ta.value = cached;
+    }
+    setGoalsStatus('error', '동기화 실패 (오프라인 캐시 사용)');
+  }
+}
+
+async function pushGoalsToJsonbin(){
+  if(goalsSyncing) return;
+  const ta = document.getElementById('goalsTextarea');
+  if(!ta) return;
+  const text = ta.value;
+  if(text === goalsLastSaved) return; // 변화 없음
+
+  goalsSyncing = true;
+  setGoalsStatus('saving', '저장 중...');
+  try{
+    // 현재 record GET → goals_text 갱신 → PUT (다른 데이터 보존)
+    const get = await fetch(CIRC_JSONBIN_URL + '/latest',
+      { headers: {'X-Master-Key': CIRC_JSONBIN_KEY} });
+    if(!get.ok) throw new Error('GET '+get.status);
+    const rec = (await get.json()).record || {};
+    rec.goals_text = text;
+
+    const put = await fetch(CIRC_JSONBIN_URL, {
+      method:'PUT',
+      headers: {'Content-Type':'application/json','X-Master-Key': CIRC_JSONBIN_KEY},
+      body: JSON.stringify(rec)
+    });
+    if(!put.ok) throw new Error('PUT '+put.status);
+
+    goalsLastSaved = text;
+    localStorage.setItem('circ_goals_cache', text);
+    const now = new Date();
+    const hm = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+    setGoalsStatus('saved', `저장됨 ${hm}`);
+  }catch(e){
+    console.warn('goals push 실패:', e);
+    setGoalsStatus('error', '저장 실패 (재시도 대기)');
+  }finally{
+    goalsSyncing = false;
+  }
+}
+
+// 입력 후 1.5초 멈추면 저장 (디바운스)
+function onGoalsInput(){
+  setGoalsStatus('', '입력 중...');
+  clearTimeout(goalsSyncTimer);
+  goalsSyncTimer = setTimeout(pushGoalsToJsonbin, 1500);
 }
 
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
@@ -2084,8 +2240,28 @@ setInterval(()=>{ if(currentDate===TODAY) drawClock(); }, 30000);
 // 다른 기기에서 만든 자체 일정 자동 수신 (앱 열 때 + 다른 앱 보다 돌아올 때)
 pullRoutinesFromJsonbin();
 document.addEventListener('visibilitychange', () => {
-  if(!document.hidden) pullRoutinesFromJsonbin();
+  if(!document.hidden){
+    pullRoutinesFromJsonbin();
+    // 목표 탭이 활성 상태면 목표도 동기화
+    const vGoals = document.getElementById('vGoals');
+    if(vGoals && vGoals.classList.contains('on')) pullGoalsFromJsonbin();
+  }
 });
+
+// 목표 텍스트 영역 — 입력 이벤트 + 초기 캐시 표시
+(function initGoals(){
+  const ta = document.getElementById('goalsTextarea');
+  if(!ta) return;
+  // 빠른 표시를 위해 캐시 먼저
+  const cached = localStorage.getItem('circ_goals_cache');
+  if(cached) ta.value = cached;
+  ta.addEventListener('input', onGoalsInput);
+  // 포커스 잃을 때 즉시 저장 (디바운스 대기 없이)
+  ta.addEventListener('blur', () => {
+    clearTimeout(goalsSyncTimer);
+    pushGoalsToJsonbin();
+  });
+})();
 
 // ════ 탭 전환 ═══════════════════════════════════════════════════════
 document.querySelectorAll('.view-tabs .tab').forEach(btn => {
@@ -2098,6 +2274,7 @@ document.querySelectorAll('.view-tabs .tab').forEach(btn => {
     // view별 콘텐츠 렌더링
     if(target === 'vWeek') drawWeekClocks();
     if(target === 'vGrid') drawWeekGrid();
+    if(target === 'vGoals') pullGoalsFromJsonbin();
   });
 });
 </script>
