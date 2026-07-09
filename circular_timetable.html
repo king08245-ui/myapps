@@ -309,6 +309,10 @@ main{flex:1;overflow:hidden;position:relative;}
 }
 .inline-item.github{border-left:2px solid #4ecdc4;}
 .inline-item.notime{opacity:0.65;}
+.inline-item.inline-selected{
+  background:rgba(74,143,217,0.12);
+  box-shadow:inset 0 0 0 1.5px var(--acc);
+}
 .inline-item-color{width:3px;border-radius:2px;flex-shrink:0;}
 .inline-item-body{flex:1;min-width:0;}
 .inline-item-title{font-size:13px;font-weight:500;color:var(--t1);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -612,6 +616,7 @@ function saveHidden(){ localStorage.setItem(hiddenKey(currentDate), JSON.stringi
 let hiddenIds = getHidden(TODAY);
 
 let editId=null, selColor=COLORS[0], selRepeat='daily', repeatOn=false;
+let selectedScheduleId=null; // 목록에서 탭한 일정 — 시계에서 강조
 let selWeekdays=[]; // 요일선택 시 [0..6] 배열 (일=0 ~ 토=6)
 
 // ════ DailySchedule 동기화 설정 ════
@@ -1100,8 +1105,15 @@ function drawClock(){
     const aE=timeToAngle(s.end);
     const c=s.color||COLORS[0];
 
-    svg.appendChild(svgEl('path',{d:wedgePath(aS,aE),fill:hexRgba(c,0.22)}));
-    svg.appendChild(svgEl('path',{d:arcOnlyPath(aS,aE),fill:'none',stroke:c,'stroke-width':'3.5','stroke-linecap':'round'}));
+    // 선택된 일정이 있으면, 선택 안 된 조각은 흐리게
+    const isDimmed = selectedScheduleId && String(s.id) !== String(selectedScheduleId);
+    const fillA = isDimmed ? 0.06 : 0.22;
+    const strokeW = isDimmed ? '2' : '3.5';
+    const grp = svgEl('g', isDimmed ? {opacity:'0.35'} : {});
+
+    grp.appendChild(svgEl('path',{d:wedgePath(aS,aE),fill:hexRgba(c,fillA)}));
+    grp.appendChild(svgEl('path',{d:arcOnlyPath(aS,aE),fill:'none',stroke:c,'stroke-width':strokeW,'stroke-linecap':'round'}));
+    svg.appendChild(grp);
 
     let sweep=aE-aS; if(sweep<=0)sweep+=360;
     const mid=aS+sweep/2;
@@ -1112,11 +1124,13 @@ function drawClock(){
       // 캐릭터 크기: 블록 각도에 따라 조절
       const charSize = Math.min(sweep/360 * R * 1.1, 28);
       const lp=pol(ringMid, mid);
-      drawCharacter(svg, charType, lp[0], lp[1], charSize);
+      const cg=svgEl('g', isDimmed ? {opacity:'0.35'} : {});
+      drawCharacter(cg, charType, lp[0], lp[1], charSize);
+      svg.appendChild(cg);
     } else if(sweep>=12){
       // 캐릭터 없으면 텍스트 라벨
       const lr=pol(ringMid, mid);
-      const lbl=svgEl('text',{x:lr[0],y:lr[1],fill:c,'font-size':'13','text-anchor':'middle','dominant-baseline':'middle','font-family':'Noto Sans KR,sans-serif','font-weight':'500'});
+      const lbl=svgEl('text',{x:lr[0],y:lr[1],fill:c,'font-size':'13','text-anchor':'middle','dominant-baseline':'middle','font-family':'Noto Sans KR,sans-serif','font-weight':'500', opacity: isDimmed ? '0.35' : '1'});
       lbl.textContent=s.title.length>5?s.title.slice(0,4)+'…':s.title;
       svg.appendChild(lbl);
     }
@@ -1551,6 +1565,22 @@ function drawInlineList(){
     body.appendChild(timeEl);
     if(tags.innerHTML) body.appendChild(tags);
 
+    // 선택 상태면 항목 강조
+    if(selectedScheduleId && String(s.id) === String(selectedScheduleId)){
+      item.classList.add('inline-selected');
+    }
+    // 항목 본체 탭 → 시계에서 이 일정 강조 (다시 탭하면 해제)
+    body.style.cursor = 'pointer';
+    body.addEventListener('click', ()=>{
+      if(String(selectedScheduleId) === String(s.id)){
+        selectedScheduleId = null; // 같은 거 또 누르면 해제
+      } else {
+        selectedScheduleId = s.id;
+      }
+      drawClock();
+      drawInlineList();
+    });
+
     // 수정 버튼
     const actions = document.createElement('div');
     actions.className = 'inline-item-actions';
@@ -1982,6 +2012,7 @@ function setCurrentDate(dateStr, dir='none'){
 
   currentDate = dateStr;
   hiddenIds = getHidden(currentDate);
+  selectedScheduleId = null; // 날짜 바뀌면 강조 해제
   updateDateNav();
   animateClock(dir);
 }
