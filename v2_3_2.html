@@ -130,7 +130,7 @@
                 <button class="btn-footer" style="background:var(--success-color)" onclick="exportAllProjects()">💾 추출</button>
                 <button class="btn-footer" style="background:#6c757d" onclick="document.getElementById('fileInput').click()">📂 불러오기</button>
             </div>
-            <input type="file" id="fileInput" style="display:none" accept=".json" onchange="importAndRepair(event)">
+            <input type="file" id="fileInput" style="display:none" accept=".json" multiple onchange="importAndRepair(event)">
         </div>
     </div>
 
@@ -732,30 +732,59 @@
         }
 
         function importAndRepair(event) {
-            const reader = new FileReader(); reader.onload = (e) => {
-                // 노드 타입 통일 + 슬롯 타입을 "number"로 통일하여 버전간 연결 호환
-                let raw = e.target.result;
+            const files = Array.from(event.target.files);
+            if (files.length === 0) return;
+
+            function readFile(file) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => resolve(e.target.result);
+                    reader.onerror = reject;
+                    reader.readAsText(file);
+                });
+            }
+
+            // 파일 하나를 파싱 + 버전간 연결 복구 (기존 로직 그대로)
+            function parseAndRepair(raw) {
                 raw = raw.replace(/"type"\s*:\s*"[^"]*"/g, (m) => m.includes("project_link") ? m : '"type":"map/text"');
-                // 링크 슬롯 타입 정규화 (버전마다 달랐던 타입명 통일)
                 raw = raw.replace(/"links"\s*:\s*\[([^\]]*)\]/g, (m) => m);
                 const parsed = JSON.parse(raw);
-                // 각 프로젝트의 그래프 데이터에서 노드 슬롯 타입 강제 통일
                 Object.values(parsed).forEach(proj => {
                     if (proj.data && proj.data.nodes) {
                         proj.data.nodes.forEach(node => {
                             if (node.inputs)  node.inputs.forEach(s  => { s.type = "number"; s.name = s.name || ""; });
                             if (node.outputs) node.outputs.forEach(s => { s.type = "number"; s.name = s.name || ""; });
                         });
-                        // 링크 타입도 통일
                         if (proj.data.links) {
                             proj.data.links.forEach(link => { if (link) link[5] = "number"; });
                         }
                     }
                 });
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
-                loadProjectList(); alert("불러오기 완료 (버전간 연결 복구 적용)");
-            };
-            reader.readAsText(event.target.files[0]);
+                return parsed;
+            }
+
+            Promise.all(files.map(readFile)).then((rawTexts) => {
+                const parsedList = rawTexts.map(parseAndRepair);
+
+                // 여러 파일을 프로젝트(키) 단위로 병합
+                // 같은 프로젝트가 겹치면 최신 수정본(updatedAt 큰 쪽)이 남음
+                const merged = {};
+                parsedList.forEach((parsed) => {
+                    Object.keys(parsed).forEach((key) => {
+                        const incoming = parsed[key];
+                        const existing = merged[key];
+                        if (!existing || (incoming.updatedAt || 0) >= (existing.updatedAt || 0)) {
+                            merged[key] = incoming;
+                        }
+                    });
+                });
+
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+                loadProjectList();
+                alert(`불러오기 완료 (${files.length}개 파일 병합, 버전간 연결 복구 적용)`);
+            }).catch(() => {
+                alert("불러오기 실패: 파일 형식을 확인해주세요.");
+            });
         }
 
         // ── JSONbin 수집함 동기화 (텔레그램 /생각 → ideas 배열) ──────────────
