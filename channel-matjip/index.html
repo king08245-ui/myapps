@@ -1,0 +1,957 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>채널 맛집수첩</title>
+<meta name="description" content="내가 보는 유튜버들이 소개한 가게를 동네별·메뉴별로, 가까운 순으로 찾아보는 맛집 수첩">
+<meta name="theme-color" content="#F3F4F1" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#151716" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="맛집수첩">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- 글꼴은 화면을 막지 않게 따로 받는다(신호가 약해도 기본 글꼴로 먼저 그림) -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;700&display=swap" crossorigin media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;700&display=swap" crossorigin></noscript>
+<style>
+/* Layout: one narrow column like a pocket notebook — sign-style header, mode switch + search, where-am-I, channel filter, then results as menu slips */
+:root{
+  --bg:#F3F4F1; --paper:#FFFFFF; --ink:#1C1F1D; --muted:#5F6661; --line:#DADDD7;
+  --accent:#C8361C; --accent-ink:#FFFFFF; --soft:#F8E6E1;
+  --c1:#C8361C; --c2:#2F6F9F; --c3:#2E7D4F; --c4:#8A5A00; --water:#A9CFEA; --waterink:#3F77A1;
+  --f-display:"Black Han Sans","IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --f-body:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  --r:10px;
+  color-scheme:light;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#151716; --paper:#1E2120; --ink:#ECEEEA; --muted:#A3AAA5; --line:#323633;
+  --accent:#F0644A; --accent-ink:#1A0D09; --soft:#3A1F19;
+  --c1:#F0644A; --c2:#6FA8D6; --c3:#6FCB94; --c4:#E2B54A; --water:#24496A; --waterink:#7FB2DA; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#151716; --paper:#1E2120; --ink:#ECEEEA; --muted:#A3AAA5; --line:#323633;
+  --accent:#F0644A; --accent-ink:#1A0D09; --soft:#3A1F19;
+  --c1:#F0644A; --c2:#6FA8D6; --c3:#6FCB94; --c4:#E2B54A; --water:#24496A; --waterink:#7FB2DA; color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.55;padding-inline:16px;padding-block:20px 48px;
+  word-break:keep-all;overflow-wrap:anywhere;-webkit-tap-highlight-color:transparent;min-height:100dvh}
+[hidden]{display:none!important}
+.wrap{max-width:680px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.sign{font-family:var(--f-display);font-size:34px;line-height:1;letter-spacing:.01em;margin:0;font-weight:400}
+.sign span{color:var(--accent)}
+.sub{color:var(--muted);font-size:13px;margin:6px 0 0}
+.note{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;font-size:13px;color:var(--muted);margin:0}
+section{display:flex;flex-direction:column;gap:10px}
+.label{font-size:12px;font-weight:700;letter-spacing:.08em;color:var(--muted);display:flex;justify-content:space-between;align-items:center;gap:8px}
+.search{display:flex;gap:8px}
+input[type=text]{flex:1;min-width:0;font:inherit;font-size:16px;padding:12px 14px;border:1.5px solid var(--line);border-radius:var(--r);background:var(--paper);color:var(--ink)}
+input[type=text]:focus{outline:none;border-color:var(--accent)}
+button{font:inherit;cursor:pointer;border-radius:var(--r);border:1.5px solid var(--line);background:var(--paper);color:var(--ink);padding:10px 14px;min-height:44px}
+button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:700;white-space:nowrap}
+.primary:disabled,button:disabled{opacity:.5;cursor:default}
+.install{font-weight:700;white-space:nowrap;flex:none}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;min-height:40px;border-radius:999px;border:1px solid var(--line);background:var(--paper);font-size:14px;color:var(--ink)}
+.chip.toggle[aria-pressed="false"]{opacity:.55;text-decoration:line-through}
+.chip .sw{width:9px;height:9px;border-radius:50%;flex:none}
+.chip.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chip.gps{border-color:var(--accent);color:var(--accent);font-weight:700}
+.chip.gps.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.chip.gps svg{width:16px;height:16px;flex:none}
+.seg{display:inline-flex;border:1.5px solid var(--line);border-radius:999px;padding:3px;background:var(--paper);align-self:flex-start}
+.seg button{border:0;border-radius:999px;padding:6px 18px;min-height:40px;background:transparent;color:var(--muted);font-weight:500}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.hint{font-size:13px;color:var(--muted);margin:0}
+.empty{border:1.5px dashed var(--line);border-radius:var(--r);padding:14px;color:var(--muted);font-size:14px}
+.results{display:flex;flex-direction:column;gap:10px}
+.slip{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:14px 14px 12px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.slip h3{margin:0;font-size:17px;line-height:1.3;text-wrap:balance;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.tag{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;border:1px solid currentColor;white-space:nowrap}
+.desc{color:var(--accent);font-weight:500;font-size:14px}
+.meta{font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:2px;min-width:0}
+.links{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.links a{display:inline-flex;align-items:center;min-height:40px;font-size:13px;text-decoration:none;color:var(--ink);border:1px solid var(--line);border-radius:999px;padding:4px 12px}
+.links a:hover{border-color:var(--ink)}
+.group{font-family:var(--f-display);font-size:18px;margin:8px 0 0;font-weight:400}
+.count{font-variant-numeric:tabular-nums}
+.more{align-self:center}
+.here{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px}
+.here strong{font-size:15px}
+.here .muted{color:var(--muted);font-size:13px}
+.dist{font-size:12px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--soft);color:var(--accent);white-space:nowrap;font-variant-numeric:tabular-nums}
+.viewbtn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px 18px;font-size:17px;font-weight:700;border-radius:14px;
+  background:var(--accent);border-color:var(--accent);color:var(--accent-ink);box-shadow:0 4px 14px rgb(200 54 28 / .28);transition:transform .1s}
+.viewbtn:hover{filter:brightness(1.06)}
+.viewbtn:active{transform:scale(.98)}
+.viewbtn.on{background:var(--ink);border-color:var(--ink);color:var(--bg);box-shadow:none}
+.viewbtn svg{width:20px;height:20px;flex:none}
+@media (prefers-reduced-motion:reduce){.viewbtn{transition:none}}
+.mapwrap{position:relative;border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:var(--bg)}
+.mapwrap svg{display:block;width:100%;height:min(60vh,560px);touch-action:none;cursor:grab;background:var(--paper)}
+.mapwrap svg:active{cursor:grabbing}
+.mapctl{position:absolute;right:10px;top:10px;display:flex;flex-direction:column;gap:6px}
+.mapctl button{width:44px;height:44px;padding:0;font-size:18px;font-weight:700;border-radius:10px;box-shadow:0 1px 3px rgb(0 0 0 / .15)}
+.mapctl button.wide{width:auto;padding:0 10px;font-size:13px}
+.maplegend{position:absolute;left:10px;bottom:10px;display:flex;gap:8px;flex-wrap:wrap;font-size:11px;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:5px 8px}
+.maplegend span{display:inline-flex;align-items:center;gap:4px}
+.maplegend i{width:9px;height:9px;border-radius:50%;display:inline-block}
+.mapnote{font-size:12px;color:var(--muted);margin:6px 0 0}
+.gu{fill:var(--bg);stroke:var(--line);stroke-width:1}
+.prov{fill:var(--bg);stroke:var(--line);stroke-width:1}
+.gulabel{fill:var(--muted);font-family:var(--f-body);font-weight:500;text-anchor:middle;pointer-events:none}
+.pin{stroke:var(--paper);stroke-width:1.5;cursor:pointer}
+.pin.rough{fill-opacity:.35;stroke-dasharray:2 2}
+.pin.sel{stroke:var(--ink);stroke-width:3}
+.me{fill:var(--ink);stroke:var(--paper);stroke-width:2}
+.ctr{fill:var(--accent);stroke:var(--paper);stroke-width:2}
+.melabel{fill:var(--ink);font-family:var(--f-body);font-weight:700;text-anchor:middle;pointer-events:none;paint-order:stroke;stroke:var(--paper);stroke-linejoin:round}
+.han{fill:none;stroke:var(--water);stroke-linecap:round;stroke-linejoin:round}
+.hanlabel{fill:var(--waterink);font-family:var(--f-body);font-weight:700;letter-spacing:.3em;pointer-events:none}
+.stn{fill:var(--paper);stroke:var(--ink);stroke-width:1.5}
+.stnlabel{fill:var(--ink);font-family:var(--f-body);font-weight:700;pointer-events:none;paint-order:stroke;stroke:var(--paper);stroke-linejoin:round}
+.gmap{display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;min-height:48px;border-radius:12px;border:1.5px solid var(--line);background:var(--paper);color:var(--ink);text-decoration:none;font-weight:700;font-size:15px;margin-bottom:10px}
+.gmap small{font-weight:400;color:var(--muted);font-size:12px}
+.ring{fill:none;stroke:var(--accent);stroke-opacity:.45;stroke-dasharray:4 4}
+.ringlabel{fill:var(--accent);font-family:var(--f-body);font-weight:700;pointer-events:none;paint-order:stroke;stroke:var(--paper);stroke-linejoin:round}
+.foot{border-top:1px solid var(--line);padding-top:14px;display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--muted)}
+.foot p{margin:0}
+.foot a{color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1 class="sign">채널 <span>맛집</span>수첩</h1>
+      <p class="sub">내가 보는 유튜버들이 영상에서 소개한 가게를 동네별로, 메뉴별로 찾아봐요</p>
+    </div>
+    <button type="button" class="install" id="installBtn" hidden>앱 설치</button>
+  </header>
+  <p class="note" id="iosHint" hidden>아이폰: 사파리 아래쪽 <b>공유</b> 버튼 → <b>홈 화면에 추가</b>를 누르면 앱처럼 쓸 수 있어요.</p>
+
+  <section aria-labelledby="regionLabel">
+    <div class="seg" role="group" aria-label="찾는 방식">
+      <button type="button" id="modeArea" aria-pressed="true">동네로</button>
+      <button type="button" id="modeMenu" aria-pressed="false">메뉴로</button>
+    </div>
+    <div class="label" id="regionLabel">어느 동네?</div>
+    <form class="search" id="searchForm">
+      <input type="text" id="q" placeholder="예: 종로3가, 성수동" autocomplete="off" aria-labelledby="regionLabel">
+      <button class="primary" id="searchBtn" type="submit">찾기</button>
+    </form>
+    <div class="chips" id="quick"></div>
+  </section>
+
+  <section aria-labelledby="hereLabel">
+    <div class="label" id="hereLabel">내 위치 (가까운 순 정렬)</div>
+    <div class="here"><div><strong id="hereName">아직 정하지 않았어요</strong><div class="muted" id="hereHint">아래에서 고르면 결과가 가까운 순으로 바뀌어요</div></div>
+      <button type="button" id="nearBtn" hidden>내 근처 전체 보기</button></div>
+    <div class="chips" id="herePresets"></div>
+    <form class="search" id="hereForm">
+      <input type="text" id="hereInput" placeholder="역·동네 이름 (예: 합정역)" autocomplete="off" aria-label="위치 직접 입력">
+      <button type="submit" id="hereBtn">위치 설정</button>
+    </form>
+  </section>
+
+  <section aria-labelledby="chLabel">
+    <div class="label" id="chLabel"><span>채널</span><span class="count" id="dbStat"></span></div>
+    <div class="chips" id="channels"></div>
+    <p class="hint">눌러서 검색에서 빼거나 넣을 수 있어요.</p>
+  </section>
+
+  <section aria-live="polite">
+    <div class="label"><span id="resultTitle">결과</span><span id="resultNote" class="count"></span></div>
+    <button type="button" class="viewbtn" id="viewBtn" hidden>지도로 보기</button>
+    <div id="results" class="results"><div class="empty">데이터를 불러오는 중이에요…</div></div>
+  </section>
+
+  <footer class="foot">
+    <p id="dataNote"></p>
+    <p>새 채널이나 새 영상을 넣고 싶으면 Claude에게 채널 링크를 보내 주세요. · <a href="privacy.html">개인정보처리방침</a></p>
+  </footer>
+</div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const AREA_Q = ["종로3가","을지로","광화문","은평구","성수동","망원동","신당동"];
+  const MENU_Q = ["순대국","국밥","냉면","족발","칼국수","짬뽕","돈까스"];
+  const COLORS = ["--c1","--c2","--c3","--c4"];
+  const RADIUS = 1.0; // km: 동네 검색 때 이 반경 안의 가게도 포함
+  const state = { mode: "area", off: new Set(), db: null, shown: 40, origin: null };
+  const PRESETS = [
+    { name: "공덕역", lat: 37.5443, lng: 126.9516 }, { name: "이태원역", lat: 37.5345, lng: 126.9946 },
+    { name: "종로3가역", lat: 37.5704, lng: 126.9921 }, { name: "서울역", lat: 37.5547, lng: 126.9706 },
+    { name: "강남역", lat: 37.4979, lng: 127.0276 }, { name: "홍대입구역", lat: 37.5572, lng: 126.9245 }
+  ];
+  state.origin = PRESETS[0];
+  try {
+    const raw = localStorage.getItem("cfn.origin");
+    if (raw === "off") state.origin = null;
+    else if (raw) { const o = JSON.parse(raw); if (o && isFinite(o.lat)) state.origin = o.gps ? { ...o, name: "지난번 위치", stale: true } : o; }
+  } catch {}
+  // Rough centres used until a shop has its own geocoded point: Seoul districts, well-known Seoul areas, other cities
+  const AREAS = [
+    ["종로구",37.5735,126.979],["중구",37.5641,126.9979],["용산구",37.5326,126.9905],["성동구",37.5634,127.0369],["광진구",37.5385,127.0823],
+    ["동대문구",37.5744,127.0396],["중랑구",37.6066,127.0927],["성북구",37.5894,127.0167],["강북구",37.6397,127.0256],["도봉구",37.6688,127.0471],
+    ["노원구",37.6542,127.0568],["은평구",37.6027,126.9291],["서대문구",37.5791,126.9368],["마포구",37.5663,126.9019],["양천구",37.517,126.8665],
+    ["강서구",37.5509,126.8495],["구로구",37.4954,126.8874],["금천구",37.4569,126.8955],["영등포구",37.5264,126.8962],["동작구",37.5124,126.9393],
+    ["관악구",37.4784,126.9516],["서초구",37.4837,127.0324],["강남구",37.5172,127.0473],["송파구",37.5145,127.1059],["강동구",37.5301,127.1238],
+    ["종로3가",37.5704,126.9921],["익선동",37.5743,126.9897],["광장시장",37.5700,126.9996],["을지로",37.5662,126.9910],["명동",37.5636,126.9850],
+    ["광화문",37.5714,126.9768],["신당",37.5656,127.0176],["남대문",37.5592,126.9776],["서촌",37.5790,126.9705],["안국",37.5765,126.9854],
+    ["혜화",37.5822,127.0019],["대학로",37.5822,127.0019],["연남",37.5626,126.9255],["망원",37.5560,126.9101],["홍대",37.5572,126.9245],
+    ["성수",37.5446,127.0557],["왕십리",37.5612,127.0371],["신촌",37.5552,126.9369],["연희",37.5687,126.9310],["홍제",37.5890,126.9437],
+    ["연신내",37.6190,126.9210],["불광",37.6104,126.9300],["응암",37.5986,126.9155],["여의도",37.5219,126.9245],["영등포",37.5157,126.9076],
+    ["신도림",37.5088,126.8913],["청량리",37.5800,127.0469],["경동시장",37.5797,127.0390],["노량진",37.5131,126.9425],["이촌",37.5221,126.9738],
+    ["삼각지",37.5347,126.9730],["수유",37.6380,127.0254],["도봉산",37.6896,127.0459],["면목",37.5885,127.0874],["건대",37.5404,127.0692],
+    ["구의",37.5372,127.0858],["마곡",37.5602,126.8254],["약수",37.5543,127.0107],["충무로",37.5612,126.9943],["동묘",37.5733,127.0164],
+    ["공덕",37.5443,126.9516],["이태원",37.5345,126.9946],["서울역",37.5547,126.9706],["시청",37.5657,126.9769],["금호",37.5480,127.0207],
+    ["부산",35.1796,129.0756],["속초",38.207,128.5918],["강릉",37.7519,128.8761],["주문진",37.8930,128.8256],["서귀포",33.2541,126.56],["제주",33.4996,126.5312],
+    ["인천",37.4563,126.7052],["대구",35.8714,128.6014],["광주",35.1595,126.8526],["춘천",37.8813,127.7298],["고양",37.6584,126.832],["일산",37.6584,126.7700],
+    ["서오릉",37.6260,126.9010],["안양",37.3943,126.9568],["의정부",37.7381,127.0337],["목포",34.8118,126.3922],["전주",35.8242,127.148],["영월",37.1837,128.4617],
+    ["동해",37.5247,129.1143],["태안",36.7456,126.2979],["거제",34.8806,128.6211],["남양주",37.636,127.2165],["가평",37.8315,127.5105],["홍천",37.697,127.8888],
+    ["군산",35.9676,126.7369],["익산",35.9483,126.9577],["포항",36.019,129.3435],["영덕",36.415,129.3653],["울진",36.993,129.4004],["인제",38.0697,128.1707],
+    ["고성",38.3807,128.4677],["양양",38.0754,128.619],["논산",36.1872,127.0987],["구리",37.5943,127.1296],["창원",35.228,128.6811],["임실",35.6178,127.2893],
+    ["파주",37.7599,126.7802],["대전",36.3504,127.3845],["군포",37.3616,126.9352],["사천",35.0037,128.0642],["삼천포",34.9285,128.0640],["울산",35.5384,129.3114]
+  ];
+  // Han River centreline through Seoul (Natural Earth) and landmark subway stations, for orientation and place lookup
+  const HAN = [[127.183,37.58],[127.163,37.574],[127.145,37.566],[127.131,37.556],[127.125,37.546],[127.112,37.517],[127.104,37.508],[127.088,37.506],[127.075,37.513],[127.063,37.523],[127.052,37.528],[127.046,37.53],[127.032,37.539],[127.025,37.542],[127.017,37.54],[127.01,37.535],[126.993,37.523],[126.988,37.516],[126.982,37.511],[126.973,37.508],[126.965,37.511],[126.959,37.518],[126.954,37.525],[126.949,37.528],[126.909,37.546],[126.881,37.552],[126.867,37.559],[126.773,37.626],[126.755,37.638]];
+  const STATIONS = [["서울역",37.5547,126.9706],["시청",37.5657,126.9769],["광화문",37.571,126.9768],["종각",37.5702,126.9831],["종로3가",37.5704,126.9921],["을지로3가",37.5663,126.991],
+    ["동대문",37.5714,127.0095],["혜화",37.5822,127.0019],["안국",37.5765,126.9854],["경복궁",37.5757,126.9735],["공덕",37.5443,126.9516],["홍대입구",37.5572,126.9245],["합정",37.5496,126.9139],
+    ["신촌",37.5552,126.9369],["마포",37.5395,126.9459],["여의도",37.5219,126.9245],["영등포구청",37.5246,126.896],["신도림",37.5088,126.8913],["용산",37.5299,126.9648],["삼각지",37.5347,126.973],
+    ["이태원",37.5345,126.9946],["한남",37.5293,127.009],["약수",37.5543,127.0107],["왕십리",37.5612,127.0371],["성수",37.5446,127.0557],["건대입구",37.5404,127.0692],["잠실",37.5133,127.1],
+    ["강남",37.4979,127.0276],["고속터미널",37.5049,127.0049],["사당",37.4765,126.9816],["노량진",37.5131,126.9425],["청량리",37.58,127.0469],["연신내",37.619,126.921],["불광",37.6104,126.93],
+    ["응암",37.5986,126.9155],["수유",37.638,127.0254],["창동",37.6532,127.0477],["도봉산",37.6896,127.0459],["서울대입구",37.4812,126.9527],["명동",37.5609,126.9863],["충무로",37.5612,126.9943],
+    ["신당",37.5656,127.0176],["동묘앞",37.5733,127.0164],["마곡",37.5602,126.8254],["신림",37.4842,126.9297],["대림",37.4925,126.8949],["군자",37.5571,127.0794],["석계",37.6151,127.0659]];
+  // more stations: typed names are found without the internet (drawn on the map only when zoomed in)
+  const STATIONS2 = [["을지로입구",37.566,126.9826],["을지로4가",37.5667,126.9978],["동대문역사문화공원",37.5652,127.0079],["종로5가",37.5709,127.0019],
+    ["신설동",37.5752,127.0251],["제기동",37.5781,127.0348],["안암",37.5862,127.0292],["성신여대입구",37.5926,127.0164],["한성대입구",37.5884,127.006],
+    ["회현",37.5588,126.9784],["숙대입구",37.5448,126.9721],["남영",37.5415,126.9714],["효창공원앞",37.5393,126.9612],["충정로",37.56,126.9636],
+    ["서대문",37.5658,126.9667],["독립문",37.5744,126.9578],["상수",37.5477,126.9229],["망원",37.556,126.9101],["당산",37.5349,126.9025],
+    ["문래",37.5179,126.8948],["신길",37.5172,126.9171],["대방",37.5133,126.9264],["동작",37.5027,126.9797],["총신대입구",37.4867,126.9817],
+    ["이수",37.4867,126.9817],["교대",37.4934,127.014],["양재",37.4842,127.0346],["역삼",37.5006,127.0364],["선릉",37.5045,127.049],
+    ["삼성",37.5088,127.0631],["신논현",37.5045,127.025],["신사",37.5163,127.0203],["압구정",37.527,127.0284],["뚝섬",37.5474,127.0473],
+    ["서울숲",37.5435,127.0446],["상왕십리",37.5644,127.0294],["신금호",37.5544,127.0206],["한양대",37.5553,127.0436],["답십리",37.5669,127.0527],
+    ["아차산",37.5521,127.0897],["천호",37.5386,127.1236],["잠실새내",37.5116,127.0862],["석촌",37.5054,127.1069],["가락시장",37.4925,127.1183],
+    ["낙성대",37.4769,126.9637],["봉천",37.4825,126.9418],["구로디지털단지",37.4852,126.9015],["가산디지털단지",37.4815,126.8826],["목동",37.5262,126.8644],
+    ["오목교",37.5245,126.8751],["홍제",37.5889,126.9437],["구파발",37.6367,126.9187],["미아사거리",37.6133,127.0301],["길음",37.6033,127.0251],
+    ["쌍문",37.6486,127.0347],["노원",37.6553,127.0613],["회기",37.5895,127.0578],["상봉",37.5965,127.085],["디지털미디어시티",37.5768,126.9]];
+
+  // Menu words that mean the same dish (or shops that usually sell it); a search for any word looks for all of them
+  const MENU_SYN = [
+    ["순대국","순댓국","순대국밥"],["국밥","국밥집","순대국","순댓국","순대국밥","돼지국밥","소머리국밥","따로국밥","수육국밥"],
+    ["고기","고깃집","삼겹살","오겹살","목살","항정살","갈매기살","갈비","돼지갈비","소갈비","한우","소고기","정육","숯불","생고기","등심","차돌"],
+    ["돼지국밥","수육국밥"],["해장국","선지","뼈해장국","우거지","양평해장국","선짓국"],["감자탕","뼈다귀","뼈해장국"],
+    ["곰탕","설렁탕","도가니","꼬리곰탕"],["닭곰탕","닭개장"],["냉면","평양냉면","함흥냉면","물냉면","비빔냉면","면옥","밀면"],["평양냉면","면옥"],
+    ["막국수","메밀국수","메밀"],["국수","잔치국수","콩국수","비빔국수","멸치국수","국숫집"],["칼국수","칼제비","수제비","옹심이"],
+    ["짜장","짜장면","자장면","간짜장","중국집","중화요리","반점"],["짬뽕","중국집","중화요리","반점"],["탕수육","중국집","중화요리","반점"],
+    ["족발","보쌈","오향족발"],["돈까스","돈가스","돈카츠","카츠","경양식"],["삼겹살","오겹살","목살","솥뚜껑","돼지구이"],
+    ["갈비","돼지갈비","소갈비","갈빗집","갈비살"],["곱창","막창","대창","양곱창","곱창전골"],["막창","곱창","대창"],["닭갈비"],["닭한마리"],
+    ["치킨","통닭","닭강정","후라이드","프라이드"],["닭발"],["삼계탕","백숙","닭백숙"],
+    ["회","횟집","회집","회식당","활어","물회","회센터","막회","세꼬시","숙성회","사시미","수산"],["물회","막회"],["생선구이","고등어","갈치","임연수","생선"],
+    ["조개구이","조개","가리비"],["장어","민물장어","풍천장어","꼼장어","곰장어"],["아구찜","아귀찜","아구","아귀"],
+    ["낙지","쭈꾸미","주꾸미","산낙지","연포탕"],["오징어","한치","오징어순대"],["게장","간장게장","양념게장"],["대게","킹크랩","홍게","게찜"],
+    ["부대찌개","부대"],["김치찌개","찌개","찌게"],["동태탕","동태찌개","생태탕","생태","동태"],["추어탕","미꾸라지"],["육개장"],["매운탕","서더리"],
+    ["백반","한식뷔페","기사식당","정식","가정식","밥집"],["전","전집","빈대떡","녹두전","부침개","모둠전","육전","파전"],["막걸리","전집","빈대떡"],
+    ["만두","교자","딤섬","왕만두"],["떡볶이","분식","떡볶"],["분식","떡볶이","김밥"],["김밥"],["라멘","돈코츠"],["우동"],["초밥","스시","오마카세"],
+    ["쌀국수","베트남"],["양꼬치","양갈비","양고기","꼬치"],["양고기","양꼬치","양갈비"],["마라탕","마라","훠궈"],["육회","육사시미","뭉티기"],
+    ["한우","소고기","등심","차돌","안창살","정육식당"],["소고기","한우","등심","차돌","정육"],["오리","오리고기","훈제오리","오리백숙"],
+    ["순두부","두부"],["두부","순두부"],["청국장","된장"],["비빔밥","돌솥"],["어묵","오뎅"],["포차","포장마차","실내포차"],
+    ["호프","노가리","생맥주"],["노가리","호프"],["이자카야","선술집","사케"],["카페","커피","디저트","베이커리"],["빵","베이커리","제과","빵집","소금빵","베이글","식빵","크루아상"],
+    ["파스타","이탈리안"],["피자"],["햄버거","버거"]
+  ];
+
+  const norm = s => (s || "").toLowerCase().replace(/\s+/g, "").replace(/댓/g, "대");
+  // words of an address or title, so "시청" does not match "속초시 청학로" and "대구" does not match "해운대구"
+  const toks = s => (s || "").toLowerCase().replace(/댓/g, "대").split(/[^0-9a-z가-힣]+/).filter(Boolean);
+  const SAFE1 = new Set(["빵"]);                                   // one-letter menu words that are safe to look for as-is
+  const BROAD = new Set(["서울","부산","대구","인천","광주","대전","울산","세종","제주","경기","강원"]);
+  const dist = (la1, lo1, la2, lo2) => {
+    const R = 6371, r = Math.PI / 180, dLa = (la2 - la1) * r, dLo = (lo2 - lo1) * r;
+    const h = Math.sin(dLa / 2) ** 2 + Math.cos(la1 * r) * Math.cos(la2 * r) * Math.sin(dLo / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(h));
+  };
+  function km(p) { return state.origin && p.g ? dist(state.origin.lat, state.origin.lng, p.g[0], p.g[1]) : Infinity; }
+  const fmtKm = d => d < 1 ? Math.round(d * 1000 / 10) * 10 + "m" : (d < 10 ? d.toFixed(1) : Math.round(d)) + "km";
+  function band(d) { return d <= 0.5 ? "500m 이내" : d <= 1 ? "1km 이내" : d <= 3 ? "3km 이내" : d <= 10 ? "10km 이내" : d <= 50 ? "50km 이내" : "50km 밖"; }
+
+  function roughPoint(p, v) {
+    // address first (most reliable), then the shop's area note, then the video title; the 4th item is the area name found
+    for (const src of [p.a, p.ar, v?.t]) {
+      if (!src) continue;
+      const seoulEnd = AREAS.findIndex(e => e[0] === "부산");
+      let seoul = null, si = -1, city = null, ci = -1;
+      AREAS.forEach(([k, la, lo], idx) => {
+        const i = src.indexOf(k); if (i < 0) return;
+        if (idx < seoulEnd) { if (i >= si) { seoul = [la, lo, 3, k]; si = i; } }
+        else if (i >= ci) { city = [la, lo, 3, k]; ci = i; }
+      });
+      if (city && !/서울/.test(src)) return city;
+      if (seoul) return seoul;
+      if (city) return city;
+    }
+    return null;
+  }
+
+  // ---------- place names → points (stations, neighbourhoods, districts) ----------
+  const GAZ = new Map();
+  const gkey = s => norm(s).replace(/역$/, "");
+  const addG = (name, lat, lng, kind) => { const k = gkey(name); if (k && !GAZ.has(k)) GAZ.set(k, { name, lat, lng, kind }); };
+  PRESETS.forEach(p => addG(p.name, p.lat, p.lng, "station"));
+  STATIONS.forEach(([n, la, lo]) => addG(n.endsWith("역") ? n : n + "역", la, lo, "station"));
+  const GU_END = AREAS.findIndex(e => e[0] === "종로3가"), CITY_START = AREAS.findIndex(e => e[0] === "부산");
+  const GU_NAMES = AREAS.slice(0, GU_END).map(([n]) => n);   // the 25 districts of Seoul ("대구" is a city, not a 구)
+  AREAS.forEach(([n, la, lo], i) => addG(n, la, lo, i < GU_END ? "gu" : i >= CITY_START ? "city" : "area"));
+  STATIONS2.forEach(([n, la, lo]) => addG(n + "역", la, lo, "station"));   // after the areas, so "망원동" stays 망원
+  function gazLookup(term) {
+    const k = gkey(term);
+    if (GAZ.has(k)) return GAZ.get(k);
+    const k2 = k.replace(/(동|입구|사거리|시장)$/, "");
+    if (k2.length >= 2 && GAZ.has(k2)) return GAZ.get(k2);
+    return null;
+  }
+  const onlineCache = new Map();
+  let onlineFailed = false;   // last lookup could not reach the internet
+  async function placeOnline(term) {
+    // Free OpenStreetMap search (needs internet); only for names not in the list above
+    const key = gkey(term);
+    onlineFailed = false;
+    if (onlineCache.has(key)) return onlineCache.get(key);
+    let res = null, answered = false;
+    const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 6000);   // weak signal: give up after 6 s
+    try {
+      const r = await fetch("https://photon.komoot.io/api/?limit=1&lat=37.55&lon=126.98&q=" + encodeURIComponent(term), { signal: ctl.signal });
+      const j = await r.json(), f = j.features && j.features[0];
+      answered = true;
+      if (f) {
+        const [lng, lat] = f.geometry.coordinates;
+        if (f.properties.countrycode === "KR" && lat > 33 && lat < 39 && lng > 124 && lng < 132) res = { name: f.properties.name || term, lat, lng, kind: "online" };
+      }
+    } catch {} finally { clearTimeout(timer); }
+    if (answered) onlineCache.set(key, res);   // remember answers, not network failures
+    else onlineFailed = true;
+    return res;
+  }
+
+  // ---------- where am I ----------
+  const GPS_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5" fill="currentColor"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>';
+  const hint = t => { $("hereHint").textContent = t; };
+  let hintBusy = false;   // "찾는 중…" is showing: results must not overwrite it
+  // what my position does right now: a place search is sorted around that place, so my position does not move it
+  function hereHint() {
+    const o = state.origin, c = state.cur?.type === "search" && state.lastCenter;
+    if (!o) return "아래에서 고르면 결과가 가까운 순으로 바뀌어요";
+    if (c) return `지금 결과는 찾은 곳(${c.name}) 기준 거리예요. 내 위치는 메뉴 검색과 '내 근처 전체 보기'에 쓰여요`;
+    return o.stale ? "지난번에 찾은 위치예요. 현재 위치를 누르면 지금 위치로 바꿔요"
+      : o.gps ? "현재 위치 버튼을 다시 누르면 새로 찾아요" : "결과를 가까운 순으로 보여줘요";
+  }
+  function renderHere() {
+    $("hereName").textContent = state.origin ? state.origin.name : "아직 정하지 않았어요";
+    hint(hereHint());
+    $("nearBtn").hidden = !state.origin;
+    const box = $("herePresets"); box.replaceChildren();
+    const g = el("button", { type: "button", class: "chip gps" + (state.origin?.gps ? " on" : ""), id: "gpsBtn", onclick: () => useGPS(false) });
+    g.innerHTML = GPS_ICON + "<span>현재 위치</span>";
+    box.append(g);
+    PRESETS.forEach(p => box.append(el("button", { type: "button", class: "chip" + (state.origin?.name === p.name && !state.origin?.gps ? " on" : ""), onclick: () => setOrigin(p) }, p.name)));
+    if (state.origin) box.append(el("button", { type: "button", class: "chip", onclick: () => setOrigin(null) }, "위치 끄기"));
+  }
+  function setOrigin(o) {
+    state.origin = o;
+    try { localStorage.setItem("cfn.origin", o ? JSON.stringify(o) : "off"); } catch {}
+    renderHere();
+    if (state.cur?.type === "near") { if (o) nearby(false); else showIntro(); }
+    else if (state.lastRows) renderResults(state.lastTerm, state.lastRows, state.lastNote, state.lastCenter);
+  }
+  function useGPS(silent) {
+    if (!navigator.geolocation) { if (!silent) hint("이 기기에서는 현재 위치를 쓸 수 없어요. 아래에서 역을 골라 주세요."); return; }
+    if (!silent) { hint("현재 위치 찾는 중…"); hintBusy = true; }
+    navigator.geolocation.getCurrentPosition(
+      pos => { if (!silent) hintBusy = false; setOrigin({ name: "현재 위치", lat: +pos.coords.latitude.toFixed(5), lng: +pos.coords.longitude.toFixed(5), gps: true }); },
+      err => { if (!silent) hintBusy = false; if (!silent) hint(err && err.code === 1
+        ? "위치 권한이 꺼져 있어요. 브라우저 설정에서 이 사이트의 위치를 허용하거나, 아래에서 역을 골라 주세요."
+        : "현재 위치를 찾지 못했어요. 잠시 뒤 다시 누르거나 아래에서 역을 골라 주세요."); },
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 });
+  }
+  async function lookupOrigin(name) {
+    name = name.trim(); if (!name) return;
+    const g = gazLookup(name);
+    if (g) { $("hereInput").value = ""; return setOrigin({ name: g.name, lat: g.lat, lng: g.lng }); }
+    $("hereBtn").disabled = true; hint(`${name} 위치 찾는 중…`); hintBusy = true;
+    const p = await placeOnline(name);
+    $("hereBtn").disabled = false; hintBusy = false;
+    if (p) { $("hereInput").value = ""; setOrigin({ name: p.name, lat: p.lat, lng: p.lng }); }
+    else hint(onlineFailed || navigator.onLine === false
+      ? "목록에 없는 장소는 인터넷이 연결돼야 찾을 수 있어요. 지금은 위 버튼에서 역을 골라 주세요."
+      : `${name} 위치를 못 찾았어요. 지하철역 이름(예: 합정역)으로 입력하거나 현재 위치를 눌러 보세요.`);
+  }
+  function scrollToResults() {
+    const sec = $("resultTitle").closest("section"), top = sec.getBoundingClientRect().top;
+    if (top > innerHeight * 0.5 || top < 0) sec.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+  }
+  function showIntro() {
+    state.cur = null; state.lastRows = null; state.lastCenter = null;
+    if (!hintBusy) hint(hereHint());
+    $("resultTitle").textContent = "결과"; $("resultNote").textContent = ""; $("viewBtn").hidden = true;
+    $("results").replaceChildren(el("div", { class: "empty" }, "위에 동네나 메뉴를 입력하거나 빠른 버튼을 눌러보세요. 결과마다 영상 장면, 네이버지도, 카카오맵 링크가 붙어요."));
+  }
+  function nearby(scroll = true) {
+    if (!state.db || !state.origin) return;
+    state.cur = { type: "near" }; state.shown = 40;
+    const rows = state.db.shops.filter(p => !state.off.has(p.c) && km(p) <= 3);
+    $("resultTitle").textContent = `${state.origin.name} 3km 안`;
+    renderResults(state.origin.name, rows, "", null);
+    if (scroll) scrollToResults();
+  }
+  function rerun() {   // channel switched: run the same search (or near-me list) again
+    if (!state.cur || !state.db) return;
+    if (state.cur.type === "near") nearby(false);
+    else if (state.cur.mode === state.mode) search(state.cur.term, true);
+  }
+
+  function el(tag, attrs = {}, ...kids) {
+    const n = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) {
+      if (k === "class") n.className = v; else if (k.startsWith("on")) n.addEventListener(k.slice(2), v); else n.setAttribute(k, v);
+    }
+    for (const k of kids) if (k != null && k !== "") n.append(k);
+    return n;
+  }
+  try { const o = JSON.parse(localStorage.getItem("cfn.off") || "[]"); o.forEach(x => state.off.add(x)); } catch {}
+  const saveOff = () => { try { localStorage.setItem("cfn.off", JSON.stringify([...state.off])); } catch {} };
+
+  // ---------- render chrome ----------
+  function renderQuick() {
+    const box = $("quick"); box.replaceChildren();
+    (state.mode === "area" ? AREA_Q : MENU_Q).forEach(r => box.append(el("button", { type: "button", class: "chip", onclick: () => { $("q").value = r; search(r); } }, r)));
+  }
+  function setMode(m) {
+    if (m === state.mode) return;
+    // a word typed but not searched yet (or one that found nothing here) is looked up in the other mode,
+    // e.g. "냉면" typed while 동네로 was on; a finished search is cleared so the box is ready for a new word
+    const typed = $("q").value.trim(), cur = state.cur;
+    const searched = cur?.type === "search" && cur.term === typed;
+    const anyOn = state.db && state.db.channels.some(c => !state.off.has(c.name));
+    const carry = typed && (!searched || (!state.lastRows?.length && anyOn));
+    state.mode = m;
+    $("modeArea").setAttribute("aria-pressed", String(m === "area"));
+    $("modeMenu").setAttribute("aria-pressed", String(m === "menu"));
+    $("regionLabel").textContent = m === "area" ? "어느 동네?" : "어떤 메뉴?";
+    $("q").placeholder = m === "area" ? "예: 종로3가, 성수동" : "예: 순대국, 냉면";
+    if (!carry) $("q").value = "";
+    renderQuick();
+    if (state.db) { if (carry) search(typed, false, false); else showIntro(); }
+  }
+  function chColor(ch) { const i = state.db.channels.findIndex(c => c.name === ch); return `var(${COLORS[i % COLORS.length]})`; }
+  function renderChannels() {
+    const box = $("channels"); box.replaceChildren();
+    state.db.channels.forEach(c => {
+      const n = state.db.shops.filter(p => p.c === c.name).length;
+      const on = !state.off.has(c.name);
+      box.append(el("button", { type: "button", class: "chip toggle", "aria-pressed": String(on), onclick: () => {
+        on ? state.off.add(c.name) : state.off.delete(c.name); saveOff(); renderChannels(); rerun();
+      } }, el("span", { class: "sw", style: `background:${chColor(c.name)}` }), `${c.name} ${n}`));
+    });
+    $("dbStat").textContent = `가게 ${state.db.shops.length}곳 · 영상 ${state.db.videos.length}개`;
+  }
+
+  // ---------- search ----------
+  const SYN = MENU_SYN.map(g => g.map(norm));
+  function menuWords(term) {
+    const t = norm(term), out = new Set();
+    let hits = SYN.filter(g => g[0] === t);                       // a dish we know
+    if (!hits.length) hits = SYN.filter(g => g.includes(t));      // another spelling of one (순댓국, 간짜장)
+    if (!hits.length && t.length >= 2) hits = SYN.filter(g => g[0].length >= 2 && (t.includes(g[0]) || g[0].includes(t)));  // part of a dish name
+    hits.forEach(g => g.forEach(w => (w.length >= 2 || SAFE1.has(w)) && out.add(w)));
+    if (t.length >= 2 || SAFE1.has(t) || !out.size) out.add(t);
+    return [...out].slice(0, 30);
+  }
+  function areaQuery(term) {
+    // Alternatives to look for (all words of one alternative must appear): the name as typed, its separate words
+    // ("부산 해운대"), and the bare place name ("성수동" → 성수, "종로3가역" → 종로3가) unless that name is a whole
+    // city or district ("서울역" must not mean every shop in 서울, "강남역" not all of 강남구)
+    const t = norm(term), alts = [[t]], tw = toks(term);
+    if (tw.length > 1) alts.push(tw);
+    let g = gazLookup(term);
+    if (g && g.kind === "station" && BROAD.has(gkey(g.name)) && !/역$/.test(t)) g = null;   // "서울" is the city, not 서울역
+    if (g) {
+      const k = gkey(g.name);
+      if (k !== t && k.length >= 2 && !BROAD.has(k) && !GU_NAMES.some(n => n !== k && n.startsWith(k))) alts.push([k]);
+    }
+    return { alts, center: g && g.kind !== "gu" ? g : null, gu: !!(g && g.kind === "gu"), guC: g && g.kind === "gu" ? g : null };
+  }
+  // a word matches the start of a word in the address/title, so "시청" does not match "속초시 청학로"
+  const hitTok = (tk, alts) => alts.some(alt => alt.every(w => tk.some(x => x.startsWith(w))));
+  // scope: the searched place (or the district searched for), so a place of the same name in another town is left out
+  // ("중구" is not 부산 중구, a "속초부터 부산까지" video is not all 부산)
+  function areaMatch(p, q, center, radius, scope) {
+    const kind = scope ? scope.kind : "", d = scope && p.g ? dist(scope.lat, scope.lng, p.g[0], p.g[1]) : 0;
+    const far = !scope ? Infinity : kind === "city" ? 40 : kind === "gu" ? 12 : 15;
+    // A shop with its own address point belongs to the place when it is within the radius or its address names it.
+    if (center && p.geo && p.g[2] <= 2) return d <= radius || (hitTok(p.tka, q) && d <= far);
+    // Otherwise its address or area note must name the place...
+    if (hitTok(p.tka, q)) return d <= far;
+    // ...or else only the video title or description does. Then the shop must be close by: within 4km of a
+    // neighbourhood (을지로, 성수), 15km of a city (속초 → 고성 토성면); a shop whose address names another district
+    // is not in a district searched for.
+    if (!hitTok(p.tk, q)) return false;
+    if (p.a) return !!center && !!p.g && d <= (kind === "city" ? 15 : 4);
+    return !p.g || d <= (kind === "city" ? 40 : kind === "gu" ? 12 : 4);
+  }
+  function match(q, center, radius = RADIUS) {
+    const shops = state.db.shops.filter(p => !state.off.has(p.c));
+    if (state.mode === "area") return shops.filter(p => areaMatch(p, q.alts, center, radius, center || q.guC));
+    const ws = [...new Set(q.map(norm))].filter(Boolean);
+    const listRe = ws.map(w => new RegExp(w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "(맛집|성지|집|전문|투어|top|best)"));
+    // p.hay: names, descriptions, and the titles of videos about that one shop only — in a "BEST 10" video the title's
+    // menu belongs to one shop, not to every shop in it... unless the whole video is a list of that menu
+    // ("짜장면 맛집 BEST 3", "간짜장 성지 TOP3"); "노포 해장국집에서 소주를…" is about one shop.
+    return shops.filter(p => ws.some(w => p.hay.includes(w)) || p.lists.some(t => listRe.some(re => re.test(t))));
+  }
+  const LIST_MARK = /best|top|\d+(곳|선|대|집|군데)/;
+  function gu(a) { const m = (a || "").match(/(\S+[시도])?\s*(\S+[구군시])\s/); return m ? m[2] : ""; }
+
+  // quiet: the same search again (a channel was switched), so no online lookup and no scrolling
+  async function search(raw, quiet = false, scroll = !quiet) {
+    const term = raw.trim(); if (!term || !state.db) return;
+    const mode = state.mode;
+    state.cur = { type: "search", term, mode }; state.shown = 40; state.pending = false;
+    $("resultTitle").textContent = `${term} 결과`;
+    if (mode === "menu") {
+      const words = menuWords(term);
+      renderResults(term, match(words, null), words.length > 1 ? "비슷한 표기 포함" : "", null);
+      if (scroll) scrollToResults();
+      return;
+    }
+    const q = areaQuery(term), known = onlineCache.get(gkey(term));
+    const center = q.center || known || null, lookup = !(q.center || q.gu || quiet || onlineCache.has(gkey(term)));
+    state.pending = lookup;   // while the name is looked up online, an empty list is not "못 찾았어요" yet
+    const r1 = areaRows(q, center);
+    renderResults(term, r1.rows, r1.note, center);
+    if (scroll) scrollToResults();
+    if (!lookup) return;
+    // not a known station or neighbourhood: look the name up online, then add shops around it
+    $("resultNote").textContent += " · 주변 찾는 중…";
+    const p = await placeOnline(term);
+    if (state.cur?.type !== "search" || state.cur.term !== term || state.cur.mode !== "area") return;
+    state.pending = false; state.cur.offline = !p && onlineFailed;
+    const r2 = areaRows(q, p);
+    renderResults(term, r2.rows, p ? r2.note : state.cur.offline ? "인터넷이 없어 이름으로만 찾음" : "", p);
+  }
+  // around a place with few shops, look a little wider (1km → 3km) rather than show almost nothing
+  function areaRows(q, center) {
+    let rows = match(q, center), r = RADIUS;
+    if (center && rows.length < 5) { const wide = match(q, center, 3); if (wide.length > rows.length) { rows = wide; r = 3; } }
+    return { rows, note: !center ? "" : r > RADIUS ? `1km 안이 적어 ${r}km까지 넓힘` : `반경 ${r}km 포함` };
+  }
+
+  function emptyText(term) {
+    const ch = state.db.channels, offN = ch.filter(c => state.off.has(c.name)).length;
+    if (offN === ch.length) return "채널이 모두 꺼져 있어요. 위의 채널 버튼을 눌러 켜 주세요.";
+    const offNote = offN ? " (꺼 둔 채널은 빼고 찾았어요)" : "";
+    if (state.cur?.type === "near") return `${state.origin?.name || "이 위치"} 3km 안에서 소개된 가게가 없어요. 다른 역을 고르거나 위에서 동네 이름으로 찾아보세요.` + offNote;
+    if (state.mode === "area" && state.pending) return `${term} 위치를 찾는 중이에요…`;
+    if (state.mode === "area" && state.cur?.offline) return `인터넷이 연결되지 않아 ${term} 위치를 찾지 못했어요. 인터넷이 없을 때는 지하철역 이름(예: 을지로4가)이나 구 이름(예: 중구)으로 찾을 수 있어요.` + offNote;
+    return (state.mode === "area"
+      ? `${term}에서 소개된 가게를 못 찾았어요. 역 이름이나 구 이름(예: 종로3가, 은평구)으로 찾아보세요.`
+      : `${term} 가게를 못 찾았어요. 더 넓은 말(예: 국밥, 고기)로 찾아보세요.`) + offNote;
+  }
+
+  function renderResults(term, rows, note, center) {
+    center = center || null;
+    state.lastTerm = term; state.lastRows = rows; state.lastNote = note; state.lastCenter = center;
+    // distances are measured from the place searched for, or else from my position
+    const ref = center || state.origin, cname = ref ? ref.name : "";
+    const list = rows.slice();   // one entry per shop already (see buildShops)
+    list.forEach(p => { p.km = ref && p.g ? dist(ref.lat, ref.lng, p.g[0], p.g[1]) : Infinity; });
+    if (ref) list.sort((a, b) => (a.rough - b.rough) || (a.km - b.km));   // shops with an address point first, then rough ones
+    else list.sort((a, b) => b.d.localeCompare(a.d));                     // newest video first
+    $("resultNote").textContent = `${list.length}곳` + (note ? " · " + note : "") + (ref ? ` · ${cname}에서 가까운 순` : "");
+    if (!hintBusy) hint(hereHint());
+    const box = $("results"); box.replaceChildren();
+    $("viewBtn").hidden = !list.length;
+    {
+      const vb = $("viewBtn"), isMap = state.view === "map";
+      vb.classList.toggle("on", isMap);
+      vb.innerHTML = isMap
+        ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>목록으로 보기'
+        : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/></svg>지도로 보기';
+    }
+    if (list.length && state.view === "map") { renderMap(list, box); return; }
+    if (!list.length) { box.append(el("div", { class: "empty" }, emptyText(term))); return; }
+    const groups = new Map();
+    for (const p of list.slice(0, state.shown)) {
+      const g = ref ? (p.km === Infinity ? "위치 정보 없음" : p.rough ? "대략 위치 (동네 기준)" : `${cname}에서 ${band(p.km)}`)
+        : state.mode === "area" ? p.c : (gu(p.a) || p.ar || "지역 정보 없음");
+      if (!groups.has(g)) groups.set(g, []); groups.get(g).push(p);
+    }
+    for (const [g, ps] of groups) {
+      box.append(el("h2", { class: "group" }, `${g} · ${ps.length}`));
+      ps.forEach(p => box.append(slip(p)));
+    }
+    if (list.length > state.shown) box.append(el("button", { type: "button", class: "more", onclick: () => { state.shown += 40; renderResults(term, rows, note, center); } }, `더 보기 (${list.length - state.shown}곳 남음)`));
+  }
+
+  // ---------- map view (drawn in SVG: district outlines + pins) ----------
+  const NS = "http://www.w3.org/2000/svg";
+  const svgEl = (tag, attrs = {}) => { const n = document.createElementNS(NS, tag); for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v); return n; };
+  let bounds = null;
+  async function loadBounds() {
+    if (bounds) return bounds;
+    try {
+      const [seoul, korea] = await Promise.all([fetch("map_seoul.json").then(r => r.json()), fetch("map_korea.json").then(r => r.json())]);
+      bounds = { seoul, korea };
+    } catch { bounds = { seoul: [], korea: [] }; }
+    return bounds;
+  }
+  function jitter(p) { // spread shops that only have an approximate point so they don't stack
+    let h = 0; for (const ch of p.n) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    return [((h % 1000) / 1000 - 0.5) * 0.012, (((h >>> 10) % 1000) / 1000 - 0.5) * 0.016];
+  }
+  async function renderMap(list, box) {
+    const focus = state.lastCenter || state.origin;   // the place searched for, or me: rings and first framing go around it
+    const pts = list.filter(p => p.g).map(p => {
+      const [dy, dx] = p.rough ? jitter(p) : [0, 0];
+      return { p, lat: p.g[0] + dy, lng: p.g[1] + dx, rough: p.rough };
+    });
+    const missing = list.length - pts.length;
+    // map state first: the buttons below can be pressed while the district outlines are still loading
+    let vb = null, B = null;
+    const lat0 = focus ? focus.lat : 37.55, k = Math.cos(lat0 * Math.PI / 180);
+    const X = lng => lng * k * 100, Y = lat => -lat * 100;
+    const wrap = el("div", { class: "mapwrap" });
+    const svg = svgEl("svg", { role: "img", "aria-label": "검색 결과 지도" });
+    const ctl = el("div", { class: "mapctl" },
+      el("button", { type: "button", "aria-label": "확대", onclick: () => zoom(0.6) }, "+"),
+      el("button", { type: "button", "aria-label": "축소", onclick: () => zoom(1 / 0.6) }, "−"),
+      el("button", { type: "button", class: "wide", onclick: () => { fit(pts); draw(); } }, "전체"));
+    const legend = el("div", { class: "maplegend" });
+    state.db.channels.filter(c => !state.off.has(c.name)).forEach(c => legend.append(el("span", {}, el("i", { style: `background:${chColor(c.name)}` }), c.name)));
+    wrap.append(svg, ctl, legend);
+    const card = el("div", {});
+    // Real Google Maps: the nearest shops with an address point (within 10km of the place searched for, or of me)
+    // as stops A, B, C…, starting from me when I am in the same area. Without a place to measure from, the list is
+    // not nearest-first, so there is no sensible route to offer.
+    const near = focus ? list.filter(p => p.g && !p.rough && p.km <= 10).slice(0, 9) : [];   // list is nearest first
+    const o = state.origin, fromMe = !!(o && near.length && dist(o.lat, o.lng, near[0].g[0], near[0].g[1]) <= 30);
+    if (near.length >= 2 || (near.length === 1 && fromMe)) {
+      const stop = p => encodeURIComponent((p.a ? p.a.replace(/\s*\d+층.*$/, "") + " " : "") + p.n);
+      const from = fromMe ? (o.gps ? `${o.lat},${o.lng}` : encodeURIComponent(o.name)) + "/" : "";
+      const url = "https://www.google.com/maps/dir/" + from + near.map(stop).join("/");
+      box.append(el("a", { class: "gmap", href: url, target: "_blank", rel: "noopener" }, "구글지도에서 보기",
+        el("small", {}, fromMe ? `${o.name}에서 출발 · ${near.length}곳` : `가까운 ${near.length}곳`)));
+    }
+    box.append(wrap, card, el("p", { class: "mapnote" },
+      `점을 누르면 가게 정보가 아래에 떠요. 흐린 점은 대략 위치예요.` + (state.lastCenter ? " 마름모(◆)는 찾은 곳이에요." : "")
+      + (missing ? ` 위치 정보가 없는 ${missing}곳은 지도에서 빠졌어요.` : "")));
+
+    B = await loadBounds();
+    function fit(list2) {
+      let cand = list2;
+      // start close to the focus: if there are shops within 15km, frame those (far-away ones stay reachable with "전체")
+      if (focus && !fit.all) { const nearer = list2.filter(q => q.p.km <= 15); if (nearer.length) cand = nearer; }
+      const xs = cand.map(q => X(q.lng)), ys = cand.map(q => Y(q.lat));
+      if (focus) { xs.push(X(focus.lng)); ys.push(Y(focus.lat)); }
+      if (!xs.length) { xs.push(X(126.97), X(127.06)); ys.push(Y(37.52), Y(37.6)); }
+      const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+      const w = Math.max(x1 - x0, 1.2), h = Math.max(y1 - y0, 1.2), cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+      const r = svg.clientWidth / Math.max(svg.clientHeight, 1) || 1;
+      let W = w * 1.25, H = h * 1.25; if (W / H < r) W = H * r; else H = W / r;
+      vb = [cx - W / 2, cy - H / 2, W, H];
+      fit.all = true;
+    }
+    function zoom(f, cx, cy) {
+      if (!vb || !B) return;   // outlines still loading
+      const [x, y, w, h] = vb; cx ??= x + w / 2; cy ??= y + h / 2;
+      const nw = Math.min(Math.max(w * f, 0.05), 1200), nh = nw * h / w;
+      vb = [cx - (cx - x) * nw / w, cy - (cy - y) * nh / h, nw, nh]; draw();
+    }
+    const path = g => (g.type === "Polygon" ? [g.coordinates] : g.coordinates)
+      .map(poly => poly.map(ring => "M" + ring.map(([lng, lat]) => X(lng).toFixed(3) + "," + Y(lat).toFixed(3)).join("L") + "Z").join("")).join("");
+    function draw() {
+      if (!vb || !B) return;
+      svg.replaceChildren();
+      svg.setAttribute("viewBox", vb.join(" "));
+      const u = vb[2] / Math.max(svg.clientWidth, 300); // one screen pixel in map units
+      const gBase = svgEl("g");
+      if (vb[2] > 60) B.korea.forEach(f => gBase.append(svgEl("path", { d: path(f.g), class: "prov", "vector-effect": "non-scaling-stroke" })));
+      B.seoul.forEach(f => gBase.append(svgEl("path", { d: path(f.g), class: "gu", "vector-effect": "non-scaling-stroke" })));
+      if (vb[2] < 40) B.seoul.forEach(f => {
+        const ring = (f.g.type === "Polygon" ? f.g.coordinates[0] : f.g.coordinates[0][0]);
+        const cx = ring.reduce((s, c) => s + c[0], 0) / ring.length, cy = ring.reduce((s, c) => s + c[1], 0) / ring.length;
+        const t = svgEl("text", { x: X(cx), y: Y(cy), class: "gulabel", "font-size": 11 * u }); t.textContent = f.n; gBase.append(t);
+      });
+      svg.append(gBase);
+      const hanD = "M" + HAN.map(([lng, lat]) => X(lng).toFixed(3) + "," + Y(lat).toFixed(3)).join("L");
+      svg.append(svgEl("path", { d: hanD, class: "han", "stroke-width": Math.max(0.85, 5 * u) }));
+      if (vb[2] < 40) { const t = svgEl("text", { x: X(126.93), y: Y(37.533) + 4 * u, class: "hanlabel", "font-size": 12 * u, transform: `rotate(-20 ${X(126.93)} ${Y(37.533)})` }); t.textContent = "한강"; svg.append(t); }
+      if (vb[2] < 18) (vb[2] < 7 ? STATIONS.concat(STATIONS2) : STATIONS).forEach(([n, la, lo]) => {
+        if ([state.origin, state.lastCenter].some(o => o && Math.abs(la - o.lat) < 0.003 && Math.abs(lo - o.lng) < 0.004)) return; // labelled already
+        svg.append(svgEl("rect", { x: X(lo) - 3.5 * u, y: Y(la) - 3.5 * u, width: 7 * u, height: 7 * u, rx: 1.5 * u, class: "stn", "vector-effect": "non-scaling-stroke" }));
+        const t = svgEl("text", { x: X(lo) + 6 * u, y: Y(la) + 4 * u, class: "stnlabel", "font-size": 11 * u, "stroke-width": 3 * u }); t.textContent = n.endsWith("역") ? n : n + "역"; svg.append(t);
+      });
+      if (focus) {
+        const ox = X(focus.lng), oy = Y(focus.lat);
+        [1, 3].forEach(d => {
+          const rr = X(d / 111 / k) - X(0); // d km in map units
+          if (rr / u < 6) return;           // smaller than a pin: leave it out
+          svg.append(svgEl("circle", { cx: ox, cy: oy, r: rr, class: "ring", "vector-effect": "non-scaling-stroke" }));
+          if (rr / u < 34) return;          // too small to label without covering the place name
+          // lower right of the ring: the zoom buttons sit top right and the legend bottom left
+          const t = svgEl("text", { x: ox + rr * 0.72, y: oy + rr * 0.72 + 10 * u, class: "ringlabel", "font-size": 11 * u, "stroke-width": 3 * u }); t.textContent = d + "km"; svg.append(t);
+        });
+      }
+      const order = pts.slice().sort((a, b) => (a.p === state.sel) - (b.p === state.sel));
+      for (const q of order) {
+        const c = svgEl("circle", { cx: X(q.lng), cy: Y(q.lat), r: (q.p === state.sel ? 9 : 6.5) * u, fill: chColor(q.p.c), class: "pin" + (q.rough ? " rough" : "") + (q.p === state.sel ? " sel" : ""), "vector-effect": "non-scaling-stroke" });
+        const tt = svgEl("title"); tt.textContent = q.p.n; c.append(tt);
+        c.addEventListener("click", e => { e.stopPropagation(); state.sel = q.p; draw(); showCard(q.p, true); });
+        svg.append(c);
+      }
+      const c0 = state.lastCenter, o0 = state.origin;
+      if (c0 && !(o0 && Math.abs(c0.lat - o0.lat) < 0.001 && Math.abs(c0.lng - o0.lng) < 0.0012)) {   // the place searched for
+        const cx = X(c0.lng), cy = Y(c0.lat);
+        svg.append(svgEl("rect", { x: cx - 5.5 * u, y: cy - 5.5 * u, width: 11 * u, height: 11 * u, transform: `rotate(45 ${cx} ${cy})`, class: "ctr", "vector-effect": "non-scaling-stroke" }));
+        const t = svgEl("text", { x: cx, y: cy - 13 * u, class: "melabel", "font-size": 12 * u, "stroke-width": 3 * u }); t.textContent = c0.name; svg.append(t);
+      }
+      if (o0) {
+        const ox = X(o0.lng), oy = Y(o0.lat);
+        svg.append(svgEl("circle", { cx: ox, cy: oy, r: 7 * u, class: "me", "vector-effect": "non-scaling-stroke" }));
+        const t = svgEl("text", { x: ox, y: oy - 12 * u, class: "melabel", "font-size": 12 * u, "stroke-width": 3 * u }); t.textContent = o0.name; svg.append(t);
+      }
+    }
+    function showCard(p, reveal) {
+      card.replaceChildren(slip(p));
+      card.firstChild.style.marginTop = "10px";
+      // on a small screen the card lands below the fold: bring it up so the tap visibly did something
+      if (reveal) {
+        const r = card.firstChild.getBoundingClientRect();
+        if (r.bottom > innerHeight - 8) card.firstChild.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "nearest" });
+      }
+    }
+    // pan + wheel/pinch zoom
+    const ptrs = new Map(); let last = null, pinch = null, moved = false;
+    const toMap = (cx, cy) => { const r = svg.getBoundingClientRect(); return [vb[0] + (cx - r.left) / r.width * vb[2], vb[1] + (cy - r.top) / r.height * vb[3]]; };
+    svg.addEventListener("pointerdown", e => { if (e.target.closest(".pin")) return; svg.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, [e.clientX, e.clientY]); last = [e.clientX, e.clientY]; moved = false; });
+    svg.addEventListener("pointermove", e => {
+      if (!ptrs.has(e.pointerId)) return;
+      ptrs.set(e.pointerId, [e.clientX, e.clientY]);
+      if (ptrs.size === 2) {
+        const [a, b] = [...ptrs.values()]; const d = Math.hypot(a[0] - b[0], a[1] - b[1]);
+        if (pinch) { const [mx, my] = toMap((a[0] + b[0]) / 2, (a[1] + b[1]) / 2); zoom(pinch / d, mx, my); }
+        pinch = d; return;
+      }
+      const r = svg.getBoundingClientRect();
+      const dx = (e.clientX - last[0]) / r.width * vb[2], dy = (e.clientY - last[1]) / r.height * vb[3];
+      if (Math.abs(e.clientX - last[0]) + Math.abs(e.clientY - last[1]) > 2) moved = true;
+      vb = [vb[0] - dx, vb[1] - dy, vb[2], vb[3]]; last = [e.clientX, e.clientY]; draw();
+    });
+    const up = e => { ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch = null; if (ptrs.size === 1) last = [...ptrs.values()][0]; };
+    svg.addEventListener("pointerup", up); svg.addEventListener("pointercancel", up);
+    svg.addEventListener("wheel", e => { e.preventDefault(); const [mx, my] = toMap(e.clientX, e.clientY); zoom(e.deltaY > 0 ? 1.25 : 0.8, mx, my); }, { passive: false });
+    svg.addEventListener("click", () => { if (!moved && state.sel) { state.sel = null; card.replaceChildren(); draw(); } });
+
+    fit.all = false; fit(pts.length ? pts : []); draw();
+    if (state.sel && pts.some(q => q.p === state.sel)) showCard(state.sel);
+  }
+
+  function slip(p) {
+    const V = state.db.videos, v = V[p.vs[0]] || {};
+    const ref = state.lastCenter || state.origin;
+    // map links search "address + name"; without an address, "area + name" so the map app looks in the right town
+    const q = encodeURIComponent((p.a ? p.a.replace(/\s*\d+층.*$/, "") : (p.ar || (p.g && p.g[3]) || "")) + " " + p.n);
+    const vid = "https://www.youtube.com/watch?v=" + v.id + (p.s ? "&t=" + p.s + "s" : "");
+    return el("article", { class: "slip" },
+      el("h3", {}, p.n,
+        (state.mode === "menu" || ref) ? el("span", { class: "tag", style: `color:${chColor(p.c)}` }, p.c) : null,
+        ref && p.km !== Infinity ? el("span", { class: "dist", title: p.rough ? "동네 기준 대략 거리" : "주소 기준 직선거리" },
+          // a rough point is only the centre of its neighbourhood, so "약 0m" would claim too much
+          p.rough && p.km < 1 ? (p.g[3] ? `${p.g[3]} 근처` : "약 1km 안")
+            : (state.lastCenter ? `${ref.name}에서 ` : "") + (p.rough ? "약 " : "") + fmtKm(p.km)) : null),
+      p.x ? el("div", { class: "desc" }, p.x) : null,
+      el("div", { class: "meta" },
+        p.a ? el("span", {}, "📍 " + p.a) : (p.ar ? el("span", {}, "📍 " + p.ar) : null),
+        el("span", {}, "▶ " + (v.t || "") + (v.d ? " · " + v.d.slice(0, 7).replace("-", ".") : "") + (p.vs.length > 1 ? ` 외 ${p.vs.length - 1}편` : ""))),
+      el("div", { class: "links" },
+        el("a", { href: vid, target: "_blank", rel: "noopener" }, p.s ? "영상 그 장면" : "영상 보기"),
+        el("a", { href: "https://map.naver.com/p/search/" + q, target: "_blank", rel: "noopener" }, "네이버지도"),
+        el("a", { href: "https://map.kakao.com/?q=" + q, target: "_blank", rel: "noopener" }, "카카오맵"),
+        el("a", { href: "https://www.google.com/maps/search/?api=1&query=" + q, target: "_blank", rel: "noopener" }, "구글지도")));
+  }
+
+  // <shops> ---------- one entry per shop ----------
+  // A shop can appear in several videos of a channel, sometimes spelled a little differently ("행복식당" / "행복한식당")
+  // or with its address written another way. Rows of one channel are joined when the names are alike AND the place
+  // agrees, so two different shops that share a name (대박분식 in 서울 and in 부산) stay apart.
+  const nameKey = s => norm(s).replace(/[^0-9a-z가-힣]/g, "");
+  const PROV = /^(서울|부산|대구|인천|광주|대전|울산|세종)(특별시|광역시|특별자치시|시)?$/;
+  function addrKey(a) {   // "서울시 중구 을지로 3길 30-14 2층" → { road: "을지로3길 30-14", dist: ["중구"] }
+    const t = (a || "").replace(/\(.*?\)/g, " ").replace(/(로|길)\s+(\d+(?:번|가)?길)(?=\s|$)/g, "$1$2").split(/\s+/);
+    let road = null;
+    for (let i = 0; i + 1 < t.length; i++) if (/(로|길|가|동|리)$/.test(t[i]) && /^\d+(-\d+)?$/.test(t[i + 1])) road = t[i] + " " + t[i + 1];
+    return road ? { road, dist: t.filter(x => /(구|군|시)$/.test(x) && !PROV.test(x)) } : null;
+  }
+  const sameTown = (a, b) => !a || !b || !a.dist.length || !b.dist.length || a.dist.some(x => b.dist.includes(x));
+  function oneEdit(a, b, sub) {   // one letter added or dropped (or, with sub, changed) turns a into b
+    if (a.length === b.length) {
+      if (!sub) return false;
+      let e = 0; for (let i = 0; i < a.length; i++) if (a[i] !== b[i] && ++e > 1) return false;
+      return e === 1;
+    }
+    if (Math.abs(a.length - b.length) !== 1) return false;
+    const [s, l] = a.length < b.length ? [a, b] : [b, a];
+    let i = 0; while (i < s.length && s[i] === l[i]) i++;
+    return s.slice(i) === l.slice(i + 1);
+  }
+  // names alike: equal, one inside the other ("함덕 골목해장국" / "골목해장국"), one letter added ("행복식당" / "행복한식당"),
+  // and at the very same address also one letter changed in a longer name ("로바다아키" / "로바타아키")
+  function alike(a, b, sameAddr) {
+    if (a === b) return true;
+    const s = Math.min(a.length, b.length);
+    if (s < (sameAddr ? 3 : 4)) return false;
+    return a.includes(b) || b.includes(a) || oneEdit(a, b, sameAddr && s >= 5);
+  }
+  // how far off a point may be: a guess from a city name ~30km, a Seoul district ~8km, a neighbourhood ~4km,
+  // an address point ~1–2km
+  const REACH = new Map(AREAS.map(([n], i) => [n, i < GU_END ? 8 : i >= CITY_START ? 30 : 4]));
+  const reach = p => !p.g ? Infinity : p.g[3] ? (REACH.get(p.g[3]) || 4) : p.g[2] === 3 ? 2 : 1;
+  function buildShops(places, videos, perVideo) {
+    const up = places.map((_, i) => i);
+    const find = i => { while (up[i] !== i) i = up[i] = up[up[i]]; return i; };
+    const join = (i, j) => { i = find(i); j = find(j); if (i !== j) up[j] = i; };
+    const nk = places.map(p => nameKey(p.n)), ak = places.map(p => p.a ? addrKey(p.a) : null);
+    const gap = (p, q) => p.g && q.g ? dist(p.g[0], p.g[1], q.g[0], q.g[1]) : null;
+    const chans = new Map();
+    places.forEach((p, i) => { if (!chans.has(p.c)) chans.set(p.c, []); chans.get(p.c).push(i); });
+    for (const idx of chans.values()) {
+      const withA = idx.filter(i => places[i].a), noA = idx.filter(i => !places[i].a);
+      // 1) shops with an address: the same address, or address points within 1km of each other, and alike names
+      //    (compared only within one address / neighbouring 1km squares, so this stays quick on a phone)
+      const byRoad = new Map(), cells = new Map(), put = (m, k, i) => { if (!m.has(k)) m.set(k, []); m.get(k).push(i); };
+      for (const i of withA) {
+        const p = places[i];
+        if (ak[i]) put(byRoad, ak[i].road, i);
+        if (p.geo) put(cells, Math.floor(p.g[0] / 0.01) + "," + Math.floor(p.g[1] / 0.013), i);
+      }
+      const sameAddr = (i, j) => ak[i] && ak[j] && ak[i].road === ak[j].road && sameTown(ak[i], ak[j]);
+      for (const rows of byRoad.values()) for (let x = 0; x < rows.length; x++) for (let y = x + 1; y < rows.length; y++)
+        if (sameAddr(rows[x], rows[y]) && alike(nk[rows[x]], nk[rows[y]], true)) join(rows[x], rows[y]);
+      for (const [key, rows] of cells) {
+        const [a, b] = key.split(",").map(Number);
+        for (let da = -1; da <= 1; da++) for (let db = -1; db <= 1; db++) for (const j of cells.get((a + da) + "," + (b + db)) || [])
+          for (const i of rows) {
+            if (j <= i || sameAddr(i, j) || !sameTown(ak[i], ak[j])) continue;
+            const p = places[i], q = places[j], d = gap(p, q);
+            // two rough (neighbourhood-level) points say little: then the name must be the same and the points close
+            if (p.g[2] === 3 && q.g[2] === 3 ? nk[i] === nk[j] && d <= 0.5 : alike(nk[i], nk[j], false) && d <= 1) join(i, j);
+          }
+      }
+      // 2) a row without an address joins the nearest shop of the very same name that its rough point can reach;
+      //    with no point at all, only when there is just one such shop
+      const loose = new Map(), byName = new Map();   // loose: name → rows not placed yet
+      withA.forEach(i => put(byName, nk[i], i));
+      for (const i of noA) {
+        const p = places[i], same = byName.get(nk[i]) || [];
+        let to = null;
+        if (p.g) { let bd = Infinity; same.forEach(j => { const d = gap(p, places[j]); if (d != null && d <= reach(p) + reach(places[j]) && d < bd) { bd = d; to = j; } }); }
+        else if (same.length && new Set(same.map(find)).size === 1) to = same[0];
+        if (to != null) join(to, i);
+        else put(loose, nk[i], i);
+      }
+      // 3) the rest, by name: rows whose rough points agree are one shop ("맛있는집" in 서대문구 and in 영등포 are two);
+      //    rows with no point join them only when that leaves no doubt (a single shop of that name)
+      for (const rows of loose.values()) {
+        const at = rows.filter(i => places[i].g), none = rows.filter(i => !places[i].g);
+        for (let x = 0; x < at.length; x++) for (let y = x + 1; y < at.length; y++) {
+          const p = places[at[x]], q = places[at[y]];
+          if (gap(p, q) <= Math.min(reach(p), reach(q))) join(at[x], at[y]);
+        }
+        if (new Set(at.map(find)).size <= 1) none.forEach(i => join(at.length ? at[0] : none[0], i));
+      }
+    }
+    const groups = new Map();
+    places.forEach((p, i) => { const r = find(i); if (!groups.has(r)) groups.set(r, []); groups.get(r).push(p); });
+    return [...groups.values()].map(rows => makeShop(rows, videos, perVideo));
+  }
+  function makeShop(rows, videos, perVideo) {
+    // its point: an address point beats a guess from the area name; then the most precise; then the one most rows
+    // agree on; then the most detailed address
+    const geo = rows.filter(p => p.geo);
+    const agree = p => p.geo ? geo.filter(q => dist(p.g[0], p.g[1], q.g[0], q.g[1]) <= 0.3).length : 0;
+    const best = rows.slice().sort((p, q) => (q.geo - p.geo) || ((p.g ? p.g[2] : 9) - (q.g ? q.g[2] : 9))
+      || (agree(q) - agree(p)) || ((q.a || "").length - (p.a || "").length) || ((q.ar ? 1 : 0) - (p.ar ? 1 : 0)))[0];
+    const count = new Map(); rows.forEach(p => count.set(p.n, (count.get(p.n) || 0) + 1));
+    const n = [...count].sort((a, b) => b[1] - a[1] || b[0].length - a[0].length)[0][0];   // the usual spelling
+    const vs = [...new Set([best.v, ...rows.map(p => p.v)])];
+    const shop = { n, c: best.c, v: best.v, s: best.s, vs, g: best.g, geo: best.geo, a: best.a || "",
+      x: best.x || rows.map(p => p.x).find(Boolean) || "", ar: best.ar || rows.map(p => p.ar).find(Boolean) || "",
+      d: vs.reduce((m, v) => (videos[v]?.d || "") > m ? videos[v].d : m, ""), rows: rows.length };
+    shop.rough = !shop.g || shop.g[2] === 3;
+    shop.tka = [...new Set(rows.flatMap(p => p.tka))];   // words of its addresses and area notes
+    shop.tk = [...new Set(rows.flatMap(p => p.tk))];     // ...plus video titles and descriptions
+    // what a menu search reads: names, descriptions, and the titles of videos about this one shop (see match)
+    shop.hay = rows.map(p => norm(p.n) + "|" + norm(p.x) + "|" + (perVideo[p.v] === 1 ? norm(videos[p.v]?.t) : "")).join("|");
+    shop.lists = [...new Set(rows.map(p => norm(videos[p.v]?.t)).filter(t => LIST_MARK.test(t)))];
+    return shop;
+  }
+  // </shops>
+
+  // ---------- boot ----------
+  $("searchForm").addEventListener("submit", e => { e.preventDefault(); search($("q").value); });
+  $("modeArea").addEventListener("click", () => setMode("area"));
+  $("modeMenu").addEventListener("click", () => setMode("menu"));
+  $("hereForm").addEventListener("submit", e => { e.preventDefault(); lookupOrigin($("hereInput").value); });
+  $("nearBtn").addEventListener("click", () => nearby());
+  $("viewBtn").addEventListener("click", () => {
+    state.view = state.view === "map" ? "list" : "map"; state.sel = null;
+    try { localStorage.setItem("cfn.view", state.view); } catch {}
+    if (state.lastRows) renderResults(state.lastTerm, state.lastRows, state.lastNote, state.lastCenter);
+  });
+  try { if (localStorage.getItem("cfn.view") === "map") state.view = "map"; } catch {}
+  renderQuick(); renderHere();
+  // a saved "현재 위치" is from last time: refresh it quietly when the phone already allows location
+  if (state.origin?.gps && navigator.permissions?.query) navigator.permissions.query({ name: "geolocation" }).then(s => { if (s.state === "granted") useGPS(true); }).catch(() => {});
+
+  fetch("places.json").then(r => r.json()).then(raw => {
+    const videos = raw.videos.map(([id, t, d, c]) => ({ id, t, d, c }));
+    const places = raw.places.map(([n, x, a, ar, v, s, g]) => {
+      const p = { n, x, a, ar, v, s, c: videos[v]?.c || "" };
+      p.geo = Array.isArray(g);
+      p.g = p.geo ? g : roughPoint(p, videos[v]);
+      p.tka = toks((a || "") + " " + (ar || ""));                            // words of the address and area note
+      p.tk = p.tka.concat(toks((videos[v]?.t || "") + " " + (x || "")));    // ...plus the video title and description
+      return p;
+    });
+    const perVideo = {};
+    places.forEach(p => { perVideo[p.v] = (perVideo[p.v] || 0) + 1; });
+    const shops = buildShops(places, videos, perVideo);
+    state.db = { channels: raw.channels.map(name => ({ name })), videos, places, shops, perVideo };
+    renderChannels();
+    const newest = videos.reduce((m, v) => v.d > m ? v.d : m, "");
+    const precise = shops.filter(p => p.geo && p.g[2] <= 2).length, none = shops.filter(p => !p.g).length;
+    $("dataNote").textContent = `${newest.replace(/-/g, ".")}까지 올라온 영상 기준 · 가게 ${shops.length}곳 중 ${precise}곳은 주소로 찍은 위치, `
+      + `${shops.length - precise - none}곳은 동네 기준 대략 위치` + (none ? `, ${none}곳은 위치 정보 없음` : "");
+    showIntro();
+  }).catch(() => $("results").replaceChildren(el("div", { class: "empty" }, "가게 데이터를 불러오지 못했어요. 인터넷 연결을 확인하고 새로고침해 주세요.")));
+
+  // ---------- install as an app ----------
+  let deferredPrompt;
+  addEventListener("beforeinstallprompt", e => { e.preventDefault(); deferredPrompt = e; $("installBtn").hidden = false; });
+  $("installBtn").addEventListener("click", async () => { if (!deferredPrompt) return; deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt = null; $("installBtn").hidden = true; });
+  const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+  if (/iphone|ipad|ipod/i.test(navigator.userAgent) && !standalone) $("iosHint").hidden = false;
+  if ("serviceWorker" in navigator && (location.protocol === "https:" || ["localhost", "127.0.0.1"].includes(location.hostname)))
+    addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+})();
+</script>
+</body>
+</html>
