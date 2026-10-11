@@ -214,6 +214,8 @@ h2.view-title{font:800 22px/1.25 var(--f-display);margin:4px 0 12px;text-wrap:ba
 .bar{grid-column:1/-1;height:8px;border-radius:999px;background:var(--paper);overflow:hidden}
 .bar i{display:block;height:100%;background:var(--done)}
 .goal-item .acts{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.goal-item > .small-text{grid-column:1/-1}
+.linkish{border:0;background:none;padding:0;min-height:44px;color:var(--accent);font:inherit;font-weight:700;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
 .how{font-size:14px;color:var(--muted)}
 .how ol{margin:6px 0 0;padding-left:20px}
 .syncbox{display:grid;gap:10px}
@@ -250,6 +252,53 @@ h2.view-title{font:800 22px/1.25 var(--f-display);margin:4px 0 12px;text-wrap:ba
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(76px + env(safe-area-inset-bottom));z-index:30;background:var(--ink);color:var(--paper);border-radius:12px;padding:10px 14px;font-size:14px;max-width:min(520px,calc(100% - 32px));box-shadow:0 6px 24px rgba(0,0,0,.25)}
 .foot{margin-top:28px;font-size:13px;color:var(--muted);display:flex;gap:12px;flex-wrap:wrap}
 .foot a{color:var(--muted)}
+/* 역산: 목록 | 순서도 */
+.view-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:4px 0 12px}
+.view-head h2.view-title{margin:0}
+.seg{display:flex;gap:3px;padding:3px;background:var(--accent-soft);border-radius:14px;flex:none}
+.seg button{min-height:44px;padding:0 14px;border:0;border-radius:11px;background:transparent;color:var(--accent);font-weight:700;cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--accent);color:var(--on-accent)}
+.date-in.pend{border-color:var(--sun);background:var(--sun-soft);color:var(--sun-ink)}
+.field select{min-height:46px;border:1px solid var(--line);border-radius:12px;background:var(--paper);padding:0 12px;width:100%}
+.flow{display:grid;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px;margin-bottom:12px}
+.frow,.fgap{display:grid;grid-template-columns:minmax(0,46%) minmax(0,1fr);column-gap:28px}
+.frow{align-items:center;position:relative}
+.frow::before{content:'';position:absolute;left:calc(23% - 1px);top:0;bottom:0;width:2px;background:var(--muted);opacity:.75}
+.flow>.frow:first-child::before{top:50%}
+.flow>.frow:last-child::before{bottom:50%}
+.fbox{z-index:1;position:relative;min-height:56px;display:grid;gap:2px;align-content:center;justify-items:center;text-align:center;padding:7px 10px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);font-size:13px;line-height:1.3;cursor:pointer;min-width:0}
+.fbox b{font-size:14px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.fbox .num{font-size:12px;color:var(--muted)}
+.fbox.goal{background:var(--accent);color:var(--on-accent);border-color:var(--accent);border-radius:28px}
+.fbox.goal .num{color:inherit}
+.fbox.next{border:2px solid var(--sun)}
+.fbox.next .num,.fbox.pend .num{color:var(--sun-ink)}
+.fbox.pend{background:var(--sun-soft)}
+.fbox.late{border:2px solid var(--warn)}
+.fbox.late .num{color:var(--warn);font-weight:700}
+.fbox.done{background:var(--paper)}
+.fbox.done b{text-decoration:line-through;text-decoration-color:var(--muted)}
+.fbox.today{background:var(--sun-soft);color:var(--sun-ink);border-color:var(--sun);border-radius:26px}
+.fbox.today .num{color:inherit}
+.frow.branch .fbox::after{content:'';position:absolute;left:100%;top:50%;width:14px;border-top:1.5px solid var(--line)}
+.fchips{position:relative;display:grid;gap:8px;padding-left:14px;min-width:0}
+.fchips::before{content:'';position:absolute;left:0;top:22px;bottom:22px;border-left:1.5px solid var(--line)}
+.fchip{position:relative;height:44px;box-sizing:border-box;display:grid;align-content:center;gap:2px;padding:3px 8px;border:1px solid var(--line);border-radius:10px;background:var(--card);font-size:12px;line-height:1.25;min-width:0}
+.fchip::before{content:'';position:absolute;right:100%;top:50%;width:14px;border-top:1.5px solid var(--line)}
+.fchip b{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fchip .row{gap:6px;flex-wrap:nowrap}
+.fchip .num{color:var(--muted);font-size:11px;white-space:nowrap}
+.fchip .sq{display:inline-flex;gap:2px;align-items:center}
+.fchip .sq i{width:8px;height:8px;border-radius:2px;box-shadow:inset 0 0 0 1.5px var(--done)}
+.fchip .sq i.d{background:var(--done);box-shadow:none}
+.fchip .sq em{font-style:normal;font-size:10px;color:var(--muted)}
+.fchip.ok b{color:var(--done)}
+.fchip.more{background:var(--paper);color:var(--muted)}
+.fgap{height:34px}
+.fgap .fl{position:relative;display:flex;justify-content:center}
+.fgap .ar{position:relative;width:2px;height:100%;background:var(--muted);opacity:.75}
+.fgap .ar::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);border-left:5px solid transparent;border-right:5px solid transparent;border-bottom:7px solid var(--muted)}
+.fgap .days{position:absolute;left:calc(50% + 10px);top:50%;transform:translateY(-50%);font-size:12px;color:var(--muted);white-space:nowrap}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -342,6 +391,18 @@ function normStep(s, deadline) {
   if (s.gone) out.gone = true;
   return out;
 }
+// 목표까지 목표에서 폰이 바꾼 날짜: {due:{from,to}, steps:{sid:{from,to}}} — from은 바꿀 때의 목표까지 값
+function normEdit(me) {
+  if (!me || typeof me !== 'object') return null;
+  const pair = p => p && typeof p === 'object' && isDate(p.to) ? {from: isDate(p.from) ? p.from : null, to: p.to} : null;
+  const o = {}, d = pair(me.due); if (d) o.due = d;
+  if (me.steps && typeof me.steps === 'object') {
+    const st = {}; for (const [k, p] of Object.entries(me.steps)) { const q = pair(p); if (q) st[String(k).slice(0, 40)] = q; }
+    if (Object.keys(st).length) o.steps = st;
+  }
+  return o.due || o.steps ? o : null;
+}
+const MK_CATS = ['배우기', '자격증', '여행', '건강', '봉사', '가족·관계', '기타'];
 function normGoal(g) {
   if (!g || typeof g !== 'object') return null;
   const title = String(g.title ?? '').trim().slice(0, 120), deadline = isDate(g.deadline) ? g.deadline : null;
@@ -357,6 +418,9 @@ function normGoal(g) {
   if (isDate(g.start)) out.start = g.start;
   if (isDate(g.mkDue)) out.mkDue = g.mkDue;
   if (typeof g.short === 'string' && g.short) out.short = g.short.slice(0, 10);
+  if (typeof g.toMk === 'boolean') out.toMk = g.toMk;
+  if (typeof g.cat === 'string' && g.cat) out.cat = g.cat.slice(0, 10);
+  const me = normEdit(g.mkEdit); if (me) out.mkEdit = me;
   for (const s of Array.isArray(g.steps) ? g.steps : []) { const n = normStep(s, deadline); if (n) out.steps.push(n); }
   const finals = out.steps.filter(s => s.final);
   if (!finals.length) out.steps.push({id: uid(), title, due: deadline, final: true, tasks: []});
@@ -401,18 +465,21 @@ function normMk(mk) {
   const goals = [];
   for (const m of mk.goals) {
     if (!m || typeof m !== 'object' || typeof m.id !== 'string' || !String(m.title || '').trim()) continue;
-    goals.push({id: m.id.slice(0, 40), title: String(m.title).trim().slice(0, 120), short: String(m.short || '').slice(0, 10), cat: String(m.cat || '').slice(0, 10),
+    const pidOf = x => typeof x.pid === 'string' && x.pid ? x.pid.slice(0, 40) : null;   // 폰에서 만들어 목표까지로 간 목표·단계의 폰 id
+    goals.push({id: m.id.slice(0, 40), pid: pidOf(m), title: String(m.title).trim().slice(0, 120), short: String(m.short || '').slice(0, 10), cat: String(m.cat || '').slice(0, 10),
       start: isDate(m.start) ? m.start : null, due: isDate(m.due) ? m.due : null, status: String(m.status || '진행 중').slice(0, 10), memo: String(m.memo || '').slice(0, 400),
-      steps: (Array.isArray(m.steps) ? m.steps : []).filter(s => s && typeof s.sid === 'string' && s.sid).map(s => ({sid: s.sid.slice(0, 40), t: String(s.t || '').trim().slice(0, 120) || '단계', due: isDate(s.due) ? s.due : null, done: !!s.done})),
+      steps: (Array.isArray(m.steps) ? m.steps : []).filter(s => s && typeof s.sid === 'string' && s.sid).map(s => ({sid: s.sid.slice(0, 40), pid: pidOf(s), t: String(s.t || '').trim().slice(0, 120) || '단계', due: isDate(s.due) ? s.due : null, done: !!s.done})),
       metrics: (Array.isArray(m.metrics) ? m.metrics : []).filter(x => x && typeof x.mid === 'string' && x.mid).map(x => ({mid: x.mid.slice(0, 40), name: String(x.name || '').slice(0, 80), unit: String(x.unit || '').slice(0, 10), kind: x.kind === 'level' ? 'level' : 'total', days: clamp(x.days | 0, 0, 5)}))});
   }
   const days = []; for (const it of Array.isArray(mk.days) ? mk.days : []) { const n = normItem(it); if (n) days.push(n); }
   return {at: typeof mk.at === 'string' ? mk.at : '', from: isDate(mk.from) ? mk.from : null, to: isDate(mk.to) ? mk.to : null,
-    url: typeof mk.url === 'string' && /^https:\/\/claude\.ai\//.test(mk.url) ? mk.url : null, goals, days};
+    url: typeof mk.url === 'string' && /^https:\/\/claude\.ai\//.test(mk.url) ? mk.url : null, goals, days,
+    made: Array.isArray(mk.made) ? mk.made.filter(x => typeof x === 'string' && x).map(x => x.slice(0, 40)).slice(-200) : []};
 }
 function normalizeState(raw) {
   const s = raw && typeof raw === 'object' ? raw : {};
   const out = {v: 2, goals: [], current: typeof s.current === 'string' ? s.current : null, seen: !!s.seen, del: {}, imin: {}, mk: normMk(s.mk), timer: null, draft: null,
+    planView: s.planView === 'list' ? 'list' : 'flow',
     sync: {server: '', code: '', rev: 0, at: null, err: null, sig: null}};
   const ids = new Set();
   for (const g of Array.isArray(s.goals) ? s.goals : []) { const n = normGoal(g); if (!n || ids.has(n.id)) continue; ids.add(n.id); out.goals.push(n); }
@@ -751,8 +818,8 @@ function alerts(g, sch) {
     if (closed(s)) continue;
     const f = sch.info.get(s.id); if (!f) continue;
     const name = h('b', null, `‘${s.final ? '최종 목표' : s.title}’`);
-    if (f.overdue) out.push({text: [name, ` 마감(${mdw(s.due)})이 지났는데 ${dur(f.pending * 15)}이 남았어요. 오늘부터 먼저 하도록 넣었어요.`, linked(g) ? ' 날짜는 목표까지에서 고쳐요.' : ''],
-      fix: () => go('plan', 'step-' + s.id), fixLabel: linked(g) ? '역산 보기' : '날짜 고치기'});
+    if (f.overdue) out.push({text: [name, ` 마감(${mdw(s.due)})이 지났는데 ${dur(f.pending * 15)}이 남았어요. 오늘부터 먼저 하도록 넣었어요.`],
+      fix: () => stepDateSheet(g, s), fixLabel: '날짜 고치기'});
     else if (f.short > 0) out.push({text: [name, ` 마감(${mdw(s.due)})까지 ${dur(f.short * 15)} 모자라요. 요일별 시간을 늘리거나 ${linked(g) ? '할 일을 줄이세요.' : '날짜를 미루세요.'}`], fix: () => go('sched'), fixLabel: '요일별 시간'});
   }
   if (sch.unplaced) out.push({text: [h('b', null, '쓸 수 있는 시간이 없어요.'), ' 일정 화면에서 요일별로 쓸 수 있는 시간을 정해 주세요.'], fix: () => go('sched'), fixLabel: '요일별 시간'});
@@ -906,10 +973,17 @@ function renderPlan() {
   const v = $('view-plan'); v.replaceChildren();
   if (!state.goals.length) { v.append(h('div', {class: 'card empty'}, h('b', null, '목표가 없어요'), h('button', {class: 'btn primary', type: 'button', onclick: () => wizard()}, '목표 세우기'))); return; }
   if (isAll()) return chooser(v, '어느 목표의 계획을 볼까요?');
-  const g = curGoal(), sch = schedule(g), steps = sortSteps(g);
-  v.append(h('h2', {class: 'view-title'}, '거꾸로 세운 계획'));
+  const g = curGoal(), sch = schedule(g), steps = sortSteps(g), flow = state.planView === 'flow';
+  const seg = (id, val, label) => h('button', {type: 'button', id, 'aria-pressed': String((state.planView === 'flow') === (val === 'flow')), onclick: () => { state.planView = val; save(); renderPlan(); }}, label);
+  v.append(h('div', {class: 'view-head'}, h('h2', {class: 'view-title'}, '거꾸로 세운 계획'),
+    h('div', {class: 'seg', role: 'group', 'aria-label': '보는 방법'}, seg('pvList', 'list', '목록'), seg('pvFlow', 'flow', '순서도'))));
+  if (flow) {
+    if (linked(g)) v.append(h('p', {class: 'muted small-text', style: 'margin:-6px 0 12px'}, '목표까지에서 가져온 계획이에요. 상자를 누르면 날짜를 바꿀 수 있고, 바꾼 날짜는 목표까지에서 ‘맞추기’를 누르면 그쪽에도 들어가요.'));
+    v.append(flowView(g, sch), h('p', {class: 'muted small-text', style: 'margin:0'}, '할 일을 더하거나 고치려면 위 ‘목록’을 누르세요.'));
+    return;
+  }
   if (linked(g)) {
-    v.append(h('div', {class: 'linknote'}, h('span', null, h('b', null, '목표까지에서 가져온 계획이에요.'), ' 단계 이름·날짜는 목표까지에서 고치고, 여기서는 단계마다 15분 할 일을 적거나 끝낸 단계를 표시해요.'),
+    v.append(h('div', {class: 'linknote'}, h('span', null, h('b', null, '목표까지에서 가져온 계획이에요.'), ' 날짜는 여기서 바꿔도 돼요(목표까지에서 ‘맞추기’를 누르면 그쪽에도 들어가요). 단계 이름은 목표까지에서 고치고, 여기서는 단계마다 15분 할 일을 적거나 끝낸 단계를 표시해요.'),
       state.mk?.url ? h('a', {class: 'btn small', href: state.mk.url, target: '_blank', rel: 'noopener'}, '목표까지 열기 ↗') : null));
     const dl = dailyCard(g); if (dl) v.append(dl);
     v.append(h('div', {class: 'toolbar'}, h('button', {class: 'btn small', type: 'button', onclick: () => claudeSheet(g)}, 'Claude에게 15분 할 일 나눠 달라기')));
@@ -931,6 +1005,104 @@ function renderPlan() {
   requestAnimationFrame(() => document.querySelectorAll('textarea.step-title').forEach(fitArea));
 }
 const fitArea = el => { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; };
+// 순서도: 맨 위 최종 목표 → 단계(늦은 날짜부터) → 오늘 → 지난 단계. 화살표는 하는 순서(아래→위), 단계마다 15분 할 일이 오른쪽 가지로
+function flowView(g, sch) {
+  const t = today(), done = doneSets(g);
+  const steps = sortSteps(g).filter(s => !s.final), fin = g.steps.find(s => s.final);
+  const future = steps.filter(s => s.due >= t).reverse(), past = steps.filter(s => s.due < t).reverse();
+  const next = steps.find(s => !closed(s) && !s.gone && s.due >= t);
+  const wrap = h('div', {class: 'flow'});
+  const sqs = (n, dk) => { const sq = h('span', {class: 'sq', 'aria-hidden': 'true'}); for (let j = 1; j <= Math.min(n, 8); j++) sq.append(h('i', {class: dk.has(j) ? 'd' : ''})); if (n > 8) sq.append(h('em', null, `+${n - 8}`)); return sq; };
+  const chip = (title, n, dk, sub) => h('div', {class: 'fchip' + (dk.size >= n ? ' ok' : ''), title}, h('b', null, title), h('span', {class: 'row'}, sqs(n, dk), h('span', {class: 'num'}, sub || dur(n * 15))));
+  const chipsFor = s => {
+    if (!s.tasks.length) return null;
+    const list = s.tasks.slice(0, 4).map(k => chip(k.title, k.blocks, done.get(k.id) || new Set()));
+    if (s.tasks.length > 4) list.push(h('div', {class: 'fchip more'}, h('b', null, `할 일 ${s.tasks.length - 4}개 더`)));
+    return list;
+  };
+  const todayChips = () => {   // 오늘 할 칸: 같은 할 일·하루 분량끼리 묶어서
+    const grp = new Map();
+    for (const r of todayRows(g, sch, t)) {
+      const key = r.type === 'i' ? 'i:' + r.key : 't:' + r.task.id;
+      const x = grp.get(key) || {title: r.type === 'i' ? r.it.text : r.task.title, ks: [], dk: new Set()};
+      x.ks.push(r.k); if (r.done) x.dk.add(x.ks.length); grp.set(key, x);
+    }
+    const list = [...grp.values()].slice(0, 4).map(x => chip(x.title, x.ks.length, x.dk));
+    if (grp.size > 4) list.push(h('div', {class: 'fchip more'}, h('b', null, `${grp.size - 4}개 더`)));
+    return list;
+  };
+  const row = (boxEl, chips) => {
+    const r = h('div', {class: 'frow' + (chips && chips.length ? ' branch' : '')}, boxEl);
+    r.append(chips && chips.length ? h('div', {class: 'fchips'}, ...chips) : h('div'));
+    return r;
+  };
+  const gap = (lower, upper) => {   // 아래 상자 날짜 → 위 상자 날짜 사이 날 수
+    const n = diff(lower, upper);
+    return h('div', {class: 'fgap', 'aria-hidden': 'true'}, h('div', {class: 'fl'}, h('i', {class: 'ar'}), h('span', {class: 'days num'}, n > 0 ? `${n}일` : n === 0 ? '같은 날' : '')), h('div'));
+  };
+  const box = s => {
+    const d = s.final ? shownDue(g) : s.due, f = sch.info.get(s.id);
+    const late = !s.final && !closed(s) && (s.due < t || f?.overdue);
+    const cls = 'fbox' + (s.final ? ' goal' : '') + (closed(s) ? ' done' : '') + (late ? ' late' : '') + (s === next ? ' next' : '') + (editPending(g, s) ? ' pend' : '');
+    const tag = closed(s) ? '✓ 끝냄' : late ? '마감 지남' : s === next ? '다음 단계' : editPending(g, s) ? '바꾼 날짜' : '';
+    return h('button', {type: 'button', class: cls, 'aria-label': `${s.final ? '최종 목표 ' : ''}${s.title}, ${mdw(d)}, ${dday(d)}${tag ? ', ' + tag : ''} — 눌러서 날짜 바꾸기`, onclick: () => stepDateSheet(g, s)},
+      h('b', null, s.final ? `최종 · ${g.title}` : s.title), h('span', {class: 'num'}, `${md(d)} · ${tag || dday(d)}`));
+  };
+  const rows = [{el: row(box(fin), chipsFor(fin)), d: shownDue(g)}];
+  for (const s of future) rows.push({el: row(box(s), chipsFor(s)), d: s.due});
+  rows.push({el: row(h('button', {type: 'button', class: 'fbox today', 'aria-label': `오늘 ${mdw(t)} — 오늘 화면 열기`, onclick: () => go('today')}, h('b', null, `오늘 ${md(t)}`), h('span', {class: 'num'}, WD[wd(t)] + '요일')), todayChips()), d: t});
+  for (const s of past) rows.push({el: row(box(s), chipsFor(s)), d: s.due});
+  rows.forEach((r, i) => { if (i) wrap.append(gap(r.d, rows[i - 1].d)); wrap.append(r.el); });
+  return wrap;
+}
+// 날짜 바꾸기 창: 최종 목표(마감)와 중간 목표 모두. 목표까지 목표는 바꾼 값을 다음 맞추기 때 보낸다
+function dateSheet(g) {
+  const t = today(), cur = shownDue(g);
+  openSheet(p => {
+    const di = h('input', {type: 'date', id: 'dsDate', class: 'date-in', value: cur, min: add(t, 1), 'aria-label': '새 마감일'});
+    const ok = () => {
+      const v = di.value;
+      if (linked(g)) { const lb = lateCount(g); if (!editLinkedDue(g, v)) return; closeSheet(); commit(g); toast(linkDateMsg(g, lb)); return; }
+      const r = setDeadline(g, v); if (!r) return;
+      closeSheet(); commit(g); toast(r.moved ? `마감을 옮기고 중간 목표 ${r.moved}개도 같은 비율로 옮겼어요` : '마감을 바꿨어요');
+    };
+    di.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); ok(); } });
+    p.append(h('h2', {id: 'sheetTitle'}, '마감일 바꾸기'), h('p', {class: 'muted', style: 'margin:0'}, `‘${g.title}’ · 지금 ${mdw(cur)} (${dday(cur)})`),
+      h('div', {class: 'field'}, h('label', {for: 'dsDate'}, '새 마감일'), di),
+      h('p', {class: 'muted small-text', style: 'margin:0'}, linked(g) ? '목표까지에서 온 목표예요. 바꾼 날짜는 목표까지에서 ‘역산 플래너와 맞추기’를 누르면 그쪽에도 들어가요. 중간 단계 날짜는 순서도에서 상자를 눌러 하나씩 바꿀 수 있어요.' : '중간 목표 날짜도 같은 비율로 옮겨요(끝낸 단계·지난 날짜는 그대로).'),
+      h('div', {class: 'row', style: 'justify-content:flex-end'}, h('button', {class: 'btn', type: 'button', onclick: closeSheet}, '취소'), h('button', {class: 'btn primary', type: 'button', id: 'dsOk', onclick: ok}, '바꾸기')));
+  });
+}
+function stepDateSheet(g, s) {
+  if (s.final) return dateSheet(g);
+  if (s.gone) return toast('목표까지에서 빠진 단계예요. 날짜는 목표까지에서 정해요.');
+  const t = today(), cur = s.due, lk = linked(g) && !!s.src;
+  openSheet(p => {
+    const di = h('input', {type: 'date', id: 'dsDate', class: 'date-in', value: cur, min: t, max: lk ? null : g.deadline, 'aria-label': '새 날짜'});
+    const ok = () => {
+      const v = di.value;
+      if (lk) { const lb = lateCount(g); if (!editLinkedStep(g, s, v)) return; closeSheet(); commit(g); toast(linkDateMsg(g, lb)); return; }
+      if (!isDate(v) || v < t) return toast('중간 목표 날짜는 오늘 이후로 골라 주세요');
+      s.due = v > g.deadline ? g.deadline : v; fixOrder(g); closeSheet(); commit(g); toast(v > g.deadline ? '마감일을 넘을 수 없어 마감일로 맞췄어요' : '날짜를 바꿨어요');
+    };
+    di.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); ok(); } });
+    p.append(...[h('h2', {id: 'sheetTitle'}, '단계 날짜 바꾸기'), h('p', {class: 'muted', style: 'margin:0'}, `‘${s.title}’ · 지금 ${mdw(cur)} (${dday(cur)})`),
+      h('div', {class: 'field'}, h('label', {for: 'dsDate'}, '새 날짜'), di),
+      lk ? h('p', {class: 'muted small-text', style: 'margin:0'}, '목표까지에서 ‘역산 플래너와 맞추기’를 누르면 그쪽에도 들어가요.') : null,
+      h('div', {class: 'row', style: 'justify-content:flex-end'}, h('button', {class: 'btn', type: 'button', onclick: closeSheet}, '취소'), h('button', {class: 'btn primary', type: 'button', id: 'dsOk', onclick: ok}, '바꾸기'))].filter(Boolean));
+  });
+}
+// 폰에서 세운 목표를 목표까지에도 넣기
+function toMkSheet(g) {
+  openSheet(p => {
+    const sel = h('select', {id: 'tmCat'}, ...MK_CATS.map(c => h('option', {value: c, selected: (g.cat || '기타') === c ? true : null}, c)));
+    p.append(h('h2', {id: 'sheetTitle'}, '목표까지에도 넣을까요?'),
+      h('p', {class: 'muted', style: 'margin:0'}, `‘${g.title}’과 중간 목표·날짜를 목표까지 인생 목표로 보내요. 목표까지에서 ‘역산 플래너와 맞추기’를 누르면 들어가고, 그다음부터 이름·단계는 목표까지에서 고쳐요(날짜는 여기서도).`),
+      h('div', {class: 'field'}, h('label', {for: 'tmCat'}, '분야'), sel),
+      h('div', {class: 'row', style: 'justify-content:flex-end'}, h('button', {class: 'btn', type: 'button', onclick: closeSheet}, '취소'),
+        h('button', {class: 'btn primary', type: 'button', id: 'tmOk', onclick: () => { g.toMk = true; g.cat = sel.value; closeSheet(); commit(g); toast('목표까지에서 ‘역산 플래너와 맞추기’를 누르면 들어가요'); }}, '넣기')));
+  });
+}
 // 목표까지 하루 분량: 수치마다 '한 번에 몇 분'(15분 칸 몇 개)을 정한다
 function dailyCard(g) {
   const mk = mkGoal(g); if (!mk || !state.mk) return null;
@@ -955,17 +1127,29 @@ function stepNode(g, s, f) {
   const card = h('div', {class: 'step' + (closed(s) ? ' closed' : '')});
   const nameOf = () => s.final ? '최종 목표' : s.title;
   let dateEl, titleEl;
-  if (lk || s.gone) {
-    dateEl = h('span', {class: 'date-txt'}, `${mdw(s.final ? shownDue(g) : s.due)} · ${dday(s.final ? shownDue(g) : s.due)}`);
+  if (s.gone) {
+    dateEl = h('span', {class: 'date-txt'}, `${mdw(s.due)} · ${dday(s.due)}`);
+    titleEl = h('div', {class: 'step-title-text'}, s.title);
+  } else if (lk) {   // 목표까지 목표: 이름은 목표까지에서, 날짜는 여기서도 바꿀 수 있다(다음 맞추기 때 목표까지로)
+    const t = today(), cur = s.final ? shownDue(g) : s.due;
+    dateEl = h('input', {class: 'date-in' + (editPending(g, s) ? ' pend' : ''), type: 'date', value: cur, min: s.final ? add(t, 1) : t, 'aria-label': `${nameOf()} 날짜`,
+      title: editPending(g, s) ? '바꾼 날짜 — 목표까지에서 ‘맞추기’를 누르면 그쪽에도 들어가요' : null,
+      onchange: e => {
+        const v = e.target.value, lb = lateCount(g);
+        if (!(s.final ? editLinkedDue(g, v) : editLinkedStep(g, s, v))) { e.target.value = cur; return; }
+        commit(g); toast(linkDateMsg(g, lb));
+      }});
     titleEl = h('div', {class: 'step-title-text'}, s.title);
   } else {
     const t = today();
     dateEl = h('input', {class: 'date-in', type: 'date', value: s.due, min: s.final ? add(t, 1) : t, 'aria-label': `${nameOf()} 마감일`,
       onchange: e => {
         const v = e.target.value;
-        if (s.final) { if (!setDeadline(g, v)) { e.target.value = s.due; return; } }
+        let moved = 0;
+        if (s.final) { const r = setDeadline(g, v); if (!r) { e.target.value = s.due; return; } moved = r.moved; }
         else { if (!isDate(v) || v < t) { e.target.value = s.due; return toast('중간 목표 날짜는 오늘 이후로 골라 주세요'); } s.due = v > g.deadline ? g.deadline : v; fixOrder(g); }
         commit(g);
+        if (moved) toast(`마감을 옮기고 중간 목표 ${moved}개도 같은 비율로 옮겼어요`);
       }});
     titleEl = h('textarea', {class: 'step-title', rows: 1, 'aria-label': s.final ? '최종 목표 이름' : '중간 목표 이름', enterkeyhint: 'done',
       oninput: e => fitArea(e.target),
@@ -978,7 +1162,7 @@ function stepNode(g, s, f) {
       }});
     titleEl.value = s.title;
   }
-  const head = h('div', {class: 'step-head'}, h('span', {class: 'label'}, s.final ? '최종 목표' : '중간 목표', s.gone ? ' · 목표까지에서 빠짐' : ''), dateEl);
+  const head = h('div', {class: 'step-head'}, h('span', {class: 'label'}, s.final ? '최종 목표' : '중간 목표', s.gone ? ' · 목표까지에서 빠짐' : '', editPending(g, s) ? ' · 바꾼 날짜' : ''), dateEl);
   const doneBtn = s.final ? null : h('button', {class: 'btn small', type: 'button', 'aria-pressed': String(closed(s)), disabled: s.mkDone ? true : null,
     'aria-label': `‘${s.title}’ ${closed(s) ? '끝냄 표시 지우기' : '끝냄으로 표시'}`, title: s.mkDone ? '목표까지에서 완료로 표시된 단계예요' : null,
     onclick: () => { s.done = !s.done; commit(g); toast(s.done ? (linked(g) ? '단계를 끝냄으로 표시했어요. 목표까지에서 ‘맞추기’를 누르면 그쪽에도 체크돼요.' : '단계를 끝냄으로 표시했어요. 남은 칸은 더 놓지 않아요.') : '끝냄 표시를 지웠어요'); }},
@@ -1037,12 +1221,14 @@ function setDeadline(g, nd) {
   const t = today();
   if (!isDate(nd) || nd <= t) { toast('마감일은 내일 이후로 골라 주세요'); return false; }
   const oldSpan = diff(t, g.deadline), newSpan = diff(t, nd);
+  let moved = 0;
   if (oldSpan > 0 && nd !== g.deadline) for (const s of g.steps) {
     if (s.final || s.due <= t) continue;
-    s.due = add(t, clamp(Math.round(diff(t, s.due) * newSpan / oldSpan), 1, newSpan));
+    const d = add(t, clamp(Math.round(diff(t, s.due) * newSpan / oldSpan), 1, newSpan));
+    if (d !== s.due) { s.due = d; moved++; }
   }
   g.deadline = nd; fixOrder(g);
-  return true;
+  return {moved};
 }
 function insertBefore(g, s) {
   const steps = sortSteps(g), i = steps.indexOf(s), prev = steps[i - 1], t = today();
@@ -1152,8 +1338,12 @@ function renderGoals() {
         h('div', {class: 'muted small-text num'}, `${dday(shownDue(g))} · ${mdw(shownDue(g))} · ${linked(g) ? `단계 ${md_}/${mids.length}` : lpct + '%'}`)),
       h('span', {class: 'chip' + (g.id === curGoal()?.id ? ' ok' : '')}, g.id === curGoal()?.id ? '보는 중' : `${mids.length}단계`),
       bar,
+      !linked(g) && !g.sample && syncReady() ? h('div', {class: 'muted small-text'}, g.toMk
+        ? h('span', null, '목표까지에서 ‘맞추기’를 누르면 들어가요 · ', h('button', {class: 'linkish', type: 'button', onclick: () => { g.toMk = false; commit(g); toast('목표까지로 보내지 않을게요'); }}, '보내지 않기'))
+        : h('button', {class: 'linkish', type: 'button', onclick: () => toMkSheet(g)}, '＋ 목표까지에도 넣기')) : null,
       h('div', {class: 'acts'},
         h('button', {class: 'btn small', type: 'button', onclick: () => { state.current = g.id; save(); go('today'); }}, '열기'),
+        g.gone ? null : h('button', {class: 'btn small', type: 'button', onclick: () => dateSheet(g)}, '마감 바꾸기'),
         canDel ? h('button', {class: 'btn small danger', type: 'button', onclick: () => confirmSheet(`‘${g.title}’ 목표를 지울까요?`, '중간 목표·할 일·끝낸 기록이 모두 지워져요. 필요하면 먼저 백업을 내보내세요.', '지우기', () => {
           state.goals = state.goals.filter(x => x !== g); if (!g.sample) state.del[g.id] = Date.now();
           if (state.current === g.id) state.current = state.goals.length > 1 ? '*' : state.goals[0]?.id || null; commit(); })}, '지우기')
@@ -1346,9 +1536,19 @@ function wzPage(p, w, draw) {
     : sch.unplaced ? h('div', {class: 'sum bad'}, '쓸 수 있는 시간이 0분이에요. 요일별 시간을 정해 주세요.')
     : h('div', {class: 'sum' + (good ? '' : ' bad')}, `할 일 모두 ${dur(sch.total * 15)} · 한 주 ${dur(weekMin)}씩 하면 `, h('b', null, mdw(sch.finish)),
         good ? `에 끝나요(마감 ${diff(sch.finish, g.deadline)}일 전).` : `에 끝나요 — 마감보다 ${diff(g.deadline, sch.finish)}일 늦어요.${sch.needPerDay ? ` 하루 평균 ${dur(sch.needPerDay)} 더 필요해요.` : ''} 시간을 늘리거나 할 일을 줄이세요.`);
-  p.append(...head(4, '언제 할 수 있나요?'), h('p', {class: 'muted small-text', style: 'margin:0'}, '요일별로 이 목표에 쓸 수 있는 시간을 15분 단위로 정하세요.'),
-    availEditorWz(g, draw), sum,
-    nav(() => { w.page = 3; draw(); }, () => finishWizard(g), '완료'));
+  let mkBox = null;
+  if (syncReady()) {   // 목표까지와 연결돼 있으면: 새 목표를 목표까지 인생 목표에도 넣을지(기본 켬)
+    if (typeof g.toMk !== 'boolean') g.toMk = true;
+    const sel = h('select', {id: 'wzCat', disabled: g.toMk ? null : true, onchange: e => { g.cat = e.target.value; keepDraft(); }}, ...MK_CATS.map(c => h('option', {value: c, selected: (g.cat || '기타') === c ? true : null}, c)));
+    const cb = h('input', {type: 'checkbox', id: 'wzToMk', checked: g.toMk ? true : null, style: 'width:22px;height:22px;flex:none', onchange: e => { g.toMk = e.target.checked; sel.disabled = !g.toMk; keepDraft(); }});
+    mkBox = h('div', {class: 'card', style: 'padding:12px;display:grid;gap:8px'},
+      h('div', {class: 'row', style: 'gap:10px;flex-wrap:nowrap'}, cb, h('label', {for: 'wzToMk', style: 'font-weight:700'}, '목표까지에도 넣기')),
+      h('div', {class: 'field'}, h('label', {for: 'wzCat'}, '목표까지 분야'), sel),
+      h('p', {class: 'muted small-text', style: 'margin:0'}, '목표까지에서 ‘역산 플래너와 맞추기’를 누르면 인생 목표에 들어가요. 그다음부터 이름·단계는 목표까지에서, 날짜는 여기서도 고칠 수 있어요.'));
+  }
+  p.append(...[...head(4, '언제 할 수 있나요?'), h('p', {class: 'muted small-text', style: 'margin:0'}, '요일별로 이 목표에 쓸 수 있는 시간을 15분 단위로 정하세요.'),
+    availEditorWz(g, draw), sum, mkBox,
+    nav(() => { w.page = 3; draw(); }, () => finishWizard(g), '완료')].filter(Boolean));
 }
 function finishWizard(g) {
   const samples = state.goals.filter(x => x.sample), edited = samples.filter(s => sampleSigOf(s) !== s.sampleSig);
@@ -1562,39 +1762,89 @@ function paintSync() {
   const l = $('syncLine'); if (l) l.classList.toggle('err', !!state.sync.err);
   const b = $('syncState'); if (b) { b.textContent = syncText(); b.classList.toggle('err', !!state.sync.err); }
 }
+// 목표까지 목표의 날짜를 폰에서 바꾸기: 바꾼 값(목표까지 값 → 새 값)을 적어 두고 다음 맞추기 때 목표까지로 보낸다
+const mkGoalOf = g => g && g.src && state.mk ? state.mk.goals.find(m => m.id === g.src) || null : null;
+const cleanEdit = g => { const e = g.mkEdit; if (e && e.steps && !Object.keys(e.steps).length) delete e.steps; if (e && !e.due && !e.steps) delete g.mkEdit; };
+const editPending = (g, s) => !!(g.mkEdit && (s.final ? g.mkEdit.due : s.src && g.mkEdit.steps && g.mkEdit.steps[s.src]));
+const lateCount = g => g.steps.filter(s => !s.final && !s.gone && !closed(s) && s.due > shownDue(g)).length;
+function relinkDeadline(g) {   // 연동 목표의 일정 끝 = 목표까지 마감과 단계 날짜 중 가장 늦은 날
+  const dues = g.steps.filter(s => !s.final && !s.gone).map(s => s.due);
+  g.deadline = [g.mkDue || g.deadline, ...dues].sort().pop();
+  const fin = g.steps.find(s => s.final); if (fin) { fin.due = g.deadline; fin.title = g.title; }
+  g.steps = sortSteps(g);
+}
+function editLinkedDue(g, nd) {
+  if (!isDate(nd) || nd <= today()) { toast('마감일은 내일 이후로 골라 주세요'); return false; }
+  const m = mkGoalOf(g), e = g.mkEdit = g.mkEdit || {}, from = e.due ? e.due.from : (m?.due || g.mkDue || g.deadline);
+  if (nd === from) delete e.due; else e.due = {from, to: nd};
+  cleanEdit(g); g.mkDue = nd; relinkDeadline(g);
+  return true;
+}
+function editLinkedStep(g, s, nd) {
+  if (!isDate(nd) || nd < today()) { toast('단계 날짜는 오늘 이후로 골라 주세요'); return false; }
+  const m = mkGoalOf(g), ms = m?.steps.find(x => x.sid === s.src), e = g.mkEdit = g.mkEdit || {}, st = e.steps = e.steps || {};
+  const from = st[s.src] ? st[s.src].from : (ms?.due || s.due);
+  if (nd === from) delete st[s.src]; else st[s.src] = {from, to: nd};
+  cleanEdit(g); s.due = nd; relinkDeadline(g);
+  return true;
+}
+const linkDateMsg = (g, lateBefore) => lateCount(g) > lateBefore ? `날짜를 바꿨어요. 중간 단계 ${lateCount(g) - lateBefore}개가 마감보다 늦어졌어요 — 그 단계 날짜도 바꿔 주세요.`
+  : '날짜를 바꿨어요. 목표까지에서 ‘역산 플래너와 맞추기’를 누르면 그쪽에도 들어가요.';
+let mkNote = {attached: 0, conflicts: 0};
 // 받은 목표까지 스냅숏을 폰 목표로: 단계는 목표까지 그대로(sid로 이어 붙임), 15분 할 일·체크 기록은 폰 것을 지킨다
 function applyMk(raw) {
   const mk = normMk(raw); if (!mk) return false;
   const before = sigOf(state.goals), hadLinked = state.goals.some(linked);
-  state.mk = mk;
+  state.mk = mk; mkNote = {attached: 0, conflicts: 0};
   const seen = new Set();
+  // 폰에서 바꾼 날짜: 목표까지 값이 아직 바꾸기 전(from)이면 내 값을 지키고, 바꾼 값(to)이 되었으면 다 들어간 것, 목표까지가 따로 바꿨으면 목표까지를 따른다
+  const settle = (cur, ed, drop) => { if (!ed) return cur; if (cur === ed.to) { drop(); return cur; } if (cur === ed.from) return ed.to; drop(); mkNote.conflicts++; return cur; };
   for (const m of mk.goals) {
     seen.add(m.id);
     let g = state.goals.find(x => x.src === m.id);
+    if (!g && m.pid) {   // 폰에서 만들어 보낸 목표가 목표까지에 들어옴 → 그 폰 목표를 연동 목표로(할 일·기록 그대로)
+      const pg = state.goals.find(x => !x.src && x.id === m.pid);
+      if (pg) {
+        pg.src = m.id; delete pg.toMk; g = pg; mkNote.attached++;
+        const e = {};
+        if (m.due && pg.deadline !== m.due) e.due = {from: m.due, to: pg.deadline};   // 보낸 뒤 폰에서 또 바꾼 날짜는 다시 보낸다
+        for (const ms of m.steps) {
+          const s = ms.pid && pg.steps.find(x => x.id === ms.pid && !x.src && !x.final); if (!s) continue;
+          s.src = ms.sid;
+          if (ms.due && s.due !== ms.due && s.due >= today()) (e.steps = e.steps || {})[ms.sid] = {from: ms.due, to: s.due};
+        }
+        if (e.due || e.steps) pg.mkEdit = e;
+      }
+    }
     const active = m.status !== '완료' && m.status !== '보류';
     if (!g) {
       if (!active || !m.due) continue;
       g = {id: uid(), src: m.id, title: m.title, why: '', deadline: m.due, createdAt: today(), avail: LINK_AVAIL.slice(), steps: [{id: uid(), title: m.title, due: m.due, final: true, tasks: []}], log: [], ilog: [], ed: Date.now()};
       state.goals.push(g);
     }
-    const stepDues = m.steps.map(s => s.due).filter(Boolean);
+    const e = g.mkEdit;
     g.title = m.title; g.why = m.memo || ''; g.short = m.short || undefined; g.status = m.status; delete g.gone;
-    if (m.due) { g.mkDue = m.due; g.deadline = [m.due, ...stepDues].sort().pop(); }
+    if (m.cat) g.cat = m.cat;
+    if (m.due) g.mkDue = settle(m.due, e?.due, () => { delete e.due; });
     if (m.start) g.start = m.start; else delete g.start;
-    const fin = g.steps.find(s => s.final); fin.title = g.title; fin.due = g.deadline;
     const bySid = new Map(g.steps.filter(s => s.src).map(s => [s.src, s])), keep = new Set();
     for (const ms of m.steps) {
       keep.add(ms.sid);
       let s = bySid.get(ms.sid);
-      if (!s) { s = {id: uid(), src: ms.sid, title: ms.t, due: ms.due || g.deadline, tasks: []}; g.steps.push(s); }
-      s.title = ms.t; s.due = ms.due || g.deadline; delete s.gone;
+      if (!s) { s = {id: uid(), src: ms.sid, title: ms.t, due: ms.due || g.mkDue || g.deadline, tasks: []}; g.steps.push(s); }
+      s.title = ms.t; delete s.gone;
+      s.due = settle(ms.due, e?.steps?.[ms.sid], () => { delete e.steps[ms.sid]; }) || g.mkDue || g.deadline;
       if (ms.done) s.mkDone = true; else delete s.mkDone;
     }
+    if (e?.steps) for (const sid of Object.keys(e.steps)) if (!keep.has(sid)) delete e.steps[sid];
+    if (e) cleanEdit(g);
     for (const s of g.steps) if (s.src && !keep.has(s.src)) s.gone = true;
     g.steps = g.steps.filter(s => !(s.gone && !s.tasks.length));
-    g.steps = sortSteps(g);
+    relinkDeadline(g);
   }
   for (const g of state.goals) if (g.src && !seen.has(g.src)) g.gone = true;
+  // 목표까지가 한 번 만들었다가 지운 폰 목표는 더 보내지 않는다
+  for (const g of state.goals) if (!g.src && g.toMk && mk.made.includes(g.id) && !mk.goals.some(m => m.pid === g.id)) g.toMk = false;
   // 목표까지 목표가 들어오면 손대지 않은 예시는 치운다
   if (state.goals.some(linked)) state.goals = state.goals.filter(g => !g.sample || sampleSigOf(g) !== g.sampleSig);
   if (!hadLinked && state.goals.some(linked) && state.goals.length > 1) state.current = '*';   // 처음 받으면 모든 목표 보기로
@@ -1649,8 +1899,17 @@ function computeProgress() {
       const it = perItem.get(e.i) || {n: e.n, c: 0, last: e.d, m: e.m, s: e.s}; it.c++; if (e.d > it.last) it.last = e.d; it.n = Math.max(it.n, e.n); perItem.set(e.i, it);
     }
     for (const it of perItem.values()) if (it.c >= it.n) { const ym = it.last.slice(0, 7), c = p.sessions[it.m] = p.sessions[it.m] || {}; c[ym] = (c[ym] || 0) + 1; }
+    if (g.mkEdit) {   // 폰에서 바꾼 날짜(목표까지가 받아 반영)
+      const ed = {}; if (g.mkEdit.due) ed.due = g.mkEdit.due.to;
+      if (g.mkEdit.steps) { ed.steps = {}; for (const [sid, x] of Object.entries(g.mkEdit.steps)) ed.steps[sid] = x.to; }
+      p.edits = ed;
+    }
     out.goals[g.src] = p;
   }
+  // 폰에서 세우고 '목표까지에도 넣기'를 켠 목표 — 목표까지가 받아 인생 목표로 만들고 pid를 붙여 돌려준다
+  const ng = state.goals.filter(g => !g.src && !g.sample && g.toMk === true);
+  if (ng.length) out.newGoals = ng.map(g => ({pid: g.id, title: g.title, cat: MK_CATS.includes(g.cat) ? g.cat : '기타', start: g.createdAt, due: g.deadline, memo: g.why || '',
+    steps: sortSteps(g).filter(s => !s.final).map(s => ({pid: s.id, t: s.title, due: s.due, done: !!s.done}))}));
   return out;
 }
 async function syncNow(why) {
@@ -1664,7 +1923,10 @@ async function syncNow(why) {
         const r = await api('GET', '/api/sync');
         const mine = state.sync.sig !== localSig() && state.goals.some(g => !g.sample);   // 아직 안 올린 내 변경
         if (r.rev > state.sync.rev && r.data) { mergeRemote(r.data, mine); changed = true; if (!mine) state.sync.sig = localSig(); }
-        if (r.mk && r.mk.at && r.mk.at !== state.mk?.at) { applyMk(r.mk); changed = true; }
+        if (r.mk && r.mk.at && r.mk.at !== state.mk?.at) {
+          applyMk(r.mk); changed = true;
+          const n = mkNote; if (n.attached || n.conflicts) toast([n.attached ? `새 목표 ${n.attached}개가 목표까지에 들어갔어요` : '', n.conflicts ? `목표까지에서 따로 바꾼 날짜 ${n.conflicts}개는 목표까지를 따랐어요` : ''].filter(Boolean).join(' · '));
+        }
         if (changed) fixCurrent();
         const need = state.sync.sig !== localSig() || r.rev < state.sync.rev;   // 내 변경이 있거나, 서버가 비워졌으면 올린다
         if (!need) { state.sync.rev = r.rev; break; }

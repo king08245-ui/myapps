@@ -19,9 +19,13 @@ def ready(page):
     page.wait_for_selector("#view-today .hero, #view-today .empty, #view-today .goalsec, #view-today .today-head", timeout=10000)
 
 
-def tab(page, name):
+def tab(page, name, flow=False):
     page.click(f".tabs button[data-tab='{name}']")
     page.wait_for_selector(f"#view-{name}:not([hidden])", timeout=5000)
+    if name == "plan":   # 역산 화면: 기본은 순서도 — 목록을 다루는 검수는 목록으로 바꿔서
+        b = page.locator("#pvFlow" if flow else "#pvList")
+        if b.count() and b.get_attribute("aria-pressed") != "true":
+            b.click()
 
 
 def saved(page):
@@ -51,9 +55,9 @@ def pick(page, text):
     page.select_option("#goalPick", label=[o for o in opts if text in o][0])
 
 
-def make_goal(page, title="자격증 필기 합격", days=40, mids=(("기출 3회분 70점", 25), ("핵심 요약 1회독", 12)), tasks=2):
+def make_goal(page, title="자격증 필기 합격", days=40, mids=(("기출 3회분 70점", 25), ("핵심 요약 1회독", 12)), tasks=2, cat=None, to_mk=None):
     """마법사로 목표 하나 만들기: 거꾸로 중간 목표(최종 → 아래로), 단계마다 할 일 tasks개"""
-    page.locator("button", has_text=re.compile("목표 세우기")).first.click()
+    page.locator("button:visible", has_text=re.compile("목표 세우기")).first.click()
     page.fill("#wzTitle", title)
     page.fill("#wzDeadline", kst(days))
     page.click(".sheet-actions .btn.primary")
@@ -71,6 +75,10 @@ def make_goal(page, title="자격증 필기 합격", days=40, mids=(("기출 3�
                 box.locator("button[aria-label='15분 늘리기']").click()   # 45분
             box.locator("button", has_text="할 일 추가").click()
     page.click(".sheet-actions .btn.primary")
+    if cat:
+        page.select_option("#wzCat", cat)
+    if to_mk is False:
+        page.uncheck("#wzToMk")
     page.click(".sheet-actions .btn.primary")   # 완료
     page.wait_for_selector("#sheet[hidden]", state="attached", timeout=5000)
     ready(page)
@@ -259,7 +267,7 @@ def flow_today_quota_then_next_up(page, shot):
     nxt.locator(".chk").click()
     assert done_minutes(page) == before + 15, "미리 한 칸이 끝낸 시간에 들어가지 않음"
     assert page.locator(".blk", has_text="미리 하기").count() == 1, "미리 한 뒤 그다음 칸이 안 나옴"
-    shot("done-today")
+    shot("done-today", store=False)   # 스토어 화면은 8장까지
 
 
 def flow_focus_timer(page, shot):
@@ -341,11 +349,70 @@ def flow_plan_reverse_chain_edit(page, shot):
     node = page.locator("#" + node_id)
     assert node.locator(".task output").first.inner_text() == "1시간", "15분 늘리기가 안 됨"
     assert node.locator(".task .sq i").count() == 4, "15분 칸 그림이 4칸이 아님"
-    shot("plan")
+    shot("plan", store=False)   # 스토어에는 순서도 화면을 넣음
     node.locator(".step-titlerow .icon-btn").click()
     assert page.is_visible("#sheet"), "지우기 전에 확인을 묻지 않음"
     page.click("#sheet .btn.primary")
     assert page.locator("#" + node_id).count() == 0, "확인 후에도 지워지지 않음"
+
+
+def flow_flowchart_view_and_date_edit(page, shot):
+    """역산 순서도: 맨 위 최종 목표, 아래 오늘, 단계마다 15분 할 일 가지 · 상자를 누르면 날짜 바꾸기 · 보기 선택 기억"""
+    ready(page)
+    tab(page, "plan", flow=True)
+    assert page.get_attribute("#pvFlow", "aria-pressed") == "true", "순서도 버튼이 눌린 상태가 아님"
+    boxes = page.locator(".flow .fbox")
+    assert "최종" in boxes.first.inner_text(), "순서도 맨 위가 최종 목표가 아님"
+    assert page.locator(".flow .fbox.today").count() == 1, "순서도에 '오늘'이 없음"
+    assert page.locator(".flow .fchip").count() >= 3, "단계의 15분 할 일 가지가 안 보임"
+    assert page.locator(".flow .fchip .sq i.d").count() >= 1, "끝낸 15분 칸이 칠해지지 않음"
+    assert page.locator(".flow .fgap .days").count() >= 2, "단계 사이 날 수가 없음"
+    assert page.locator(".flow .fbox.next").count() == 1, "다음 단계 표시가 없음"
+    assert "null" not in page.inner_text("#view-plan"), "화면에 null 글자가 보임"
+    w = page.evaluate("document.querySelector('.flow').scrollWidth - document.querySelector('.flow').clientWidth")
+    assert w <= 1, f"순서도가 옆으로 넘침: {w}px"
+    quiet(page, top=True)
+    shot("flow")
+    g = saved(page)["goals"][0]
+    mids = sorted([s for s in g["steps"] if not s.get("final")], key=lambda s: s["due"])
+    target = mids[-1]
+    page.locator(".flow .fbox", has_text=target["title"]).first.click()
+    page.wait_for_selector("#dsDate", timeout=3000)
+    page.fill("#dsDate", kst(40))
+    page.click("#dsOk")
+    page.wait_for_timeout(100)
+    g = saved(page)["goals"][0]
+    assert any(s["title"] == target["title"] and s["due"] == kst(40) for s in g["steps"]), "순서도에서 바꾼 단계 날짜가 저장되지 않음"
+    page.locator(".flow .fbox.goal").click()
+    page.fill("#dsDate", kst(100))
+    page.click("#dsOk")
+    page.wait_for_timeout(100)
+    g = saved(page)["goals"][0]
+    assert g["deadline"] == kst(100), "순서도에서 마감을 바꿨는데 저장되지 않음"
+    assert (page.text_content("#toast") or "").startswith("마감을 옮기고 중간 목표"), f"중간 목표도 옮겼다는 안내가 없음: {page.text_content('#toast')}"
+    assert max(s["due"] for s in g["steps"] if not s.get("final")) > kst(40), "마감을 늦췄는데 중간 목표가 같이 옮겨지지 않음"
+    page.click("#pvList")
+    page.reload()
+    ready(page)
+    page.click(".tabs button[data-tab='plan']")
+    assert page.locator(".chain").count() == 1 and page.get_attribute("#pvList", "aria-pressed") == "true", "목록 보기를 골랐는데 다시 열면 순서도로 돌아감"
+
+
+def flow_goal_card_change_deadline(page, shot):
+    """목표 화면의 '마감 바꾸기'로 언제든 목표 날짜를 바꿈"""
+    ready(page)
+    tab(page, "goals")
+    page.locator(".goal-item button", has_text="마감 바꾸기").first.click()
+    page.wait_for_selector("#dsDate", timeout=3000)
+    assert page.evaluate("document.activeElement && document.activeElement.id") == "dsDate", "마감 바꾸기 창에서 날짜 칸에 초점이 없음"
+    page.fill("#dsDate", kst(0))
+    page.click("#dsOk")
+    assert page.is_visible("#sheet"), "오늘 날짜를 마감으로 받아 버림"
+    page.fill("#dsDate", kst(90))
+    page.press("#dsDate", "Enter")
+    page.wait_for_timeout(100)
+    assert saved(page)["goals"][0]["deadline"] == kst(90), "목표 화면에서 바꾼 마감이 저장되지 않음"
+    assert re.search(r"D-90", page.inner_text("#view-goals")), "목표 카드의 D-day가 바뀌지 않음"
 
 
 def flow_rename_then_tap_stepper(page, shot):
@@ -574,7 +641,9 @@ def flow_multiple_goals_switch_and_delete(page, shot):
     tab(page, "plan")
     assert page.locator(".chooser button").count() == 2, "모든 목표일 때 역산 화면에서 목표를 고르게 하지 않음"
     page.locator(".chooser button", has_text="첫 번째 목표").click()
-    assert page.locator(".chain .node.goal").count() == 1, "고른 목표의 역산이 안 나옴"
+    assert page.locator(".flow .fbox.goal").count() == 1 and "첫 번째 목표" in page.locator(".flow .fbox.goal").inner_text(), "고른 목표의 역산(순서도)이 안 나옴"
+    page.click("#pvList")
+    assert page.locator(".chain .node.goal").count() == 1, "고른 목표의 역산 목록이 안 나옴"
     tab(page, "goals")
     page.locator(".goal-item", has_text="두 번째 목표").locator("button", has_text="지우기").click()
     page.click("#sheet .btn.primary")
@@ -662,7 +731,11 @@ def flow_overdue_step_alert(page, shot):
     text = page.inner_text("#view-today")
     assert "마감" in text and "지났는데" in text, f"마감이 지난 중간 목표 경고가 없음: {text[:200]}"
     page.locator(".alert button", has_text="날짜 고치기").first.click()
-    assert not page.locator("#view-plan").is_hidden(), "날짜 고치기를 눌렀는데 역산 화면으로 가지 않음"
+    page.wait_for_selector("#dsDate", timeout=3000)
+    page.fill("#dsDate", kst(5))
+    page.click("#dsOk")
+    page.wait_for_timeout(100)
+    assert "지났는데" not in page.inner_text("#view-today"), "날짜를 고쳤는데 마감 지남 경고가 남음"
 
 
 def flow_wizard_draft_survives_reload(page, shot):
@@ -834,7 +907,8 @@ def flow_linked_plan_is_readonly_with_tasks(page, shot):
     tab(page, "plan")
     assert page.locator(".linknote").count() == 1, "목표까지에서 가져온 계획이라는 안내가 없음"
     assert page.locator(".insert").count() == 0, "목표까지 계획에 중간 목표 추가 버튼이 보임"
-    assert page.locator("textarea.step-title, .chain input.date-in").count() == 0, "목표까지 단계 이름·날짜를 폰에서 고칠 수 있게 됨"
+    assert page.locator("textarea.step-title").count() == 0, "목표까지 단계 이름을 폰에서 고칠 수 있게 됨"
+    assert page.locator(".chain input.date-in").count() >= 2, "목표까지 목표의 날짜를 폰에서 바꿀 칸이 없음"
     assert page.locator(".daily li", has_text="기본서 읽기").count() == 1, "하루 분량 시간 정하기가 없음"
     quiet(page, top=True)
     shot("linked-plan")
@@ -890,6 +964,134 @@ def flow_mokpyo_update_keeps_phone_tasks(page, shot):
     assert g7.get("gone"), "목표까지에서 지운 목표가 빠짐 표시가 안 됨"
     tab(page, "today")
     assert "기타 솔로" not in page.inner_text("#view-today"), "빠진 목표가 오늘 화면에 남음"
+
+
+def flow_linked_date_edit_roundtrip(page, shot):
+    """목표까지 목표의 날짜를 폰에서 바꾸면 진행에 실려 가고, 반영된 스냅숏이 오면 표시가 사라짐 · 목표까지가 따로 바꾸면 목표까지를 따름"""
+    srv_reset()
+    srv_put_mk(mk_snapshot(at="2026-10-01T00:00:00Z"))
+    ready(page)
+    connect(page)
+    pick(page, "한국사")
+    tab(page, "plan", flow=True)
+    new_due = kst(150)
+    page.locator(".flow .fbox.goal").click()
+    page.wait_for_selector("#dsDate", timeout=3000)
+    page.fill("#dsDate", new_due)
+    page.click("#dsOk")
+    page.locator(".flow .fbox", has_text="원서접수").first.click()
+    page.fill("#dsDate", kst(25))
+    page.click("#dsOk")
+    assert page.locator(".flow .fbox.pend").count() == 2, "바꾼 날짜 표시가 안 보임"
+    wait_synced(page)
+    page.wait_for_timeout(300)
+    ed = srv_dump()["data"]["progress"]["goals"]["g3"].get("edits")
+    assert ed == {"due": new_due, "steps": {"s-a": kst(25)}}, f"바꾼 날짜가 진행에 제대로 안 실림: {ed}"
+
+    def g3():
+        return [x for x in saved(page)["goals"] if x.get("src") == "g3"][0]
+
+    assert g3()["mkEdit"]["due"] == {"from": kst(120), "to": new_due}, f"바꾼 값 기록이 이상함: {g3().get('mkEdit')}"
+
+    def push(snap, at):
+        snap["at"] = at
+        srv_put_mk(snap)
+        tab(page, "goals")
+        page.click("#syncNowBtn")
+        page.wait_for_function(f"JSON.parse(localStorage.getItem('{KEY}')).mk.at === '{at}'", timeout=8000)
+        page.wait_for_timeout(100)
+
+    push(mk_snapshot(), "2026-10-02T00:00:00Z")   # 목표까지가 아직 반영 전(옛 날짜 그대로)
+    g = g3()
+    assert g.get("mkDue") == new_due and g["mkEdit"]["due"]["to"] == new_due, f"목표까지 반영 전인데 내가 바꾼 마감이 사라짐: {g.get('mkDue')} {g.get('mkEdit')}"
+    assert [s for s in g["steps"] if s.get("src") == "s-a"][0]["due"] == kst(25), "목표까지 반영 전인데 바꾼 단계 날짜가 되돌아감"
+    snap = mk_snapshot()
+    snap["goals"][0]["due"] = new_due
+    snap["goals"][0]["steps"][0]["due"] = kst(25)
+    push(snap, "2026-10-03T00:00:00Z")            # 목표까지가 반영함
+    assert "mkEdit" not in g3(), f"목표까지가 반영했는데 바꾼 값 표시가 남음: {g3().get('mkEdit')}"
+    tab(page, "plan", flow=True)
+    page.locator(".flow .fbox.goal").click()
+    page.fill("#dsDate", kst(160))
+    page.click("#dsOk")
+    snap = mk_snapshot()
+    snap["goals"][0]["due"] = kst(170)
+    snap["goals"][0]["steps"][0]["due"] = kst(25)
+    push(snap, "2026-10-04T00:00:00Z")            # 목표까지에서 따로 다른 날로 바꿈
+    g = g3()
+    assert g.get("mkDue") == kst(170) and "mkEdit" not in g, f"목표까지에서 따로 바꾼 날짜를 따르지 않음: {g.get('mkDue')} {g.get('mkEdit')}"
+    assert "목표까지를 따랐어요" in (page.text_content("#toast") or ""), f"목표까지를 따랐다는 알림이 없음: {page.text_content('#toast')}"
+
+
+def flow_new_goal_goes_to_mokpyo(page, shot):
+    """연결된 기기에서 새 목표를 세우며 '목표까지에도 넣기' → 진행에 실려 가고, 목표까지가 pid를 붙여 돌려주면 연동 목표로 바뀜(할 일 유지·중복 없음)"""
+    srv_reset()
+    srv_put_mk(mk_snapshot(at="2026-10-01T00:00:00Z"))
+    ready(page)
+    connect(page)
+    make_goal(page, title="독서 모임 발표", days=40, mids=(("발표 자료 초안", 20),), tasks=1, cat="배우기")
+    g = [x for x in saved(page)["goals"] if x["title"] == "독서 모임 발표"][0]
+    assert g.get("toMk") is True and g.get("cat") == "배우기", f"목표까지에도 넣기·분야가 저장되지 않음: {g.get('toMk')} {g.get('cat')}"
+    wait_synced(page)
+    page.wait_for_timeout(300)
+    ng = srv_dump()["data"]["progress"].get("newGoals") or []
+    assert len(ng) == 1 and ng[0]["pid"] == g["id"] and ng[0]["title"] == "독서 모임 발표" and ng[0]["cat"] == "배우기" and ng[0]["due"] == kst(40), f"새 목표가 진행에 안 실림: {ng}"
+    assert [s["t"] for s in ng[0]["steps"]] == ["발표 자료 초안"], f"새 목표의 단계가 안 실림: {ng[0]['steps']}"
+    snap = mk_snapshot()
+    snap["goals"].append({"id": "g9", "pid": g["id"], "short": "발표", "cat": "배우기", "title": "독서 모임 발표", "start": kst(0), "due": kst(40), "status": "계획", "memo": "",
+                          "steps": [{"sid": "s-n1", "pid": ng[0]["steps"][0]["pid"], "t": "발표 자료 초안", "due": kst(20), "done": False}], "metrics": []})
+    snap["at"] = "2026-10-02T00:00:00Z"
+    srv_put_mk(snap)
+    tab(page, "goals")
+    page.click("#syncNowBtn")
+    page.wait_for_function(f"JSON.parse(localStorage.getItem('{KEY}')).mk.at === '2026-10-02T00:00:00Z'", timeout=8000)
+    page.wait_for_timeout(100)
+    same = [x for x in saved(page)["goals"] if x["title"] == "독서 모임 발표"]
+    assert len(same) == 1, f"목표까지에 들어간 새 목표가 폰에서 {len(same)}개가 됨"
+    x = same[0]
+    assert x["id"] == g["id"] and x.get("src") == "g9" and not x.get("toMk"), f"폰 목표가 연동 목표로 안 바뀜: {x.get('src')} {x.get('toMk')}"
+    s1 = [s for s in x["steps"] if s["title"] == "발표 자료 초안"][0]
+    assert s1.get("src") == "s-n1" and s1["tasks"], "단계가 목표까지 단계와 이어지지 않았거나 15분 할 일이 사라짐"
+    assert "목표까지에 들어갔어요" in (page.text_content("#toast") or ""), f"새 목표가 들어갔다는 알림이 없음: {page.text_content('#toast')}"
+    wait_synced(page)
+    page.wait_for_timeout(300)
+    assert not srv_dump()["data"]["progress"].get("newGoals"), "연동된 뒤에도 새 목표로 또 보냄"
+
+
+def flow_phone_goal_card_send_to_mokpyo(page, shot):
+    """예전에 만든 폰 목표도 목표 화면에서 '목표까지에도 넣기'로 보낼 수 있고, 보내지 않기로 되돌릴 수 있음"""
+    srv_reset()
+    srv_put_mk(mk_snapshot())
+    ready(page)
+    make_goal(page, title="수영 1km", days=60, mids=(("자유형 200m", 30),), tasks=1)
+    connect(page)
+    card = page.locator(".goal-item", has_text="수영 1km")
+    card.locator("button", has_text="목표까지에도 넣기").click()
+    page.select_option("#tmCat", "건강")
+    page.click("#tmOk")
+    g = [x for x in saved(page)["goals"] if x["title"] == "수영 1km"][0]
+    assert g.get("toMk") is True and g.get("cat") == "건강", "목표 화면에서 목표까지로 보내기가 저장되지 않음"
+    card = page.locator(".goal-item", has_text="수영 1km")
+    card.locator("button", has_text="보내지 않기").click()
+    g = [x for x in saved(page)["goals"] if x["title"] == "수영 1km"][0]
+    assert g.get("toMk") is False, "보내지 않기가 안 됨"
+
+
+def flow_old_saved_data_still_loads(page, shot):
+    """이번 업데이트 전 저장본(새 칸 없음)도 그대로 열리고 기록이 남음"""
+    old = {"v": 2, "seen": True, "current": None, "goals": [{"id": "old1", "title": "예전 목표", "deadline": kst(30), "createdAt": kst(-5), "avail": [60] * 7,
+           "steps": [{"id": "st1", "title": "예전 단계", "due": kst(10), "tasks": [{"id": "t1", "title": "예전 할 일", "blocks": 2}]},
+                     {"id": "fin", "title": "예전 목표", "due": kst(30), "final": True, "tasks": []}],
+           "log": [{"id": "l1", "d": kst(-1), "t": "t1", "k": 1}], "ilog": [], "ed": 1}], "del": {}, "imin": {}}
+    page.evaluate(f"localStorage.setItem('{KEY}', JSON.stringify({json.dumps(old, ensure_ascii=False)}))")
+    page.reload()
+    ready(page)
+    st = saved(page)
+    assert len(st["goals"]) == 1 and st["goals"][0]["title"] == "예전 목표", "예전 저장본의 목표가 사라짐"
+    assert st["goals"][0]["log"] == [{"id": "l1", "d": kst(-1), "t": "t1", "k": 1}], "예전 끝낸 기록이 사라지거나 바뀜"
+    tab(page, "plan", flow=True)
+    assert page.locator(".flow .fbox", has_text="예전 단계").count() == 1, "예전 목표가 순서도에 안 보임"
+    assert page.locator(".flow .fchip .sq i.d").count() == 1, "예전 끝낸 칸이 순서도에 안 칠해짐"
 
 
 def flow_sync_merges_other_device(page, shot):
