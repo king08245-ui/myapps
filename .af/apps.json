@@ -13,6 +13,7 @@
     "url": "https://king08245-ui.github.io/myapps/dayroute/",
     "updated": "2026-10-11",
     "package_id": "io.github.king08245ui.dayroute",
-    "store_status": "배포됨(10/11) · 서버는 LEE의 Cloudflare Worker(.af/dayroute/worker) · 스토어 키트 없음"
+    "store_status": "배포됨(10/11) · 서버 켬(10/11, Cloudflare Worker dayroute — 비밀 4개는 LEE가 입력) · 카카오 JS 도메인 등록됨 · 스토어 키트 없음",
+    "server": "https://dayroute.king08245.workers.dev"
   }
 ]

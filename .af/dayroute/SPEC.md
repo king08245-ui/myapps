@@ -40,6 +40,14 @@
 - **구간 다시 쓰기**: 고칠 때는 앞서 계산한 구간·출발지를 같이 보내 바뀐 곳 앞뒤만 새로 계산(머무는 시간만 바꾸면 바깥 호출 0번) — 무료 Worker 한도(요청당 50번·CPU 10ms)와 ODsay 하루 횟수를 아낌. 계산이 한도로 끊기면 '서버 주소 확인'이 아니라 '한 번 더 눌러 주세요'.
 - 한 곳짜리 일정에서 빼기는 안내만(요청 문장으로 다시 짜지 않음), 폰이 보낸 활동 목록은 서버가 모양을 다시 맞춤.
 
+## 운영 — 서버 켬 (10/11)
+- 서버: `https://dayroute.king08245.workers.dev` — LEE의 Cloudflare 계정 Worker `dayroute`(workers.dev 하위 도메인 king08245). worker/worker.js(VERSION 2026-10-11b)를 대시보드 편집기에 붙여넣어 배포. Cloudflare Access 보호는 끔(폰 앱이 불러야 해서)
+- 비밀 4개(KAKAO_REST_KEY·ODSAY_API_KEY·KAKAO_JS_KEY·ACCESS_CODE)는 LEE가 직접 입력 — 값은 어디에도 적지 않음
+- 카카오 developers 앱 '용산지도' → 앱 → 플랫폼 키 → JavaScript 키 → JS SDK 도메인에 `https://king08245-ui.github.io` 추가(기존 `http://localhost:3000` 유지). REST 키는 호출 허용 IP 제한 없음
+- 확인한 것: github.io에서 /api/status CORS 200·키 3개 읽힘·접속 코드 켜짐, 지도 SDK 로드·지도 만들기 OK, 설정 링크(`#server=`)로 열면 서버 칸이 채워지고 코드만 물음. 실제 일정 짜기(접속 코드 필요)는 LEE가 폰에서 처음 써 볼 때 확인
+- 폰 연결 QR: `…/dayroute/#server=https%3A%2F%2Fdayroute.king08245.workers.dev` (코드는 넣지 않음 — 코드는 폰에서 직접 입력)
+- 코드만 바꿀 때: Workers 및 Pages → dayroute → Edit code → 전체 바꾸기 → Deploy(비밀은 그대로 남음)
+
 ## 화면 (위에서 아래로, 한 손)
 머리글(설치·설정) → 서버 연결(처음 한 번) → 요청 입력(예시 칩, 출발지+📍, 출발 시각, 이동수단, 가격대, 일정 짜기) → 요약·즐겨찾기 저장·이미지 → 시간표(카드: 시각·이름·바꾸기·머무는 시간·⋯[순서·빼기·자동 추천]) → 지도(접기, 근처 검색 결과) → 즐겨찾기·백업 → 개인정보처리방침
 

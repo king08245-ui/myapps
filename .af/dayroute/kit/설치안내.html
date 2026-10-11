@@ -22,14 +22,18 @@ td,th{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-alig
 @media (prefers-color-scheme:dark){.warn{background:#3a2d12;color:#ffcf7a}}
 a{color:var(--accent)}
 pre{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px;overflow:auto;font-size:13.5px}
+details{margin:6px 0}summary{cursor:pointer;color:var(--muted);padding:6px 0}
 </style>
 </head>
 <body>
 <div class="wrap">
 <h1>하루동선 폰 앱 설치 안내</h1>
-<p class="sub">한 번만 하면 돼요. PC에서 20분쯤 걸려요. 순서대로 따라 하세요.</p>
+<p class="sub">1~3은 끝났어요(10/11). 남은 일은 <b>4. 폰에서 쓰기</b>뿐이에요 — 5분이면 돼요.</p>
 
 <h2>1. 일정 계산 서버 만들기 (Cloudflare Worker)</h2>
+<div class="step"><b class="n">✓</b><b>끝남(10/11)</b> — Claude가 Worker를 만들어 코드를 넣고 배포했고, 키 4개는 LEE가 직접 넣었어요. 카카오·ODsay·지도 키를 서버가 읽는 것까지 확인했어요.
+<br>서버 주소: <code>https://dayroute.king08245.workers.dev</code> (열면 “하루동선 서버가 동작 중이에요”가 나와요)</div>
+<details><summary>처음부터 다시 만들어야 할 때 (1~4번)</summary>
 <div class="step"><b class="n">1</b><a href="https://dash.cloudflare.com" target="_blank">dash.cloudflare.com</a>에 로그인 → 왼쪽 메뉴 <b>Workers 및 Pages</b>(Workers &amp; Pages) → <b>생성</b>(Create) → <b>Worker 만들기</b>(Hello World로 시작) → 이름을 <code>dayroute</code>로 바꾸고 <b>배포</b>(Deploy).</div>
 <div class="step"><b class="n">2</b><b>코드 편집</b>(Edit code)을 누르고, 왼쪽에 있는 코드를 모두 지운 뒤 이 폴더의 <code>cloudflare/worker.js</code>를 메모장으로 열어 전부 복사해 붙여넣기 → 오른쪽 위 <b>배포</b>(Deploy).</div>
 <div class="step"><b class="n">3</b>Worker 화면 → <b>설정</b>(Settings) → <b>변수 및 비밀</b>(Variables and Secrets) → <b>추가</b>(Add)를 눌러 아래 4개를 <b>종류: 비밀(Secret)</b>로 넣고 <b>배포</b>(Deploy).
@@ -42,15 +46,18 @@ pre{background:var(--card);border:1px solid var(--line);border-radius:10px;paddi
 </table>
 <p class="warn">키 값은 이 칸에만 넣으세요. 채팅이나 다른 곳에 붙여넣지 마세요.</p></div>
 <div class="step"><b class="n">4</b>Worker 화면 위쪽에 보이는 주소(<code>https://dayroute.○○○.workers.dev</code>)를 눌러 열어 보세요. <b>“하루동선 서버가 동작 중이에요”</b>가 나오면 성공이에요. 이 주소를 복사해 두세요.</div>
+</details>
+<p class="sub">코드만 바꿀 때: Cloudflare → Workers 및 Pages → <code>dayroute</code> → <b>코드 편집</b> → 전부 지우고 새 <code>worker.js</code> 붙여넣기 → <b>배포</b>. 키 4개는 그대로 남아요.</p>
 
 <h2>2. 폰 화면 올리기 (GitHub)</h2>
 <div class="step"><b class="n">5</b><b>할 일 없음</b> — Claude가 이미 올려 두었어요(10/11). <a href="https://king08245-ui.github.io/myapps/dayroute/" target="_blank">king08245-ui.github.io/myapps/dayroute/</a>가 열리면 된 거예요. 앞으로의 수정도 Claude가 바로 올려요.</div>
 
 <h2>3. 지도 켜기 (카카오)</h2>
-<div class="step"><b class="n">6</b><a href="https://developers.kakao.com/console/app" target="_blank">카카오 developers → 내 애플리케이션</a> → 하루동선에 쓰던 앱 → <b>앱 설정 → 플랫폼 → Web</b> → 사이트 도메인에 <code>https://king08245-ui.github.io</code> 추가 → 저장. (안 해도 일정 짜기는 되고 지도만 안 보여요.)</div>
+<div class="step"><b class="n">6</b><b>끝남(10/11)</b> — Claude가 카카오 developers의 앱 ‘용산지도’ → <b>앱 → 플랫폼 키 → JavaScript 키 → JavaScript SDK 도메인</b>에 <code>https://king08245-ui.github.io</code>를 추가했어요(원래 있던 <code>http://localhost:3000</code>은 그대로). 폰 화면 주소에서 지도가 뜨는 것까지 확인했어요.</div>
 
 <h2>4. 폰에서 쓰기</h2>
-<div class="step"><b class="n">7</b>폰에서 <a href="https://king08245-ui.github.io/myapps/dayroute/" target="_blank">king08245-ui.github.io/myapps/dayroute/</a> 열기 → 처음 나오는 <b>서버 연결</b> 칸에 4번의 주소와 ACCESS_CODE를 넣고 <b>저장하고 연결 확인</b>.
+<div class="step"><b class="n">7</b><b>가장 쉬운 방법</b>: 이 폴더의 <code>하루동선-폰연결-QR.png</code>를 PC 화면에 띄우고 폰 카메라로 찍으세요. 서버 주소가 채워진 채로 열리니 <b>접속 코드</b>(Cloudflare에 넣은 ACCESS_CODE)만 넣고 <b>저장하고 연결 확인</b>을 누르면 돼요.
+<br>직접 열 때: 폰에서 <a href="https://king08245-ui.github.io/myapps/dayroute/" target="_blank">king08245-ui.github.io/myapps/dayroute/</a> 열기 → 처음 나오는 <b>서버 연결</b> 칸에 서버 주소 <code>https://dayroute.king08245.workers.dev</code>와 Cloudflare에 넣은 ACCESS_CODE를 넣고 <b>저장하고 연결 확인</b>.
 <br>안드로이드: 크롬 <kbd>⋮</kbd> → <b>앱 설치</b> / 아이폰: 사파리 <b>공유 → 홈 화면에 추가</b></div>
 <div class="step"><b class="n">8</b>PC판 즐겨찾기 옮기기(선택): <code>dayroute-app\favorites.json</code>을 카카오톡 ‘나에게 보내기’로 폰에 보내고, 앱 아래쪽 <b>백업 가져오기</b>에서 그 파일을 고르세요.</div>
 
@@ -67,7 +74,7 @@ pre{background:var(--card);border:1px solid var(--line);border-radius:10px;paddi
 
 <h2>king_bot에서 부르기 (나중에)</h2>
 <pre>import requests, urllib.parse
-r = requests.post("https://dayroute.○○○.workers.dev/api/plan",
+r = requests.post("https://dayroute.king08245.workers.dev/api/plan",
     headers={"x-access-code": urllib.parse.quote("ACCESS_CODE 값")},
     json={"text": "헬스 1시간, 점심, 카페", "origin": "공덕역", "start": "10:00", "mode": "car", "budget": "cheap"},
     timeout=60)
