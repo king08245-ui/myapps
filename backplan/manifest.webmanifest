@@ -1,0 +1,19 @@
+{
+  "name": "역산 15분 플래너",
+  "short_name": "역산플래너",
+  "description": "목표에서 거꾸로 중간 목표를 세우고, 15분 단위 할 일로 쪼개 날짜별로 배치하는 플래너",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#eef0f6",
+  "theme_color": "#3a3eb2",
+  "lang": "ko",
+  "categories": ["productivity", "education"],
+  "icons": [
+    {"src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+    {"src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}

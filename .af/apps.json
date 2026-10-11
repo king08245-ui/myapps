@@ -15,5 +15,14 @@
     "package_id": "io.github.king08245ui.dayroute",
     "store_status": "배포됨(10/11) · 서버 켬(10/11, Cloudflare Worker dayroute — 비밀 4개는 LEE가 입력) · 카카오 JS 도메인 등록됨 · 스토어 키트 없음",
     "server": "https://dayroute.king08245.workers.dev"
+  },
+  {
+    "slug": "backplan",
+    "name": "역산 15분 플래너",
+    "url": "https://king08245-ui.github.io/myapps/backplan/",
+    "updated": "2026-10-11",
+    "package_id": "io.github.king08245ui.backplan",
+    "store_status": "배포됨(10/11) · 목표까지 자동 연동(동기화 서버 Cloudflare Worker backplan + KV, claude.ai 연결 '역산플래너') · 스토어 키트 준비됨(미제출)",
+    "server": "https://backplan.king08245.workers.dev"
   }
 ]

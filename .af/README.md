@@ -9,3 +9,5 @@
 - `<앱>/store/*.md` — 플레이스토어 등록 문구·Play Console 답변·테스터 안내(스토어 키트가 있는 앱만)
 - `dayroute/` — 하루동선 서버(Cloudflare Worker) 소스 `worker/worker.js`, PC 시험 실행기 `worker/local.mjs`, 검수용 가짜 API `test/mock_api.py`.
   검수 전에 `python3 test/mock_api.py 8790` 와 `node worker/local.mjs --port=8788 --env=../test/test.env --public=none`(8789는 test-ko.env)를 띄워야 함. 실제 키(.env)는 여기에 두지 않음.
+- `backplan/` — 역산 15분 플래너. 동기화 서버(Cloudflare Worker + KV) 소스 `worker/worker.js`, 시험 실행기 `worker/local.mjs`(메모리 KV).
+  검수 전에 `node .af/backplan/worker/local.mjs --port=8791 --code=시험코드123`을 띄워야 연동 흐름이 돈다. 목표까지 아티팩트와는 claude.ai 사용자 지정 연결 '역산플래너'(`/mcp`)로 맞춤.
