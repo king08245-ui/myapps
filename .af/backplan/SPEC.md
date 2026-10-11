@@ -69,10 +69,11 @@ LEE의 계획은 아티팩트 '목표까지 자산 플래너'(인생 목표 7개
 - 앱: https://king08245-ui.github.io/myapps/backplan/ (저장소 myapps/backplan, 서비스워커 `backplan-v2`) — 페이지 열림 확인
 - 동기화 서버: Cloudflare Worker `backplan` → https://backplan.king08245.workers.dev
   - [x] 워커 만들기(Hello World) · [x] KV 바인딩 `BP` → 네임스페이스 `backplan`(미리보기도 같은 값)
-  - [ ] 코드 교체(.af/backplan/worker/worker.js, VERSION 2026-10-12a) — 크롬 창이 가려져 클립보드가 막혀 LEE 복귀 후 진행
-  - [ ] 비밀 `ACCESS_CODE` — LEE가 직접 입력(하루동선과 같은 코드 권장)
-- 목표까지 아티팩트 https://claude.ai/artifact/FVV6UKrF7ZMs742QQPB2Kx 35판: '📱 역산 플래너와 맞추기' 막대 + mcp 권한(역산플래너: sync_goals, get_progress). 실제 첫 맞추기 전까지 연결 동작은 미확인.
-- claude.ai 연결(LEE가 '추가'): 설정 → 커넥터 → 사용자 지정 커넥터 추가 → 이름 정확히 `역산플래너`, URL `https://backplan.king08245.workers.dev/mcp`
+  - [x] 코드 교체(.af/backplan/worker/worker.js 200줄, VERSION 2026-10-12a) — LEE가 COPY→붙여넣기→Deploy (클립보드가 창이 가려진 동안 막혔음)
+  - [x] 비밀 `ACCESS_CODE` — LEE가 직접 입력(Key `ACCESS_CODE`, Secret). /api/status needCode:true, MCP initialize·tools/list·틀린 코드 거절 확인
+- 목표까지 아티팩트 https://claude.ai/artifact/FVV6UKrF7ZMs742QQPB2Kx 35판: '📱 역산 플래너와 맞추기' 막대 + mcp 권한(역산플래너: sync_goals, get_progress).
+  - [x] 10/11 21:59 첫 맞추기 성공: "맞췄어요 · 목표 7개와 앞으로 120일 하루 분량 503칸을 보냈어요 · 폰에서 아직 올린 진행이 없어요"
+- claude.ai 커넥터(LEE가 '계속'): 맞춤 설정 → 커넥터 → + 추가 → 커스텀 커넥터 추가 → 이름 `역산플래너`, URL `https://backplan.king08245.workers.dev/mcp` (인증 없음, 도구 2개 항상 허용) — [x] 추가됨
 - 폰 연결 QR: 앱 주소 + `#server=https%3A%2F%2Fbackplan.king08245.workers.dev` (접속 코드는 폰에서 직접 입력) → backplan/out/역산플래너-폰연결-QR.png
 - 스토어 화면 9장 다시 찍음(늦게 뜨는 알림 숨김, 캡션 한두 줄로 정리) · QA FAIL 0 · PASS 35
 
