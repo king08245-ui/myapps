@@ -123,9 +123,17 @@ def connect(page, code=CODE, server=SYNC):
     page.wait_for_function("(() => { const s = document.getElementById('syncState'); const m = document.querySelector('#syncCard [role=alert]:not([hidden])'); return (s && /맞춤|⚠/.test(s.textContent)) || (m && m.textContent.trim()); })()", timeout=10000)
 
 
-def quiet(page):
-    """스크린샷 전에 알림 문구를 숨김"""
-    page.evaluate("document.getElementById('toast').hidden = true")
+def quiet(page, top=False):
+    """스크린샷 전에: 맞추는 중이면 끝날 때까지 기다리고, 알림 문구는 늦게 떠도 안 보이게, top이면 맨 위로"""
+    try:
+        page.wait_for_function("typeof state === 'undefined' || !state.sync || !state.sync.server || (state.sync.sig === localSig() && !syncing)", timeout=8000)
+    except Exception:
+        pass
+    page.add_style_tag(content="#toast{display:none!important}")
+    if top:
+        page.evaluate("document.activeElement && document.activeElement.blur(); scrollTo(0, 0)")
+        page.wait_for_timeout(400)
+        page.evaluate("scrollTo(0, 0)")
 
 
 def wait_synced(page, timeout=12000):
@@ -782,6 +790,8 @@ def flow_linked_plan_is_readonly_with_tasks(page, shot):
     assert page.locator(".insert").count() == 0, "목표까지 계획에 중간 목표 추가 버튼이 보임"
     assert page.locator("textarea.step-title, .chain input.date-in").count() == 0, "목표까지 단계 이름·날짜를 폰에서 고칠 수 있게 됨"
     assert page.locator(".daily li", has_text="기본서 읽기").count() == 1, "하루 분량 시간 정하기가 없음"
+    quiet(page, top=True)
+    shot("linked-plan")
     node = page.locator(".chain .node", has_text="원서접수").first
     node.locator("button", has_text="끝냄").click()
     node = page.locator(".chain .node", has_text="원서접수").first
@@ -789,9 +799,6 @@ def flow_linked_plan_is_readonly_with_tasks(page, shot):
     n2 = page.locator(".chain .node", has_text="기본서 1회독").first
     n2.locator(".addtask input").fill("1단원 정리")
     n2.locator(".addtask button", has_text="할 일 추가").click()
-    quiet(page)
-    page.evaluate("scrollTo(0, 0)")
-    shot("linked-plan")
     page.locator(".daily li", has_text="기본서 읽기").locator("button[aria-label$='15분 늘리기']").click()
     tab(page, "today")
     assert page.locator(".blk", has_text="기본서 2쪽").count() == 2, "하루 분량을 30분으로 늘렸는데 15분 칸이 2개가 아님"
