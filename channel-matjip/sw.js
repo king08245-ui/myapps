@@ -1,5 +1,5 @@
 // 배포할 때마다 VERSION을 올리면 설치된 앱이 새 버전(새 가게 데이터 포함)을 받습니다.
-const VERSION = 'channel-matjip-v2';
+const VERSION = 'channel-matjip-v3';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './places.json', './map_seoul.json', './map_korea.json',
   './privacy.html', './icons/icon-192.png', './icons/icon-512.png', './icons/maskable-512.png'];
 const FONT_HOSTS = ['fonts.googleapis.com', 'fonts.gstatic.com'];
@@ -9,8 +9,10 @@ self.addEventListener('install', e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL.map(u => new Request(u, {cache: 'reload'})))));
   self.skipWaiting();
 });
+// 같은 주소(king08245-ui.github.io)에 다른 앱(하루동선 등)도 저장본을 두므로, 지우는 건 이 앱의 옛 저장본뿐
+const PREFIX = 'channel-matjip-';
 self.addEventListener('activate', e => {
-  e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== VERSION).map(k => caches.delete(k)))).then(() => self.clients.claim()));
+  e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k.startsWith(PREFIX) && k !== VERSION).map(k => caches.delete(k)))).then(() => self.clients.claim()));
 });
 
 const put = (req, res) => { if (res && (res.ok || res.type === 'opaque')) { const copy = res.clone(); caches.open(VERSION).then(c => c.put(req, copy)); } return res; };

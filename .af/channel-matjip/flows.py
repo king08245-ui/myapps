@@ -313,6 +313,7 @@ def flow_fixed_coordinates(page, shot):
     k = km_of(cs.get("무교동북어국집", {}).get("d", ""))
     assert k and 1.5 <= k <= 1.9, f"무교동북어국집 거리가 주소와 다름(서울역에서 약 1.7km여야 함): {k}"
     area(page, "종로3가")
+    all_names(page)   # 종로3가 1km 안 가게가 40곳을 넘으면 우래옥은 '더 보기' 뒤에 있음
     cs = {c["n"]: c for c in cards(page)}
     k = km_of(cs.get("우래옥", {}).get("d", ""))
     assert k and 0.5 <= k <= 0.75, f"우래옥 거리가 주소와 다름(종로3가역에서 약 630m여야 함): {k}"
@@ -336,6 +337,7 @@ def flow_rough_point_uses_address(page, shot):
     area(page, "속초")
     all_names(page)
     c = next((c for c in cards(page) if c["n"] == "어글리패티"), None)
+    # 어글리패티는 '속초' 영상에 나온 고성 토성면 가게(속초에서 약 5km): 번지까지 정확한 좌표여도 속초 검색에 나와야 함
     assert c, "속초 검색에 어글리패티가 없음"
     k = km_of(c["d"])
     assert k is not None and k < 10, f"어글리패티가 주소(고성군 토성로 54) 대신 고성 중심 좌표를 씀: {c['d']}"
@@ -444,3 +446,17 @@ def flow_map_buttons_before_outlines(page, shot):
     page.wait_for_selector(".mapwrap svg circle.pin", timeout=8000)
     page.evaluate("document.querySelectorAll('.mapctl button').forEach(b => b.click())")
     page.wait_for_timeout(300)
+
+
+def flow_keeps_other_apps_offline_copy(page, shot):
+    """같은 주소(king08245-ui.github.io)의 다른 앱(하루동선) 저장본을 지우지 않아야 함 — 이 앱의 옛 저장본만 지움"""
+    ready(page)
+    page.evaluate("""async () => { await caches.open('dayroute-v9'); await caches.open('channel-matjip-v0');
+        for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister(); }""")
+    page.reload()
+    ready(page)
+    page.wait_for_function("navigator.serviceWorker.controller !== null", timeout=15000)   # 새로 깔린 서비스워커가 자리 잡을 때까지
+    page.wait_for_timeout(300)
+    keys = page.evaluate("caches.keys()")
+    assert "dayroute-v9" in keys, f"하루동선의 오프라인 저장본을 지움: {keys}"
+    assert "channel-matjip-v0" not in keys, f"이 앱의 옛 저장본이 남음: {keys}"

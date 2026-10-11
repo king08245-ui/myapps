@@ -1,0 +1,976 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>하루동선</title>
+<meta name="description" content="하고 싶은 일을 문장으로 적으면 실제 장소와 이동 시간으로 하루 시간표와 경로를 짜 주는 앱">
+<meta name="theme-color" content="#f3f5f4" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#11171c" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="하루동선">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- 글꼴은 화면을 막지 않게 따로 받는다(신호가 약해도 기본 글꼴로 먼저 그림) -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Do+Hyeon&family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@500&display=swap" media="print" onload="this.media='all'">
+<style>
+/* 한 줄 세로 배치: 요청 → 시간표 → 지도(접기) → 즐겨찾기. 한 손으로 위에서 아래로 */
+:root{
+  --bg:#f3f5f4; --surface:#ffffff; --ink:#18232e; --muted:#56646c; --line:#d9e0dd;
+  --accent:#bd4410; --accent-ink:#ffffff; --soft:#e8eeeb; --warn:#8a5100; --warn-bg:#fff3dc;
+  --ok:#1f7a45; --ok-bg:#e3f3e9; --sel:#fff4ec;
+  --f-title:"Do Hyeon","IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --f-body:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  color-scheme:dark;
+  --bg:#11171c; --surface:#1a2228; --ink:#e7eef0; --muted:#9eacb3; --line:#2c3840;
+  --accent:#ff7a3d; --accent-ink:#1a0e06; --soft:#212c33; --warn:#ffcf7a; --warn-bg:#3a2d12;
+  --ok:#7fdca4; --ok-bg:#16301f; --sel:#2e2118}}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#11171c; --surface:#1a2228; --ink:#e7eef0; --muted:#9eacb3; --line:#2c3840;
+  --accent:#ff7a3d; --accent-ink:#1a0e06; --soft:#212c33; --warn:#ffcf7a; --warn-bg:#3a2d12;
+  --ok:#7fdca4; --ok-bg:#16301f; --sel:#2e2118}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.55;word-break:keep-all;overflow-wrap:anywhere;
+  -webkit-tap-highlight-color:transparent;min-height:100dvh;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+[hidden]{display:none!important}
+.wrap{max-width:640px;margin:0 auto;padding:16px 16px 56px;display:flex;flex-direction:column;gap:16px}
+header{display:flex;align-items:center;gap:10px}
+h1{font-family:var(--f-title);font-weight:400;font-size:32px;margin:0;letter-spacing:.5px;line-height:1.1}
+.hbtns{margin-left:auto;display:flex;gap:6px}
+.keys{font-size:12.5px;color:var(--muted);margin:-8px 0 0}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:12px}
+.panel h2{font-size:14px;margin:0;color:var(--muted);letter-spacing:.04em}
+label,.lab{font-size:12.5px;font-weight:700;letter-spacing:.04em;color:var(--muted);display:block;margin-bottom:5px}
+textarea,select,input{width:100%;font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-height:44px}
+textarea{min-height:88px;resize:vertical;line-height:1.5}
+:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+button{font:inherit;cursor:pointer;color:var(--ink)}
+.btn{min-height:44px;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:0 14px;font-weight:700}
+.btn:disabled{opacity:.55;cursor:default}
+.row2{display:grid;grid-template-columns:minmax(0,1fr) 120px;gap:10px}
+.from{display:flex;gap:6px}
+.from input{flex:1;min-width:0}
+.from .btn{padding:0 10px;white-space:nowrap;font-size:13.5px}
+.seg{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{border:0;background:var(--bg);color:var(--muted);min-height:44px;font-weight:500}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg);font-weight:700}
+.go{font-weight:700;background:var(--accent);color:var(--accent-ink);border:0;border-radius:12px;min-height:52px;font-size:17px}
+.go:disabled{opacity:.6;cursor:wait}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips button{font-size:13.5px;border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:0 12px;min-height:40px}
+.status{font-size:13.5px;color:var(--muted);min-height:1.2em;margin:0}
+.status.err{color:var(--warn);font-weight:700}
+.note{font-size:12.5px;color:var(--muted);margin:0}
+.hint{background:var(--warn-bg);color:var(--warn);border-radius:10px;padding:10px 12px;font-size:13.5px;margin:0}
+
+.tools{display:flex;gap:8px;flex-wrap:wrap}
+.tools input{flex:1 1 160px;min-width:0}
+.tools .btn{flex:1 1 auto}
+.summary{display:flex;flex-wrap:wrap;gap:10px 22px}
+.summary div{display:flex;flex-direction:column}
+.summary b{font-family:var(--f-mono);font-size:19px;font-variant-numeric:tabular-nums;font-weight:500}
+.summary span{font-size:12px;color:var(--muted)}
+.parsed{font-size:13px;color:var(--muted);margin:0}
+.parsed code{font-family:var(--f-mono);font-size:12.5px}
+
+.planwrap{display:flex;flex-direction:column;gap:12px}
+.timeline{list-style:none;margin:0;padding:0}
+.stop,.leg{display:grid;grid-template-columns:16px minmax(0,1fr);gap:0 8px}
+.tm{font-family:var(--f-mono);font-size:13.5px;font-weight:500;font-variant-numeric:tabular-nums;color:var(--muted)}
+.rail{position:relative;display:flex;justify-content:center}
+.stop .rail::before{content:"";width:14px;height:14px;border-radius:50%;background:var(--surface);border:3px solid var(--ink);margin-top:15px;z-index:1}
+.stop.start .rail::before,.stop.end .rail::before{background:var(--ink)}
+.leg .rail::before{content:"";position:absolute;top:0;bottom:0;width:4px;border-radius:2px;background:var(--legc,var(--line))}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:4px 0;min-width:0}
+.card.active{border-color:var(--accent);background:var(--sel)}
+.card h3{margin:0;font-size:16px;display:flex;gap:6px 8px;align-items:baseline;flex-wrap:wrap;line-height:1.35}
+.card h3 a{color:inherit;text-underline-offset:3px;text-decoration-color:var(--line)}
+.num{font-family:var(--f-mono);font-size:12px;background:var(--ink);color:var(--bg);border-radius:999px;padding:0 7px;font-weight:500}
+.meta{font-size:13px;color:var(--muted);display:flex;flex-wrap:wrap;gap:3px 10px;margin-top:3px}
+.pill{display:inline-block;font-size:12px;font-weight:700;padding:1px 7px;border-radius:5px;background:var(--soft);color:var(--ink)}
+.pill.no{background:var(--warn-bg);color:var(--warn)}
+.pill.ok{background:var(--ok-bg);color:var(--ok)}
+.pick{font-size:13.5px;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:0 12px;min-height:40px}
+.pick.meal{border-color:var(--accent);color:var(--accent);font-weight:700}
+.pick.x{color:var(--warn)}
+.edit{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:8px}
+.pick.more{min-width:44px;font-weight:700;letter-spacing:.1em}
+.hrs{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.hrs button{border:0;background:var(--bg);width:40px;min-height:40px;font-weight:700;font-size:17px}
+.hrs input{width:56px;min-height:40px;border:0;border-radius:0;text-align:center;padding:2px;background:var(--surface)}
+.legbody{padding:8px 0 12px;font-size:13.5px;display:flex;flex-direction:column;gap:5px;min-width:0}
+.legtop{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.line{display:inline-block;color:#fff;font-size:12px;font-weight:700;padding:1px 8px;border-radius:999px}
+.dur{font-family:var(--f-mono);font-size:12.5px;color:var(--muted)}
+.steps{color:var(--muted)}
+.lmode{width:auto;min-height:40px;font-size:16px;padding:4px 8px;border-radius:8px}
+.addbtn{font-size:13.5px;font-weight:700;border:1.5px dashed var(--accent);background:var(--surface);color:var(--accent);border-radius:999px;padding:0 14px 0 8px;min-height:40px;display:inline-flex;align-items:center;gap:6px;margin:3px 0}
+.addbtn b{display:inline-flex;width:22px;height:22px;border-radius:50%;background:var(--accent);color:var(--accent-ink);align-items:center;justify-content:center;font-size:16px;line-height:1}
+.opts{list-style:none;margin:2px 0 0;padding:0;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.opts li{display:flex;gap:8px;align-items:center;padding:8px 10px;min-height:44px;font-size:13px;cursor:pointer;border-top:1px solid var(--line);flex-wrap:wrap}
+.opts li:first-child{border-top:0}
+.opts li:hover,.opts li.hi{background:var(--sel)}
+.opts li.cur{font-weight:700}
+.opts .on{color:var(--accent);font-size:12px}
+
+.mapcard{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
+.maphead{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line)}
+.maphead h2{font-size:15px;margin:0}
+.maphead .btn{margin-left:auto;min-height:40px;font-size:13.5px}
+.searchbar{padding:12px;display:flex;flex-direction:column;gap:8px;border-bottom:1px solid var(--line)}
+.target{font-size:13.5px;color:var(--muted)}
+.target b{color:var(--ink)}
+.sform{display:flex;gap:8px}
+.sform input{flex:1;min-width:0}
+.sform button{font-weight:700;border:0;border-radius:10px;padding:0 16px;background:var(--ink);color:var(--bg);min-height:44px}
+.sform button:disabled{opacity:.5;cursor:default}
+#map{height:min(48vh,440px);min-height:260px;background:var(--soft);position:relative}
+.mapmsg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;color:var(--muted);font-size:13.5px}
+.results{list-style:none;margin:0;padding:0}
+.results li{display:grid;grid-template-columns:26px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 12px;border-top:1px solid var(--line);cursor:pointer}
+.results li:hover,.results li.hi{background:var(--sel)}
+.rn{width:24px;height:24px;border-radius:50%;background:var(--accent);color:var(--accent-ink);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.rname{font-weight:700;font-size:14.5px}
+.rmeta{font-size:12.5px;color:var(--muted)}
+.use{font-size:13.5px;font-weight:700;border:1.5px solid var(--accent);color:var(--accent);background:transparent;border-radius:8px;padding:0 12px;min-height:40px;white-space:nowrap}
+.rhint{display:block!important;font-size:13px;color:var(--muted);padding:12px!important}
+
+.fav{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:6px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:6px 8px}
+.fav b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fav span{display:block;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fav .pick{min-height:40px}
+.favlist{display:flex;flex-direction:column;gap:6px}
+.backup{display:flex;gap:8px;flex-wrap:wrap}
+.backup .btn{flex:1 1 auto;display:inline-flex;align-items:center;justify-content:center;font-size:13.5px}
+.foot{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:6px}
+.foot p{margin:0}
+.foot a{color:var(--muted)}
+
+/* 지도 위 표시 (카카오 지도 위에 올리는 작은 표지) */
+.mk{font:700 12px var(--f-mono);background:#18232e;color:#fff;border:2px solid #fff;border-radius:999px;min-width:24px;height:24px;display:flex;align-items:center;justify-content:center;padding:0 6px;box-shadow:0 1px 4px rgba(0,0,0,.35)}
+.mk.cand{background:#bd4410;cursor:pointer}
+.mk.cand.hi{transform:scale(1.25)}
+.mk.now{background:#bd4410;outline:3px solid rgba(189,68,16,.35)}
+.mk.click{background:#2a78d6}
+.mk.opt{background:#7d8a91;min-width:22px;height:22px;font-size:11px;cursor:pointer}
+@media (prefers-reduced-motion:no-preference){.mk.cand{transition:transform .15s}}
+/* 계산 중에는 고치기 버튼을 잠가 둔다(두 번 눌러도 한 번만 반영) */
+body.busy #timeline button,body.busy #timeline select,body.busy #timeline input,body.busy #results .use,body.busy #favList button,body.busy #favSave{pointer-events:none;opacity:.55}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>하루동선</h1>
+    <div class="hbtns">
+      <button type="button" class="btn" id="installBtn" hidden>앱 설치</button>
+      <button type="button" class="btn" id="setBtn" aria-expanded="false">설정</button>
+    </div>
+  </header>
+  <p class="keys" id="keys">서버 확인 중…</p>
+  <p class="note" id="iosHint" hidden>아이폰: 사파리 아래쪽 <b>공유</b> → <b>홈 화면에 추가</b>를 누르면 앱처럼 쓸 수 있어요.</p>
+
+  <section class="panel" id="setup" hidden aria-labelledby="setupTitle">
+    <h2 id="setupTitle">서버 연결 (처음 한 번)</h2>
+    <p class="hint" id="setupMsg" hidden></p>
+    <div><label for="srv">하루동선 서버 주소</label><input id="srv" type="url" inputmode="url" placeholder="https://dayroute.이름.workers.dev" autocomplete="off" spellcheck="false"></div>
+    <div><label for="code">접속 코드</label><input id="code" type="text" placeholder="서버에 넣은 ACCESS_CODE" autocomplete="off" spellcheck="false"></div>
+    <div class="backup">
+      <button type="button" class="btn" id="setSave">저장하고 연결 확인</button>
+      <button type="button" class="btn" id="demoBtn">예시 일정 보기</button>
+    </div>
+    <p class="note">주소와 코드는 이 폰에만 저장돼요. 서버(Cloudflare)를 아직 안 만들었다면 함께 받은 안내대로 만들면 돼요.</p>
+  </section>
+
+  <form class="panel" id="form">
+    <div>
+      <label for="req">오늘 하고 싶은 것</label>
+      <textarea id="req">주차되는 헬스장 1시간, 점심, 오후엔 전시, 카페</textarea>
+    </div>
+    <div class="chips" aria-label="예시 요청">
+      <button type="button" data-ex="헬스 1시간, 점심, 한강공원 산책">헬스 → 점심 → 한강</button>
+      <button type="button" data-ex="박물관 2시간, 점심, 카페, 저녁">박물관 코스</button>
+      <button type="button" data-ex="사우나, 영화, 저녁">쉬는 날</button>
+    </div>
+    <div class="row2">
+      <div><label for="from">출발지</label>
+        <div class="from"><input id="from" type="text" value="공덕역" autocomplete="off"><button type="button" class="btn" id="hereBtn" aria-label="현재 위치에서 출발">📍 현재</button></div></div>
+      <div><label for="start">출발 시각</label><input type="time" id="start" value="10:00"></div>
+    </div>
+    <div>
+      <span class="lab" id="modeLabel">이동 수단</span>
+      <div class="seg" role="group" aria-labelledby="modeLabel">
+        <button type="button" id="mTransit" aria-pressed="false">대중교통</button>
+        <button type="button" id="mCar" aria-pressed="true">자가용</button>
+      </div>
+    </div>
+    <div>
+      <label for="budget">식사 가격대</label>
+      <select id="budget">
+        <option value="cheap" selected>가성비 (5천~1만2천원대)</option>
+        <option value="normal">보통 (비싼 곳만 제외)</option>
+        <option value="any">상관없음</option>
+      </select>
+    </div>
+    <button class="go" id="go" type="submit">일정 짜기</button>
+    <p class="status" id="status" role="status"></p>
+  </form>
+
+  <section class="planwrap" id="planArea" hidden aria-live="polite">
+    <div class="panel">
+      <div class="summary" id="summary"></div>
+      <p class="parsed" id="parsed"></p>
+      <div class="tools">
+        <input id="favName" type="text" placeholder="즐겨찾기 이름" aria-label="즐겨찾기 이름">
+        <button type="button" class="btn" id="favSave">★ 즐겨찾기 저장</button>
+        <button type="button" class="btn" id="imgSave">이미지로 저장</button>
+      </div>
+    </div>
+    <ol class="timeline" id="timeline"></ol>
+  </section>
+
+  <section class="mapcard" id="mapCard" hidden aria-labelledby="mapTitle">
+    <div class="maphead"><h2 id="mapTitle">지도</h2><button type="button" class="btn" id="mapToggle" aria-expanded="true">지도 접기</button></div>
+    <div class="searchbar" id="searchbar" hidden>
+      <div class="target" id="target"></div>
+      <form class="sform" id="sform">
+        <input id="q" type="search" placeholder="예: 국밥, 김밥, 칼국수" aria-label="경로 근처 검색어">
+        <button id="qgo" type="submit">검색</button>
+      </form>
+    </div>
+    <div id="map"><div class="mapmsg" id="mapmsg">지도를 불러오는 중…</div></div>
+    <ul class="results" id="results"></ul>
+  </section>
+
+  <section class="panel" aria-labelledby="favTitle">
+    <h2 id="favTitle">★ 즐겨찾기</h2>
+    <p class="note" id="favEmpty">저장한 경로가 없어요. 일정을 짠 뒤 ‘즐겨찾기 저장’을 누르세요.</p>
+    <div class="favlist" id="favList"></div>
+    <div class="backup">
+      <button type="button" class="btn" id="exportBtn">백업 내보내기</button>
+      <label class="btn" for="importFile">백업 가져오기</label>
+      <input type="file" id="importFile" accept="application/json,.json" hidden>
+    </div>
+    <p class="note">즐겨찾기는 이 폰에만 저장돼요. 폰을 바꿀 때나 PC판 즐겨찾기(favorites.json)를 옮길 때 백업 파일을 쓰세요.</p>
+  </section>
+
+  <footer class="foot">
+    <p>가격과 주차 여부는 API에 없어서 음식 종류로 가격대를 추정해요. 영업시간도 확인되지 않으니 장소 이름을 눌러 카카오맵에서 확인하세요.</p>
+    <p><a href="privacy.html">개인정보처리방침</a></p>
+  </footer>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+const fmt = m => String(Math.floor(m / 60) % 24).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0");
+const dur = m => m >= 60 ? Math.floor(m / 60) + "시간" + (m % 60 ? " " + (m % 60) + "분" : "") : m + "분";
+const won = n => n ? n.toLocaleString("ko-KR") + "원" : "";
+const catTail = c => c ? c.split(" > ").slice(-1)[0] : "";
+const todayKST = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" });
+const smooth = () => matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
+const clone = o => o == null ? o : JSON.parse(JSON.stringify(o));   // 즐겨찾기·지난 일정은 복사본으로 (지금 화면을 고쳐도 저장본은 그대로)
+
+const SUBWAY = { 1: "#0052A4", 2: "#00A84D", 3: "#EF7C1C", 4: "#00A5DE", 5: "#996CAC", 6: "#CD7C2F", 7: "#747F00", 8: "#E6186C", 9: "#BDB092",
+  104: "#77C4A3", 101: "#0090D2", 108: "#0C8E72", 116: "#F5A200", 109: "#D4003B", 113: "#B7C452", 114: "#8FC31F", 112: "#0054A6" };
+const BUS = { 1: "#33CC99", 2: "#33CC99", 3: "#33CC99", 4: "#E60012", 11: "#0068B7", 12: "#53B332", 13: "#F2B70A", 14: "#E60012", 15: "#E60012" };
+const segColor = s => s.kind === "car" ? "#d14e16" : s.kind === "walk" ? "#8a969c" : s.kind === "subway" ? (SUBWAY[s.subwayCode] || "#555") : s.kind === "train" ? "#1B3F8B" : (BUS[s.busType] || "#3D5BAB");
+const stepColor = s => !s ? "#3D5BAB" : s.type === "subway" ? (SUBWAY[s.subwayCode] || "#555") : s.type === "train" ? "#1B3F8B" : (BUS[s.busType] || "#3D5BAB");
+
+/* ---------- 폰에 저장: 서버 주소·접속 코드·즐겨찾기·마지막 일정·입력값 ---------- */
+const KEY = "dayroute:v1";
+const store = (() => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; } })();
+if (!Array.isArray(store.favs)) store.favs = [];
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify(store)); return true; }
+  catch { setStatus("폰 저장 공간이 부족해 저장하지 못했어요. 오래된 즐겨찾기를 지워 주세요.", true); return false; }
+}
+// 설정 링크: …/dayroute/#server=주소&code=코드 로 열면 저장하고 주소창에서 지운다
+(() => {
+  const h = new URLSearchParams(location.hash.slice(1));
+  if (h.get("server")) { store.server = h.get("server"); if (h.has("code")) store.code = h.get("code"); save(); history.replaceState(null, "", location.pathname + location.search); }
+})();
+
+let mode = "car", plan = null, picks = {}, legModes = {}, legPaths = {}, showOpts = null, target = null, results = [];
+let originLL = null;    // '현재 위치'로 출발할 때의 좌표
+let base = null;        // 연결된 서버 주소("" = 같은 곳에서 함께 도는 시험 서버)
+let demo = false;       // 예시 일정 보기 중 — 서버가 없으면 고치기를 막음(서버가 연결돼 있으면 그대로 고칠 수 있음)
+let busy = false;       // 계산 중: 고치기 버튼을 잠가 두 번 눌러도 한 번만 반영
+function setBusy(b) { busy = b; $("go").disabled = b; document.body.classList.toggle("busy", b); $("timeline").setAttribute("aria-busy", String(b)); }
+function setMode(m) { mode = m; $("mCar").setAttribute("aria-pressed", m === "car"); $("mTransit").setAttribute("aria-pressed", m === "transit"); }
+$("mCar").onclick = () => { setMode("car"); saveForm(); };
+$("mTransit").onclick = () => { setMode("transit"); saveForm(); };
+document.querySelectorAll("[data-ex]").forEach(b => b.onclick = () => { $("req").value = b.dataset.ex; saveForm(); });
+function saveForm() {
+  store.form = { req: $("req").value, from: $("from").value, start: $("start").value, mode, budget: $("budget").value, originLL, at: Date.now() };
+  save();
+}
+function applyForm(f) {
+  if (f.req != null) $("req").value = f.req; if (f.from) $("from").value = f.from; if (f.start) $("start").value = f.start;
+  if (f.budget) $("budget").value = f.budget; setMode(f.mode || "car"); originLL = f.originLL || null;
+}
+["req", "from", "start", "budget"].forEach(id => $(id).addEventListener("change", saveForm));
+$("from").addEventListener("input", () => { if ($("from").value.trim() !== "현재 위치") originLL = null; });
+if (store.form) applyForm(store.form);
+
+/* ---------- 현재 위치에서 출발 ---------- */
+$("hereBtn").onclick = () => {
+  if (!navigator.geolocation) return setStatus("이 기기에서는 현재 위치를 쓸 수 없어요. 출발지를 글로 적어 주세요.", true);
+  setStatus("현재 위치 찾는 중…");
+  navigator.geolocation.getCurrentPosition(pos => {
+    originLL = { x: +pos.coords.longitude.toFixed(6), y: +pos.coords.latitude.toFixed(6) };
+    $("from").value = "현재 위치"; saveForm(); setStatus("현재 위치에서 출발해요.");
+  }, err => setStatus(err && err.code === 1 ? "위치 권한이 꺼져 있어요. 브라우저 설정에서 위치를 허용하거나 출발지를 글로 적어 주세요." : "현재 위치를 찾지 못했어요. 출발지를 글로 적어 주세요.", true),
+  { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 });
+};
+
+/* ---------- 서버 ---------- */
+const localServer = () => !!document.querySelector('meta[name="dayroute-local"]');
+async function api(path, body, ms = 30000) {
+  if (base == null) {
+    // 열 때 신호가 없어 연결을 못 했어도, 서버 주소가 저장돼 있으면 쓸 때 한 번 더 붙어 본다
+    if (checking) await checking; else if (store.server || localServer()) await connect(false, true);
+    if (base == null) {
+      if (navigator.onLine === false) throw new Error("인터넷에 연결되지 않았어요.");
+      if (store.server) throw new Error("서버에 연결하지 못했어요. 인터넷 연결과 설정의 서버 주소를 확인하세요.");
+      openSetup("먼저 서버 주소와 접속 코드를 넣어 주세요."); throw new Error("서버가 연결되지 않았어요. 위 설정에서 서버 주소를 넣어 주세요.");
+    }
+  }
+  const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), ms);
+  try {
+    const headers = { "x-access-code": encodeURIComponent(store.code || "") };   // 한글 코드도 되게(헤더는 영문자만 받음)
+    if (body) headers["content-type"] = "application/json";
+    const r = await fetch(base + path, { method: body ? "POST" : "GET", headers, body: body ? JSON.stringify(body) : undefined, signal: ctl.signal });
+    let d;
+    try { d = await r.json(); } catch { throw new Error(`서버 응답을 읽지 못했어요 (${r.status}). 서버 주소를 확인하세요.`); }
+    if (r.status === 401) openSetup("접속 코드가 맞지 않아요. 서버에 넣은 ACCESS_CODE와 똑같이 적어 주세요.");
+    if (d.error) throw new Error(d.error);
+    return d;
+  } catch (e) {
+    if (e.name === "AbortError") throw new Error("서버 응답이 너무 늦어요. 잠시 뒤 다시 해 보세요.");
+    if (e instanceof TypeError) {
+      if (navigator.onLine === false) throw new Error("인터넷에 연결되지 않았어요.");
+      // 서버는 살아 있는데 이번 계산만 끊겼으면(무료 요금제의 계산 시간 한도 등) 다시 누르면 대개 돼요
+      if (path !== "/api/status" && await alive()) throw new Error("서버가 잠깐 바빠서 계산을 끝내지 못했어요. 한 번 더 눌러 주세요.");
+      throw new Error("서버에 연결하지 못했어요. 설정의 서버 주소를 확인하세요.");
+    }
+    throw e;
+  } finally { clearTimeout(tm); }
+}
+async function alive() {
+  const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 5000);
+  try { const r = await fetch(base + "/api/status", { signal: ctl.signal }); return r.ok; } catch { return false; } finally { clearTimeout(tm); }
+}
+let checking = null;   // 서버 확인 중(같은 때 두 번 확인하지 않게)
+function connect(fromSetup, quiet) { return checking || (checking = checkServer(fromSetup, quiet).finally(() => { checking = null; })); }
+addEventListener("online", () => { if (base == null && (store.server || localServer())) connect(false, true); });
+function setStatus(t, err) { const s = $("status"); s.textContent = t; s.classList.toggle("err", !!err); }
+function openSetup(msg) {
+  $("setup").hidden = false; $("setBtn").setAttribute("aria-expanded", "true");
+  $("srv").value = store.server || ""; $("code").value = store.code || "";
+  $("setupMsg").hidden = !msg; $("setupMsg").textContent = msg || "";
+}
+$("setBtn").onclick = () => { if ($("setup").hidden) openSetup(""); else { $("setup").hidden = true; $("setBtn").setAttribute("aria-expanded", "false"); } };
+$("setSave").onclick = async () => {
+  let s = $("srv").value.trim().replace(/\/+$/, "");
+  if (s && !/^https?:\/\//.test(s)) s = "https://" + s;
+  store.server = s; store.code = $("code").value.trim(); save();
+  $("setupMsg").hidden = false; $("setupMsg").textContent = "연결 확인 중…";
+  if (checking) await checking;   // 앞서 하던 확인(옛 설정)이 끝난 뒤 새 설정으로 확인
+  if (await connect(true)) {
+    $("setup").hidden = true; $("setBtn").setAttribute("aria-expanded", "false");
+    setStatus(serverInfo && serverInfo.weakCode ? "서버에 연결됐어요. 다만 접속 코드가 짧아 남이 맞히기 쉬워요 — Cloudflare 설정에서 6자 넘게(단어 두 개를 붙여서) 바꾸는 걸 권해요." : "서버에 연결됐어요.");
+  }
+};
+// 서버 주소가 없으면, PC 시험 서버(local.mjs)가 화면을 함께 줄 때만 같은 곳을 쓴다
+let serverInfo = null;
+async function checkServer(fromSetup, quiet) {
+  const cands = store.server ? [store.server] : localServer() ? [""] : [];
+  let err = null;
+  for (const b of cands) {
+    base = b;
+    try {
+      const s = await api("/api/status", null, 10000);
+      if (!s.ok) throw new Error("하루동선 서버가 아니에요");
+      $("keys").textContent = ["서버 연결됨", s.jsKey ? "지도 ✓" : "지도 키 없음", s.odsay ? "대중교통 ✓" : "대중교통 키 없음", s.ai ? "AI 해석" : "키워드 해석"].join(" · ");
+      if (s.needCode && !s.codeOk) { openSetup(store.code ? "접속 코드가 맞지 않아요. 서버에 넣은 ACCESS_CODE와 똑같이 적어 주세요." : "접속 코드를 넣어 주세요."); base = null; return false; }
+      serverInfo = s;
+      loadMap(s.jsKey);
+      return true;
+    } catch (e) { err = e; }
+  }
+  base = null;
+  const offline = navigator.onLine === false;
+  $("keys").textContent = offline && store.server ? "인터넷 연결 없음 · 연결되면 다시 붙어요" : store.server ? "서버에 연결되지 않음" : "서버 설정 필요";
+  if (!map) mapMsg("서버를 연결하면 지도가 보여요.");
+  if (quiet || (offline && store.server && !fromSetup)) return false;   // 신호가 없을 뿐이면 설정 칸을 열지 않음
+  if (fromSetup || store.server) openSetup((store.server ? "서버에 연결하지 못했어요. 주소를 확인하세요. " : "") + (err && store.server ? "(" + err.message + ")" : ""));
+  else openSetup("처음 한 번, 하루동선 서버 주소와 접속 코드를 넣어 주세요.");
+  return false;
+}
+
+/* ---------- 지도 (카카오 지도) ---------- */
+let map = null, mapLoading = false, planLayer = [], candLayer = [], clickLayer = [], optLayer = [];
+function mapMsg(t) { const m = $("mapmsg"); if (!m) return; m.textContent = t; m.hidden = !t; }
+function loadMap(jsKey) {
+  if (map || mapLoading) return;
+  if (!jsKey) { mapMsg("지도를 보려면 서버(Cloudflare) 설정에 KAKAO_JS_KEY를 넣으세요. 지도 없이도 일정 짜기와 장소 바꾸기는 돼요."); return; }
+  mapLoading = true;
+  const s = document.createElement("script");
+  s.src = "https://dapi.kakao.com/v2/maps/sdk.js?autoload=false&appkey=" + encodeURIComponent(jsKey);
+  const fail = () => { mapLoading = false; mapMsg(`지도를 불러오지 못했어요. 카카오 developers → 내 애플리케이션 → 플랫폼 → Web에 ${location.origin} 이 등록돼 있는지 확인하세요. 지도 없이도 나머지는 돼요.`); };
+  s.onload = () => {
+    try {
+      kakao.maps.load(() => {
+        try {
+          map = new kakao.maps.Map($("map"), { center: new kakao.maps.LatLng(37.5443, 126.9515), level: 6 });
+          map.addControl(new kakao.maps.ZoomControl(), kakao.maps.ControlPosition.RIGHT);
+          mapMsg("");
+          kakao.maps.event.addListener(map, "click", e => {
+            if (!target) return;
+            const ll = e.latLng; target.prev = { x: ll.getLng(), y: ll.getLat(), name: "지도에서 누른 곳" }; target.next = null; target.clicked = true;
+            clear(clickLayer); const ov = new kakao.maps.CustomOverlay({ position: ll, content: badge("여기", "click"), yAnchor: .5, zIndex: 4 }); ov.setMap(map); clickLayer.push(ov);
+            renderTarget(); search();
+          });
+          if (plan) drawPlan();
+        } catch { fail(); }
+      });
+    } catch { fail(); }
+  };
+  s.onerror = fail;
+  document.head.append(s);
+}
+const LLk = p => new kakao.maps.LatLng(p[0], p[1]);
+const placeLL = p => new kakao.maps.LatLng(Number(p.y), Number(p.x));
+function clear(layer) { layer.forEach(o => o.setMap(null)); layer.length = 0; }
+function badge(text, cls) { return el("div", "mk " + (cls || ""), text); }
+function drawPlan() {
+  if (!map || !plan) return;
+  clear(planLayer);
+  const bounds = new kakao.maps.LatLngBounds();
+  for (const it of plan.items) {
+    if (it.type !== "leg") continue;
+    for (const sg of it.leg.segs || []) {
+      const path = sg.path.map(LLk); path.forEach(p => bounds.extend(p));
+      const pl = new kakao.maps.Polyline({ path, strokeWeight: sg.kind === "walk" ? 4 : 6, strokeColor: segColor(sg), strokeOpacity: .9, strokeStyle: sg.kind === "walk" ? "shortdash" : "solid" });
+      pl.setMap(map); planLayer.push(pl);
+    }
+  }
+  let n = 0;
+  for (const it of plan.items) {
+    if (!it.place || it.type === "end") continue;
+    const label = it.type === "start" ? "출발" : it.ret ? "도착" : String(++n);
+    const cls = target && it.type === "stop" && it.act === target.act ? "now" : "";
+    const ov = new kakao.maps.CustomOverlay({ position: placeLL(it.place), content: badge(label, cls), yAnchor: .5, zIndex: 2 });
+    ov.setMap(map); planLayer.push(ov); bounds.extend(placeLL(it.place));
+  }
+  drawOpts();
+  if (!bounds.isEmpty() && showOpts == null) map.setBounds(bounds, 40, 40, 40, 40);
+}
+// 고를 수 있는 다른 대중교통 경로를 회색선으로
+function drawOpts() {
+  if (!map) return; clear(optLayer);
+  if (showOpts == null || !plan) return;
+  const it = plan.items.find(x => x.type === "leg" && x.act === showOpts); if (!it || !it.leg.options) return;
+  const bounds = new kakao.maps.LatLngBounds();
+  it.leg.options.forEach(o => {
+    if (o.i === it.leg.pick) return;
+    o.segs.forEach(sg => {
+      const path = sg.path.map(LLk); path.forEach(p => bounds.extend(p));
+      const pl = new kakao.maps.Polyline({ path, strokeWeight: 6, strokeColor: "#8f9aa0", strokeOpacity: .75, strokeStyle: "solid", zIndex: 1 });
+      pl.setMap(map); optLayer.push(pl);
+      kakao.maps.event.addListener(pl, "click", () => setLegPath(showOpts, o.i));
+    });
+    const mid = o.segs.length ? o.segs[Math.floor(o.segs.length / 2)].path : null;
+    if (mid && mid.length) {
+      const d = badge(String(o.i + 1), "opt"); d.onclick = () => setLegPath(showOpts, o.i);
+      const ov = new kakao.maps.CustomOverlay({ position: LLk(mid[Math.floor(mid.length / 2)]), content: d, yAnchor: .5, zIndex: 3 }); ov.setMap(map); optLayer.push(ov);
+    }
+  });
+  for (const sg of it.leg.segs || []) sg.path.forEach(p => bounds.extend(LLk(p)));
+  if (!bounds.isEmpty()) map.setBounds(bounds, 40, 40, 40, 40);
+}
+function hiOpt(i, on) { const li = document.querySelector(`.opts li[data-i="${i}"]`); if (li) li.classList.toggle("hi", on); }
+function drawCands() {
+  if (!map) return;
+  clear(candLayer);
+  if (!results.length) return;
+  const bounds = new kakao.maps.LatLngBounds();
+  results.forEach((p, i) => {
+    const d = badge(String(i + 1), "cand"); d.onclick = () => highlight(i, true);
+    const ov = new kakao.maps.CustomOverlay({ position: placeLL(p), content: d, yAnchor: .5, zIndex: 3 });
+    ov.setMap(map); candLayer.push(ov); bounds.extend(placeLL(p));
+  });
+  if (target) { bounds.extend(placeLL(target.prev)); if (target.next) bounds.extend(placeLL(target.next)); }
+  map.setBounds(bounds, 50, 50, 50, 50);
+}
+function highlight(i, scroll) {
+  document.querySelectorAll("#results li").forEach((li, k) => li.classList.toggle("hi", k === i));
+  candLayer.forEach((ov, k) => { const c = ov.getContent(); if (c && c.classList) c.classList.toggle("hi", k === i); });
+  if (scroll) { const li = document.querySelectorAll("#results li")[i]; li && li.scrollIntoView({ block: "nearest", behavior: smooth() }); }
+  if (map && results[i]) map.panTo(placeLL(results[i]));
+}
+// 지도 카드 보이기(일정이 생기면) — 숨어 있던 지도는 크기를 다시 재야 제대로 그려진다
+function ensureMapCard() {
+  const wasHidden = $("mapCard").hidden, open = store.mapOpen !== false;
+  $("mapCard").hidden = false;
+  $("map").hidden = !open;
+  $("mapToggle").textContent = open ? "지도 접기" : "지도 펼치기";
+  $("mapToggle").setAttribute("aria-expanded", String(open));
+  if (wasHidden && open && map) map.relayout();
+}
+function showMap(open) {
+  store.mapOpen = open; save(); ensureMapCard();
+  if (open && map) { map.relayout(); drawPlan(); if (results.length) drawCands(); }
+}
+$("mapToggle").onclick = () => showMap($("map").hidden);
+
+/* ---------- 일정 짜기 ----------
+   next: 바꾼 내용(활동 목록·고른 장소·구간 이동수단). 서버 계산이 성공했을 때만 지금 상태로 삼는다 —
+   실패하면(신호 없음·12곳 넘음 등) 화면과 상태가 그대로라 다시 눌러도 한 번만 반영된다 */
+async function makePlan(fresh, next = {}, onOk) {
+  if (busy) return false;
+  setBusy(true); setStatus(fresh ? "장소를 찾고 경로를 계산하는 중…" : "바꾼 장소로 다시 계산하는 중…");
+  try {
+    const from = $("from").value.trim();
+    const pk = next.picks || picks, lm = next.legModes || legModes, lp = next.legPaths || legPaths;
+    const body = { text: $("req").value, origin: from, originLL: from === "현재 위치" && originLL ? originLL : undefined,
+      start: $("start").value || "10:00", mode, budget: $("budget").value, picks: pk, legModes: lm, legPaths: lp };
+    if (!fresh && plan) {
+      body.acts = next.acts || plan.acts;
+      // 앞서 계산한 구간·출발지를 같이 보내 바뀐 곳 앞뒤만 새로 계산(무료 한도·ODsay 하루 횟수 아낌)
+      body.reuse = plan.items.filter(it => it.type === "leg" && it.leg && it.leg.key).map(it => it.leg);
+      if (plan.originQuery && plan.items[0] && plan.items[0].place) body.originPlace = { ...plan.items[0].place, q: plan.originQuery };
+    }
+    const d = await api("/api/plan", body, 60000);
+    plan = d; picks = pk; legModes = lm; legPaths = lp; demo = false;
+    if (fresh) { target = null; results = []; showOpts = null; renderTarget(); renderResults(); if (map) clear(candLayer); $("favName").value = ""; }
+    if (onOk) onOk();
+    renderPlan(); drawPlan(); saveLast();
+    setStatus(plan.short ? "한 번에 찾을 수 있는 수를 넘어서 일부 장소를 못 찾았을 수 있어요. ‘다른 곳으로 바꾸기’로 골라 주세요." : "");
+    if (fresh) $("planArea").scrollIntoView({ behavior: smooth(), block: "start" });
+    return true;
+  } catch (e) { setStatus(e.message, true); return false; }
+  finally { setBusy(false); }
+}
+$("form").addEventListener("submit", e => { e.preventDefault(); saveForm(); makePlan(true, { picks: {}, legModes: {}, legPaths: {} }); });
+function saveLast() {
+  if (demo || !plan) return;
+  store.last = clone({ req: $("req").value, from: $("from").value, start: $("start").value, mode, budget: $("budget").value, originLL, picks, legModes, legPaths, plan, favName: $("favName").value, at: Date.now() });
+  save();
+}
+
+/* ---------- 코스 고치기 ---------- */
+const DEMO_MSG = "예시 일정이에요. 서버를 연결하면 바꾸고 다시 짤 수 있어요.";
+const demoOnly = () => demo && base == null;   // 서버 없이 예시만 보는 중
+// 지금 코스의 장소를 고정한 picks 복사본(자동 재검색 방지) — 지금 상태는 건드리지 않는다
+function pinned() { const pk = { ...picks }; for (const it of plan.items) if (it.type === "stop" && !pk[it.act]) pk[it.act] = { ...it.place, keep: true }; return pk; }
+function clearTarget() { target = null; results = []; if (map) { clear(candLayer); clear(clickLayer); } renderTarget(); renderResults(); }
+// 활동 목록을 바꾼 복사본으로 다시 계산 (fn이 false를 돌려주면 바꿀 것 없음)
+async function editActs(fn) {
+  if (!plan) return false;
+  if (busy) { renderPlan(); return false; }                              // 계산 중에 누른 것은 무시(바뀐 칸은 되돌려 보임)
+  if (demoOnly()) { setStatus(DEMO_MSG, true); renderPlan(); return false; }
+  const pk = pinned();
+  const arr = plan.acts.map((a, i) => ({ a, p: pk[i], m: legModes[i], k: legPaths[i] }));
+  if (fn(arr) === false) return false;
+  const next = { acts: arr.map(x => x.a), picks: {}, legModes: {}, legPaths: {} };
+  arr.forEach((x, i) => { if (x.p) next.picks[i] = x.p; if (x.m) next.legModes[i] = x.m; if (x.k != null) next.legPaths[i] = x.k; });
+  const ok = await makePlan(false, next, clearTarget);
+  if (!ok) { renderPlan(); drawPlan(); }                                  // 실패: 고르던 이동수단·머무는 시간 칸도 원래대로
+  return ok;
+}
+const moveAct = (i, d) => editActs(arr => { const j = i + d; if (j < 0 || j >= arr.length) return false; [arr[i], arr[j]] = [arr[j], arr[i]]; });
+const removeAct = i => {
+  if (plan && plan.acts.length <= 1) return setStatus("마지막 한 곳은 뺄 수 없어요. 새로 짜려면 위에서 ‘일정 짜기’를 누르세요.", true);
+  return editActs(arr => { arr.splice(i, 1); });
+};
+const setStay = (i, m) => editActs(arr => { arr[i].a = { ...arr[i].a, minutes: m }; });
+const setLegMode = (i, v) => editActs(arr => { arr[i].m = v || undefined; arr[i].k = undefined; });
+const setLegPath = (i, k) => { if (busy) return; showOpts = i; editActs(arr => { arr[i].k = k; }); };
+const LMODES = [["", "기본"], ["walk", "도보"], ["car", "승용차"], ["bus", "버스"], ["subway", "지하철"], ["train", "KTX·기차"]];
+function openSearch() {
+  ensureMapCard();
+  $("searchbar").hidden = false;
+  $("mapCard").scrollIntoView({ behavior: smooth(), block: "start" });
+}
+function startAdd(idx) { // idx: 이 항목 뒤에 추가 (plan.items 기준)
+  if (busy) return;
+  if (demoOnly()) return setStatus("예시 일정이에요. 서버를 연결하면 장소를 더할 수 있어요.", true);
+  if (plan.acts.length >= 12) return setStatus("한 번에 12곳까지예요. 다른 곳을 빼고 더해 주세요.", true);
+  let prev = null, next = null, after = -1;
+  for (let k = idx; k >= 0; k--) { const it = plan.items[k]; if (it.place && !prev) prev = it.place; if (it.type === "stop" && after < 0) after = it.act; if (prev && after >= 0) break; }
+  if (plan.items[idx].type === "miss") after = plan.items[idx].act;
+  if (after < 0) { for (let k = idx; k >= 0; k--) { if (plan.items[k].type === "miss") { after = plan.items[k].act; break; } } }
+  for (let k = idx + 1; k < plan.items.length; k++) { if (plan.items[k].type === "stop") { next = plan.items[k].place; break; } }
+  target = { add: true, after, label: "새 장소", t: plan.items[idx].t, prev, next, meal: false };
+  $("q").value = ""; renderTarget(); renderPlan(); drawPlan(); renderResults(); openSearch();
+  setTimeout(() => $("q").focus({ preventScroll: true }), 350);
+}
+/* 바꿀 장소 고르기 */
+function choose(idx) {
+  if (busy) return;
+  if (demoOnly()) return setStatus("예시 일정이에요. 서버를 연결하면 장소를 바꿀 수 있어요.", true);
+  const it = plan.items[idx];
+  let prev = null, next = null;
+  for (let k = idx - 1; k >= 0; k--) { if (plan.items[k].place) { prev = plan.items[k].place; break; } }
+  for (let k = idx + 1; k < plan.items.length; k++) { if (plan.items[k].type === "stop") { next = plan.items[k].place; break; } }
+  const act = plan.acts[it.act];
+  target = { act: it.act, label: it.label, t: it.t, prev, next, meal: !!it.meal, cur: it.place }; if (map) clear(clickLayer);
+  $("q").value = it.meal ? ($("budget").value === "cheap" ? "백반" : "맛집") : act.query;
+  if (it.meal && act.category === "custom") $("q").value = act.query;
+  renderTarget(); renderPlan(); drawPlan(); openSearch(); search();
+}
+function cancelTarget() { target = null; results = []; if (map) { clear(candLayer); clear(clickLayer); } renderTarget(); renderResults(); renderPlan(); drawPlan(); }
+function renderTarget() {
+  const t = $("target"); t.replaceChildren();
+  $("searchbar").hidden = !target;
+  if (!target) return;
+  t.append(el("b", null, target.add ? "장소 추가" : target.label + " 바꾸기"), " · " + (target.clicked ? "지도에서 누른 곳 근처" : target.next ? "앞뒤 장소 사이 경로 근처" : "앞 장소 근처"));
+  if (map) t.append(" · ", el("b", null, "지도를 누르면 그 근처에서 찾아요"));
+  if (target.meal) t.append(" · 가격대: " + $("budget").selectedOptions[0].textContent.split(" (")[0]);
+  const cx = el("button", "pick", "취소"); cx.type = "button"; cx.style.marginLeft = "8px"; cx.onclick = cancelTarget; t.append(" ", cx);
+}
+const addHint = () => "무엇을 찾을지 적어 주세요 (예: 카페, 국밥, 서점)." + (map ? " 지도를 누르면 그 근처에서 찾아요." : "");
+let searchSeq = 0;   // 늦게 온 옛 검색 결과가 새 결과를 덮지 않게
+async function search() {
+  if (!target) return;
+  const my = ++searchSeq;
+  if (target.add && !$("q").value.trim()) { results = []; $("results").replaceChildren(el("li", "rhint", addHint())); return; }
+  const list = $("results"); list.replaceChildren(el("li", "rhint", "찾는 중…"));
+  try {
+    const d = await api("/api/nearby", { query: $("q").value.trim() || "맛집", budget: $("budget").value, prev: target.prev, next: target.next, meal: target.meal }, 30000);
+    if (my !== searchSeq || !target) return;
+    results = d.results || [];
+  } catch (e) { if (my !== searchSeq) return; results = []; list.replaceChildren(el("li", "rhint", e.message)); return; }
+  renderResults(); drawCands();
+}
+$("sform").addEventListener("submit", e => { e.preventDefault(); search(); });
+function renderResults() {
+  const list = $("results"); list.replaceChildren();
+  if (!target) return;
+  // 아직 찾기 전(추가: 검색어 없음)에는 '못 찾았어요'가 아니라 무엇을 찾을지 묻는다
+  if (!results.length) { list.append(el("li", "rhint", target.add && !$("q").value.trim() ? addHint() : "근처에서 찾지 못했어요. 다른 검색어로 해 보세요.")); return; }
+  const perKm = mode === "car" ? 3 : 12; // 1km 더 돌아갈 때 대략 걸리는 분
+  results.forEach((p, i) => {
+    const li = el("li"); li.onclick = () => highlight(i, false);
+    li.append(el("span", "rn", String(i + 1)));
+    const mid = el("div"); mid.append(el("div", "rname", p.name));
+    const extra = Math.round(p.detourKm * perKm);
+    const bits = [catTail(p.category), target.next ? (extra <= 1 ? "경로상" : "약 " + extra + "분 더 돌아감") : (p.detourKm * 1000 | 0) + "m"];
+    const meta = el("div", "rmeta", bits.filter(Boolean).join(" · "));
+    if (target.meal && p.cheap) meta.prepend(el("span", "pill ok", "가성비"), " ");
+    mid.append(meta); li.append(mid);
+    const use = el("button", "use", target.add ? "추가" : "여기로"); use.type = "button";
+    use.onclick = async ev => {
+      ev.stopPropagation();
+      if (busy || !target) return;
+      const pk = { name: p.name, x: p.x, y: p.y, address: p.address, category: p.category, url: p.url };
+      const act = target.add ? target.after + 1 : target.act;
+      let ok;
+      if (target.add) {
+        const at = target.after + 1, q = $("q").value.trim();
+        ok = await editActs(arr => { arr.splice(at, 0, { a: { category: "custom", label: q || catTail(p.category) || p.name, query: p.name, minutes: /카페|커피/.test(q) ? 50 : 60, named: true }, p: pk }); });
+      } else {
+        // 고른 곳은 성공했을 때만 반영 — 실패하면 검색 결과가 남아 있어 다시 고를 수 있음
+        ok = await makePlan(false, { picks: { ...picks, [target.act]: pk } }, clearTarget);
+      }
+      if (!ok) return;
+      const card = document.querySelector(`#timeline .card[data-act="${act}"]`);
+      (card || $("planArea")).scrollIntoView({ behavior: smooth(), block: "center" });
+    };
+    li.append(use); list.append(li);
+  });
+}
+
+/* ---------- 시간표 ---------- */
+function renderPlan() {
+  const d = plan; $("planArea").hidden = false;
+  ensureMapCard();
+  if (!$("favName").value) $("favName").value = defaultFavName();
+  const s = $("summary"); s.replaceChildren();
+  const box = (v, l) => { const x = el("div"); x.append(el("b", null, v), el("span", null, l)); return x; };
+  s.append(box(fmt(d.start) + " – " + fmt(d.end), "하루 일정"), box(dur(d.moving), "총 이동 (" + (d.mode === "car" ? "자가용" : "대중교통") + ")"), box(d.items.filter(i => i.type === "stop" && !i.ret).length + "곳", "방문"));
+  const pz = $("parsed"); pz.replaceChildren();
+  pz.append(d.source === "ai" ? "AI가 해석한 요청: " : d.source === "rule" ? "키워드로 해석한 요청: " : "요청: ");
+  pz.append(el("code", null, d.acts.map(a => a.label + " " + dur(a.minutes)).join(" → ")));
+
+  const tl = $("timeline"); tl.replaceChildren(); let n = 0;
+  d.items.forEach((it, idx) => {
+    if (it.type === "leg") {
+      const L = it.leg, li = el("li", "leg");
+      const first = L.steps && L.steps.find(x => x.type !== "walk");
+      li.style.setProperty("--legc", L.mode === "car" ? "#d14e16" : L.mode === "walk" ? "var(--line)" : stepColor(first));
+      li.append(el("div", "rail"));
+      const b = el("div", "legbody"), top = el("div", "legtop");
+      const sel = el("select", "lmode"); sel.setAttribute("aria-label", "이 구간 이동수단");
+      LMODES.forEach(([v, t]) => { const o = el("option", null, t); o.value = v; sel.append(o); });
+      sel.value = (it.act != null && legModes[it.act]) || ""; sel.onchange = () => setLegMode(it.act, sel.value);
+      if (L.mode === "car") {
+        top.append(el("span", "pill", "자가용"), el("span", "dur", dur(L.min) + " · " + L.km.toFixed(1) + "km")); b.append(top);
+        const info = []; if (L.via && L.via.length) info.push(L.via.join(" → ") + " 경유"); if (L.toll) info.push("통행료 " + won(L.toll)); info.push("주차 5분 포함");
+        b.append(el("div", "steps", info.join(" · ")));
+      } else if (L.mode === "walk") { top.append(el("span", "pill", "도보"), el("span", "dur", dur(L.min))); b.append(top); }
+      else {
+        for (const st of L.steps.filter(x => x.type !== "walk")) { const ln = el("span", "line", st.name); ln.style.background = stepColor(st); top.append(ln); }
+        top.append(el("span", "dur", dur(L.min) + (L.fare ? " · " + won(L.fare) : ""))); b.append(top);
+        b.append(el("div", "steps", L.steps.map(st => st.type === "walk" ? "도보 " + st.min + "분" : `${st.from}${st.type === "subway" || st.type === "train" ? "역" : " 정류장"}에서 ${st.name}${st.also && st.also.length ? "(또는 " + st.also.join("·") + ")" : ""} → ${st.to} (${st.stops != null ? st.stops + "개 정류장, " : ""}${st.min}분)`).join(" · ")));
+      }
+      if (it.act != null) top.append(sel);
+      if (L.options && L.options.length > 1 && it.act != null) {
+        const open = showOpts === it.act;
+        const ob = el("button", "pick", open ? "다른 경로 닫기" : `다른 경로 ${L.options.length - 1}개 보기`); ob.type = "button"; ob.style.alignSelf = "flex-start";
+        ob.onclick = () => { showOpts = open ? null : it.act; renderPlan(); drawPlan(); }; b.append(ob);
+        if (open) {
+          const ul = el("ul", "opts");
+          L.options.forEach(o => {
+            const row = el("li", o.i === L.pick ? "cur" : null); row.dataset.i = o.i;
+            row.append(el("span", "num", String(o.i + 1)), el("span", null, o.names.join(" → ") || "도보"), el("span", "dur", dur(o.min) + (o.fare ? " · " + won(o.fare) : "")));
+            if (o.i === L.pick) row.append(el("span", "on", "지금 경로"));
+            row.onclick = () => { if (o.i !== L.pick) setLegPath(it.act, o.i); };
+            ul.append(row);
+          });
+          b.append(ul, el("div", "steps", map ? "지도의 회색 선이 다른 경로예요. 선이나 번호를 눌러도 바뀌어요." : "줄을 누르면 그 경로로 바뀌어요."));
+        }
+      }
+      li.append(b); tl.append(li); return;
+    }
+    const li = el("li", "stop" + (it.type !== "stop" ? " " + it.type : ""));
+    li.append(el("div", "rail"));
+    const card = el("div", "card");
+    if (it.type === "stop") {
+      card.dataset.act = it.act;
+      if (target && target.act === it.act) card.classList.add("active");
+      const h = el("h3"); h.append(el("span", "tm", fmt(it.t)), el("span", "num", it.ret ? "도착" : String(++n)));
+      const a = el("a", null, it.place.name); a.href = it.place.url || "#"; a.target = "_blank"; a.rel = "noopener"; h.append(a); card.append(h);
+      const m = el("div", "meta");
+      m.append(el("span", "pill", it.label));
+      if (catTail(it.place.category)) m.append(el("span", null, catTail(it.place.category)));
+      if (!it.ret) m.append(el("span", null, dur(it.stay) + " · " + fmt(it.t + it.stay) + "까지"));
+      if (it.picked) m.append(el("span", "pill ok", "직접 고름"));
+      if (it.needsParking) m.append(el("span", "pill no", "주차 확인"));
+      card.append(m);
+      if (it.place.address) card.append(el("div", "meta", it.place.address));
+      // 자주 쓰는 것(바꾸기·머무는 시간)은 바로, 순서·빼기는 '⋯' 안에 (작은 화면에서 줄이 넘치지 않게)
+      const ed = el("div", "edit");
+      const btn = el("button", "pick" + (it.meal ? " meal" : ""), it.meal ? "식당 바꾸기" : "바꾸기"); btn.type = "button"; btn.onclick = () => choose(idx);
+      btn.setAttribute("aria-label", (it.meal ? "식당" : it.label) + " 다른 곳으로 바꾸기"); ed.append(btn);
+      if (!it.ret) {
+        const hh = el("span", "hrs"), mi = el("button", null, "−"), pl = el("button", null, "+"), inp = el("input");
+        mi.type = pl.type = "button"; mi.setAttribute("aria-label", "30분 줄이기"); pl.setAttribute("aria-label", "30분 늘리기");
+        inp.type = "number"; inp.min = "0"; inp.step = "0.5"; inp.inputMode = "decimal"; inp.value = String(Math.round(it.stay / 30) / 2); inp.setAttribute("aria-label", "머무는 시간(시간)");
+        const apply = v => setStay(it.act, Math.max(0, Math.round(v * 2) / 2 * 60));
+        mi.onclick = () => apply((+inp.value || 0) - 0.5); pl.onclick = () => apply((+inp.value || 0) + 0.5); inp.onchange = () => apply(+inp.value || 0);
+        hh.append(mi, inp, pl); ed.append(hh);
+      }
+      const ex = el("div", "edit"); ex.hidden = true;
+      const more = el("button", "pick more", "⋯"); more.type = "button"; more.setAttribute("aria-label", "순서 바꾸기·빼기 더 보기"); more.setAttribute("aria-expanded", "false");
+      more.onclick = () => { ex.hidden = !ex.hidden; more.setAttribute("aria-expanded", String(!ex.hidden)); };
+      ed.append(more);
+      const up = el("button", "pick", "▲ 앞으로"); up.type = "button"; up.setAttribute("aria-label", "순서 앞으로"); up.onclick = () => moveAct(it.act, -1);
+      const dn = el("button", "pick", "▼ 뒤로"); dn.type = "button"; dn.setAttribute("aria-label", "순서 뒤로"); dn.onclick = () => moveAct(it.act, 1);
+      const rm = el("button", "pick x", "빼기"); rm.type = "button"; rm.onclick = () => removeAct(it.act);
+      ex.append(up, dn, rm);
+      if (it.picked) {
+        const undo = el("button", "pick", "자동 추천으로"); undo.type = "button";
+        undo.onclick = () => { if (demoOnly()) return setStatus(DEMO_MSG, true); const pk = { ...picks }; delete pk[it.act]; makePlan(false, { picks: pk }); };
+        ex.append(undo);
+      }
+      card.append(ed, ex);
+    } else if (it.type === "miss") {
+      card.dataset.act = it.act;
+      const h = el("h3"); h.append(el("span", "tm", fmt(it.t)), it.label + " — 찾지 못함"); card.append(h);
+      const ed = el("div", "edit"); const ch = el("button", "pick meal", "다른 곳으로 바꾸기"); ch.type = "button"; ch.onclick = () => choose(idx);
+      const rm = el("button", "pick x", "빼기"); rm.type = "button"; rm.onclick = () => removeAct(it.act); ed.append(ch, rm); card.append(ed);
+    } else {
+      const h = el("h3"); h.append(el("span", "tm", fmt(it.t)), (it.type === "start" ? "출발 · " : "일정 끝 · ") + it.place.name); card.append(h);
+    }
+    li.append(card); tl.append(li);
+    if ((it.type === "stop" && !it.ret) || it.type === "start" || it.type === "miss") {
+      const ai = el("li", "leg addrow"); ai.append(el("div", "rail"));
+      const ab = el("button", "addbtn"); ab.append(el("b", null, "+"), "여기에 추가"); ab.type = "button"; ab.setAttribute("aria-label", "이 다음에 장소 추가"); ab.onclick = () => startAdd(idx);
+      const w = el("div"); w.append(ab); ai.append(w); tl.append(ai);
+    }
+  });
+}
+
+/* ---------- 즐겨찾기 (이 폰에 저장) ---------- */
+function defaultFavName() {
+  const names = plan.items.filter(i => i.type === "stop" && !i.ret).map(i => i.place.name);
+  const d = new Date(); return `${d.getMonth() + 1}/${d.getDate()} ${names[0] || ""}${names.length > 1 ? " → " + names[names.length - 1] : ""}`.trim();
+}
+function renderFavs() {
+  const box = $("favList"); box.replaceChildren();
+  $("favEmpty").hidden = store.favs.length > 0;
+  store.favs.forEach(f => {
+    const row = el("div", "fav"); const t = el("div");
+    t.append(el("b", null, f.name), el("span", null, (f.summary || "") + (f.savedAt ? " · " + new Date(f.savedAt).toLocaleDateString("ko-KR") : "")));
+    const ld = el("button", "pick", "불러오기"); ld.type = "button"; ld.onclick = () => openFav(f.id);
+    const del = el("button", "pick x", "삭제"); del.type = "button"; let armedAt = 0;
+    del.onclick = () => {
+      const now = Date.now();
+      if (!armedAt) { armedAt = now; del.textContent = "한 번 더"; setTimeout(() => { armedAt = 0; del.textContent = "삭제"; }, 2500); return; }
+      if (now - armedAt < 600) return;   // 두 번 연달아 눌린 것(더블 탭)은 확인으로 치지 않음 — '한 번 더'를 보고 다시 눌러야 지움
+      store.favs = store.favs.filter(x => x.id !== f.id); save(); renderFavs();
+    };
+    row.append(t, ld, del); box.append(row);
+  });
+}
+// 같은 일정인지 비교용(이름·시각·장소)
+const favSig = (name, p) => p && p.items ? name + "|" + JSON.stringify(p.items.map(it => [it.type, it.t, it.place && it.place.name, it.leg && it.leg.min])) : "";
+$("favSave").onclick = () => {
+  if (!plan || busy) return;
+  const name = $("favName").value.trim() || defaultFavName();
+  // 저장본은 지금 일정의 복사본 — 저장한 뒤 화면에서 고쳐도 즐겨찾기는 그대로
+  const state = clone({ req: $("req").value, from: $("from").value, start: $("start").value, mode, budget: $("budget").value, originLL, picks: demo ? picks : pinned(), legModes, legPaths, plan });
+  const top = store.favs[0];
+  if (top && favSig(top.name, top.state && top.state.plan) === favSig(name, state.plan)) return setStatus("이미 저장된 즐겨찾기예요: " + name);
+  const stops = plan.items.filter(i => i.type === "stop" && !i.ret).length;
+  store.favs.unshift({ id: Date.now().toString(36), name, summary: `${fmt(plan.start)}–${fmt(plan.end)} · ${stops}곳 · ${plan.mode === "car" ? "자가용" : "대중교통"}`, state, savedAt: new Date().toISOString() });
+  store.favs = store.favs.slice(0, 200);
+  if (save()) { setStatus("즐겨찾기에 저장했어요: " + name); renderFavs(); }
+  else store.favs.shift();
+};
+function restoreState(s, name) {
+  s = clone(s);   // 저장본(즐겨찾기·지난 일정·예시)을 고쳐도 원본이 바뀌지 않게
+  $("req").value = s.req || ""; $("from").value = s.from || ""; $("start").value = s.start || "10:00"; setMode(s.mode || "car"); $("budget").value = s.budget || "cheap";
+  originLL = s.originLL || null;
+  picks = s.picks || {}; legModes = s.legModes || {}; legPaths = s.legPaths || {}; plan = s.plan; showOpts = null; target = null; results = [];
+  if (map) { clear(candLayer); clear(clickLayer); }
+  $("favName").value = name || "";
+  renderTarget(); renderResults(); renderPlan(); drawPlan();
+}
+function openFav(id) {
+  if (busy) return;   // 계산 중에 열면 곧 도착할 결과가 불러온 일정을 덮으므로 막음
+  const f = store.favs.find(x => x.id === id);
+  if (!f || !f.state || !f.state.plan) return setStatus("이 즐겨찾기를 열 수 없어요.", true);
+  demo = false; if (base == null && store.server) connect(false, true);
+  restoreState(f.state, f.name); saveForm(); saveLast();
+  setStatus("‘" + f.name + "’을 불러왔어요. 고치면 그 부분만 다시 계산해요.");
+  $("planArea").scrollIntoView({ behavior: smooth(), block: "start" });
+}
+
+/* ---------- 백업 (폰 바꿀 때, PC판 favorites.json 옮길 때) ---------- */
+async function shareOrDownload(file) {
+  if (matchMedia("(pointer:coarse)").matches && navigator.canShare?.({ files: [file] })) { try { await navigator.share({ files: [file], title: file.name }); return; } catch (e) { if (e.name === "AbortError") return; } }
+  const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(file), download: file.name });
+  document.body.append(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+}
+$("exportBtn").onclick = () => {
+  const data = { favs: store.favs, form: store.form, server: store.server || "" };   // 접속 코드는 넣지 않음
+  shareOrDownload(new File([JSON.stringify({ app: KEY, at: new Date().toISOString(), data }, null, 1)], `하루동선-백업-${todayKST()}.json`, { type: "application/json" }));
+};
+$("importFile").onchange = async e => {
+  const file = e.target.files[0]; e.target.value = ""; if (!file) return;
+  let favs = null, j = null;
+  try { j = JSON.parse(await file.text()); } catch { return setStatus("백업 파일을 읽지 못했어요.", true); }
+  if (j && j.app === KEY && j.data) favs = j.data.favs || [];
+  else if (Array.isArray(j) && j.every(f => f && f.name && f.state)) favs = j;     // PC판 favorites.json
+  if (!favs) return setStatus("하루동선 백업 파일이 아니에요.", true);
+  if (!confirm(`즐겨찾기 ${favs.length}개를 가져올까요? 같은 즐겨찾기는 새것으로 바뀌고, 나머지는 그대로 둬요.`)) return;
+  const byId = new Map(store.favs.map(f => [f.id, f]));
+  favs.forEach(f => byId.set(f.id || Math.random().toString(36).slice(2), f));
+  store.favs = [...byId.values()].sort((a, b) => String(b.savedAt || "").localeCompare(String(a.savedAt || ""))).slice(0, 200);
+  if (j.data && j.data.server && !store.server) store.server = j.data.server;
+  if (save()) { renderFavs(); setStatus(`즐겨찾기 ${favs.length}개를 가져왔어요.`); }
+};
+
+/* ---------- 이미지로 저장 ---------- */
+$("imgSave").onclick = () => {
+  if (!plan) return;
+  const W = 1400, PAD = 40, LW = 640, F = '"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif', M = '"IBM Plex Mono",monospace';
+  const rows = []; let n = 0;
+  plan.items.forEach(it => {
+    if (it.type === "leg") {
+      const L = it.leg; const txt = L.mode === "car" ? `자가용 ${dur(L.min)} · ${L.km.toFixed(1)}km` : L.mode === "walk" ? `도보 ${dur(L.min)}` : `${L.steps.filter(x => x.type !== "walk").map(x => x.name).join(" → ")} · ${dur(L.min)}${L.fare ? " · " + won(L.fare) : ""}`;
+      const first = L.steps && L.steps.find(x => x.type !== "walk"); rows.push({ leg: true, txt, c: L.mode === "car" ? "#d14e16" : L.mode === "walk" ? "#9aa3a8" : stepColor(first) });
+    }
+    else if (it.type === "stop") rows.push({ t: fmt(it.t), n: it.ret ? "도착" : String(++n), name: it.place.name, sub: it.ret ? (it.place.address || "") : `${it.label} · ${dur(it.stay)} · ${fmt(it.t + it.stay)}까지` });
+    else if (it.type === "start") rows.push({ t: fmt(it.t), n: "출발", name: it.place.name, sub: "출발" });
+    else if (it.type === "miss") rows.push({ t: fmt(it.t), n: "?", name: it.label, sub: "장소를 찾지 못함" });
+  });
+  const H = Math.max(760, 170 + rows.reduce((a, r) => a + (r.leg ? 34 : 64), 0) + PAD);
+  const cv = document.createElement("canvas"); const sc = 2; cv.width = W * sc; cv.height = H * sc; const g = cv.getContext("2d"); g.scale(sc, sc);
+  g.fillStyle = "#f3f5f4"; g.fillRect(0, 0, W, H);
+  g.fillStyle = "#18232e"; g.font = `700 34px "Do Hyeon",${F}`; g.fillText("하루동선", PAD, PAD + 30);
+  g.font = `500 16px ${F}`; g.fillStyle = "#5d6b73";
+  const stops = plan.items.filter(i => i.type === "stop" && !i.ret).length;
+  g.fillText(`${($("favName").value || "").trim()}   ${fmt(plan.start)} – ${fmt(plan.end)} · 이동 ${dur(plan.moving)} · ${stops}곳`, PAD + 150, PAD + 28);
+  let y = PAD + 80;
+  rows.forEach(r => {
+    if (r.leg) { g.fillStyle = r.c; g.fillRect(PAD + 64, y, 5, 30); g.fillStyle = "#5d6b73"; g.font = `500 14px ${F}`; g.fillText(r.txt.length > 48 ? r.txt.slice(0, 47) + "…" : r.txt, PAD + 84, y + 20); y += 34; return; }
+    g.fillStyle = "#18232e"; g.font = `600 15px ${M}`; g.fillText(r.t, PAD, y + 24);
+    g.fillStyle = "#ffffff"; g.strokeStyle = "#d9e0dd"; g.lineWidth = 1; roundRect(g, PAD + 80, y, LW - 90, 56, 10); g.fill(); g.stroke();
+    g.fillStyle = "#18232e"; g.beginPath(); g.arc(PAD + 104, y + 28, 13, 0, Math.PI * 2); g.fill();
+    g.fillStyle = "#fff"; g.font = `700 ${r.n.length > 1 ? 10 : 13}px ${F}`; g.textAlign = "center"; g.fillText(r.n, PAD + 104, y + 32); g.textAlign = "left";
+    g.fillStyle = "#18232e"; g.font = `700 17px ${F}`; g.fillText(r.name.length > 26 ? r.name.slice(0, 25) + "…" : r.name, PAD + 128, y + 24);
+    g.fillStyle = "#5d6b73"; g.font = `400 13px ${F}`; g.fillText(r.sub.length > 44 ? r.sub.slice(0, 43) + "…" : r.sub, PAD + 128, y + 45);
+    y += 64;
+  });
+  // 경로 약도 (지도 타일 없이 선만)
+  const mx = PAD + LW + 20, my = PAD + 80, mw = W - mx - PAD, mh = H - my - PAD;
+  g.fillStyle = "#ffffff"; g.strokeStyle = "#d9e0dd"; roundRect(g, mx, my, mw, mh, 12); g.fill(); g.stroke();
+  const pts = []; plan.items.forEach(it => { if (it.type === "leg") (it.leg.segs || []).forEach(sg => sg.path.forEach(p => pts.push(p))); if (it.place) pts.push([+it.place.y, +it.place.x]); });
+  if (pts.length) {
+    const lat0 = pts.reduce((a, p) => a + p[0], 0) / pts.length, kx = Math.cos(lat0 * Math.PI / 180);
+    const xs = pts.map(p => p[1] * kx), ys = pts.map(p => -p[0]); const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+    const s2 = Math.min((mw - 80) / Math.max(x1 - x0, 1e-6), (mh - 80) / Math.max(y1 - y0, 1e-6));
+    const ox = mx + (mw - (x1 - x0) * s2) / 2, oy = my + (mh - (y1 - y0) * s2) / 2; const P = p => [ox + (p[1] * kx - x0) * s2, oy + (-p[0] - y0) * s2];
+    g.lineCap = "round"; g.lineJoin = "round";
+    plan.items.forEach(it => { if (it.type !== "leg") return; (it.leg.segs || []).forEach(sg => { g.strokeStyle = segColor(sg); g.lineWidth = sg.kind === "walk" ? 3 : 6; g.setLineDash(sg.kind === "walk" ? [6, 6] : []); g.beginPath(); sg.path.forEach((p, i) => { const q = P(p); i ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1]); }); g.stroke(); }); });
+    g.setLineDash([]); let k = 0; const badges = [], labels = [];
+    plan.items.forEach(it => {
+      if (!it.place || it.type === "end") return; const q = P([+it.place.y, +it.place.x]);
+      while (badges.some(z => Math.hypot(z[0] - q[0], z[1] - q[1]) < 26)) q[0] += 28; badges.push([q[0], q[1]]); const lab = it.type === "start" ? "출발" : it.ret ? "도착" : String(++k);
+      g.font = `700 13px ${F}`; const w = Math.max(26, g.measureText(lab).width + 14); g.fillStyle = "#18232e"; g.strokeStyle = "#fff"; g.lineWidth = 2; roundRect(g, q[0] - w / 2, q[1] - 13, w, 26, 13); g.fill(); g.stroke();
+      g.fillStyle = "#fff"; g.textAlign = "center"; g.fillText(lab, q[0], q[1] + 5); g.textAlign = "left";
+      if (it.type === "stop" && !it.ret) {
+        g.fillStyle = "#18232e"; g.font = `600 13px ${F}`; const nm = it.place.name.length > 14 ? it.place.name.slice(0, 13) + "…" : it.place.name; let ly = q[1] + 5; const lx = q[0] + w / 2 + 5;
+        while (labels.some(z => Math.abs(z[0] - lx) < 150 && Math.abs(z[1] - ly) < 17)) ly += 17; labels.push([lx, ly]); g.fillText(nm, lx, ly);
+      }
+    });
+  }
+  g.fillStyle = "#98a6ad"; g.font = `400 12px ${F}`; g.fillText("위치 관계를 보여주는 약도 (축척 아님) · 하루동선", mx + 14, my + mh - 12);
+  cv.toBlob(b => shareOrDownload(new File([b], `하루동선_${(($("favName").value || "경로").trim()).replace(/[\\/:*?"<>|]/g, "_")}.png`, { type: "image/png" })), "image/png");
+};
+function roundRect(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
+
+/* ---------- 예시 일정 (서버 없이 화면 둘러보기) ---------- */
+$("demoBtn").onclick = async () => {
+  try {
+    const s = await fetch("demo.json").then(r => r.json());
+    demo = true; restoreState(s, "예시: 공덕역 하루");
+    $("setup").hidden = true; $("setBtn").setAttribute("aria-expanded", "false");
+    setStatus("예시 일정이에요. 서버를 연결하면 직접 짜고 바꿀 수 있어요.");
+    $("planArea").scrollIntoView({ behavior: smooth(), block: "start" });
+  } catch { setStatus("예시 일정을 불러오지 못했어요.", true); }
+};
+
+/* ---------- 시작 ---------- */
+renderFavs();
+if (store.last && store.last.plan) {   // 지난번 일정을 그대로 보여 준다(폰을 다시 열었을 때)
+  restoreState(store.last, store.last.favName);
+  if (store.form && (store.form.at || 0) > (store.last.at || 0)) applyForm(store.form);   // 그 뒤에 새로 적던 입력은 살린다
+  setStatus("지난번에 짠 일정이에요. 새로 짜려면 위에서 ‘일정 짜기’를 누르세요.");
+}
+connect(false);
+
+/* ---------- 앱으로 설치 ---------- */
+let deferredPrompt;
+addEventListener("beforeinstallprompt", e => { e.preventDefault(); deferredPrompt = e; $("installBtn").hidden = false; });
+$("installBtn").onclick = async () => { if (!deferredPrompt) return; deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt = null; $("installBtn").hidden = true; };
+if (/iphone|ipad|ipod/i.test(navigator.userAgent) && !(matchMedia("(display-mode: standalone)").matches || navigator.standalone)) $("iosHint").hidden = false;
+if ("serviceWorker" in navigator && (location.protocol === "https:" || ["localhost", "127.0.0.1"].includes(location.hostname)))
+  addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+</script>
+</body>
+</html>

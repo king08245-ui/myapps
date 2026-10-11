@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>하루동선 폰 앱 설치 안내</title>
+<style>
+:root{--bg:#f3f5f4;--card:#fff;--ink:#18232e;--muted:#56646c;--line:#d9e0dd;--accent:#bd4410;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#11171c;--card:#1a2228;--ink:#e7eef0;--muted:#9eacb3;--line:#2c3840;--accent:#ff7a3d;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.7 "Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;word-break:keep-all;overflow-wrap:anywhere}
+.wrap{max-width:760px;margin:0 auto;padding:24px 16px 56px}
+h1{font-size:26px;margin:0 0 6px}
+h2{font-size:19px;margin:28px 0 10px;padding-top:6px;border-top:1px solid var(--line)}
+.sub{color:var(--muted);margin:0 0 18px}
+.step{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 16px;margin:10px 0}
+.step b.n{display:inline-flex;width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;align-items:center;justify-content:center;font-size:14px;margin-right:6px}
+code,kbd{font-family:Consolas,ui-monospace,monospace;font-size:14px;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:1px 6px}
+table{border-collapse:collapse;width:100%;font-size:15px}
+td,th{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+.warn{background:#fff3dc;color:#7a4700;border-radius:10px;padding:10px 12px}
+@media (prefers-color-scheme:dark){.warn{background:#3a2d12;color:#ffcf7a}}
+a{color:var(--accent)}
+pre{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px;overflow:auto;font-size:13.5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>하루동선 폰 앱 설치 안내</h1>
+<p class="sub">한 번만 하면 돼요. PC에서 20분쯤 걸려요. 순서대로 따라 하세요.</p>
+
+<h2>1. 일정 계산 서버 만들기 (Cloudflare Worker)</h2>
+<div class="step"><b class="n">1</b><a href="https://dash.cloudflare.com" target="_blank">dash.cloudflare.com</a>에 로그인 → 왼쪽 메뉴 <b>Workers 및 Pages</b>(Workers &amp; Pages) → <b>생성</b>(Create) → <b>Worker 만들기</b>(Hello World로 시작) → 이름을 <code>dayroute</code>로 바꾸고 <b>배포</b>(Deploy).</div>
+<div class="step"><b class="n">2</b><b>코드 편집</b>(Edit code)을 누르고, 왼쪽에 있는 코드를 모두 지운 뒤 이 폴더의 <code>cloudflare/worker.js</code>를 메모장으로 열어 전부 복사해 붙여넣기 → 오른쪽 위 <b>배포</b>(Deploy).</div>
+<div class="step"><b class="n">3</b>Worker 화면 → <b>설정</b>(Settings) → <b>변수 및 비밀</b>(Variables and Secrets) → <b>추가</b>(Add)를 눌러 아래 4개를 <b>종류: 비밀(Secret)</b>로 넣고 <b>배포</b>(Deploy).
+<table>
+<tr><th>이름</th><th>값</th></tr>
+<tr><td><code>KAKAO_REST_KEY</code></td><td>PC의 <code>다운로드\하루동선\dayroute-app\.env</code>를 메모장으로 열어 같은 이름 뒤의 값</td></tr>
+<tr><td><code>ODSAY_API_KEY</code></td><td>위 .env의 같은 이름 뒤의 값</td></tr>
+<tr><td><code>KAKAO_JS_KEY</code></td><td>위 .env의 같은 이름 뒤의 값 (지도용)</td></tr>
+<tr><td><code>ACCESS_CODE</code></td><td>남이 짐작 못 할 말로 6자 넘게 (예: 단어 두 개를 붙여서 <code>파란우산여름밤</code>처럼). 한글도 돼요. 폰 앱에 같은 값을 넣어요. 남이 내 키 사용량을 못 쓰게 막는 용도</td></tr>
+</table>
+<p class="warn">키 값은 이 칸에만 넣으세요. 채팅이나 다른 곳에 붙여넣지 마세요.</p></div>
+<div class="step"><b class="n">4</b>Worker 화면 위쪽에 보이는 주소(<code>https://dayroute.○○○.workers.dev</code>)를 눌러 열어 보세요. <b>“하루동선 서버가 동작 중이에요”</b>가 나오면 성공이에요. 이 주소를 복사해 두세요.</div>
+
+<h2>2. 폰 화면 올리기 (GitHub)</h2>
+<div class="step"><b class="n">5</b><a href="https://github.com/king08245-ui/myapps" target="_blank">github.com/king08245-ui/myapps</a> → <b>Add file → Upload files</b> → 이 폴더의 <code>dayroute</code> 폴더를 통째로 끌어다 놓기 → <b>Commit changes</b>. 1~2분 뒤 <a href="https://king08245-ui.github.io/myapps/dayroute/" target="_blank">king08245-ui.github.io/myapps/dayroute/</a>가 열려요.
+<p>대신 <a href="https://github.com/apps/claude/installations/select_target" target="_blank">GitHub에 Claude 앱</a>을 한 번 설치해 두면, 이 단계와 앞으로의 수정은 Claude가 바로 올려요.</p></div>
+
+<h2>3. 지도 켜기 (카카오)</h2>
+<div class="step"><b class="n">6</b><a href="https://developers.kakao.com/console/app" target="_blank">카카오 developers → 내 애플리케이션</a> → 하루동선에 쓰던 앱 → <b>앱 설정 → 플랫폼 → Web</b> → 사이트 도메인에 <code>https://king08245-ui.github.io</code> 추가 → 저장. (안 해도 일정 짜기는 되고 지도만 안 보여요.)</div>
+
+<h2>4. 폰에서 쓰기</h2>
+<div class="step"><b class="n">7</b>폰에서 <a href="https://king08245-ui.github.io/myapps/dayroute/" target="_blank">king08245-ui.github.io/myapps/dayroute/</a> 열기 → 처음 나오는 <b>서버 연결</b> 칸에 4번의 주소와 ACCESS_CODE를 넣고 <b>저장하고 연결 확인</b>.
+<br>안드로이드: 크롬 <kbd>⋮</kbd> → <b>앱 설치</b> / 아이폰: 사파리 <b>공유 → 홈 화면에 추가</b></div>
+<div class="step"><b class="n">8</b>PC판 즐겨찾기 옮기기(선택): <code>dayroute-app\favorites.json</code>을 카카오톡 ‘나에게 보내기’로 폰에 보내고, 앱 아래쪽 <b>백업 가져오기</b>에서 그 파일을 고르세요.</div>
+
+<h2>문제가 생기면</h2>
+<table>
+<tr><th>보이는 말</th><th>할 일</th></tr>
+<tr><td>접속 코드가 맞지 않아요</td><td>앱 설정의 코드와 Cloudflare의 ACCESS_CODE가 글자 하나까지 같은지 확인</td></tr>
+<tr><td>서버에 연결하지 못했어요</td><td>서버 주소가 <code>https://dayroute.…workers.dev</code> 형태인지, 4번 주소가 열리는지 확인</td></tr>
+<tr><td>카카오 장소 검색 실패 (401/403)</td><td>KAKAO_REST_KEY 값 확인. 카카오 developers에서 ‘허용 IP’를 정해 두었다면 그 제한을 풀어야 해요</td></tr>
+<tr><td>대중교통 길찾기 실패</td><td>ODSAY_API_KEY 확인. ODsay 무료는 하루 30번까지라 많이 쓴 날은 자가용으로 (코스를 고칠 때는 바뀐 구간만 다시 계산해서 횟수를 아껴요)</td></tr>
+<tr><td>지도를 불러오지 못했어요</td><td>6번(카카오 Web 도메인 등록) 확인</td></tr>
+<tr><td>서버가 잠깐 바빠서 계산을 끝내지 못했어요</td><td>무료 요금제의 계산 시간 한도에 걸린 경우예요. 한 번 더 누르면 대부분 돼요</td></tr>
+</table>
+
+<h2>king_bot에서 부르기 (나중에)</h2>
+<pre>import requests, urllib.parse
+r = requests.post("https://dayroute.○○○.workers.dev/api/plan",
+    headers={"x-access-code": urllib.parse.quote("ACCESS_CODE 값")},
+    json={"text": "헬스 1시간, 점심, 카페", "origin": "공덕역", "start": "10:00", "mode": "car", "budget": "cheap"},
+    timeout=60)
+plan = r.json()   # plan["items"]에 출발·이동·장소가 순서대로 들어 있어요</pre>
+</div>
+</body>
+</html>

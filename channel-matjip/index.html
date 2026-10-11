@@ -496,8 +496,9 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
   function areaMatch(p, q, center, radius, scope) {
     const kind = scope ? scope.kind : "", d = scope && p.g ? dist(scope.lat, scope.lng, p.g[0], p.g[1]) : 0;
     const far = !scope ? Infinity : kind === "city" ? 40 : kind === "gu" ? 12 : 15;
-    // A shop with its own address point belongs to the place when it is within the radius or its address names it.
-    if (center && p.geo && p.g[2] <= 2) return d <= radius || (hitTok(p.tka, q) && d <= far);
+    // A shop with its own address point belongs to the place when it is within the radius or its address names it,
+    // or — for a city — when its video names the city and the shop is close by (a 속초 trip video → 고성 토성면).
+    if (center && p.geo && p.g[2] <= 2) return d <= radius || (hitTok(p.tka, q) && d <= far) || (kind === "city" && hitTok(p.tk, q) && d <= 15);
     // Otherwise its address or area note must name the place...
     if (hitTok(p.tka, q)) return d <= far;
     // ...or else only the video title or description does. Then the shop must be close by: within 4km of a
