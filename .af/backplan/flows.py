@@ -775,8 +775,54 @@ def flow_sync_settings_link_prefills_server(page, shot):
     page.goto(page.url.split("#")[0] + "#server=" + urllib.request.quote(SYNC, safe=""))
     page.wait_for_selector("#syncCard", timeout=5000)
     assert page.input_value("#syncServer") == SYNC, "설정 링크로 열었는데 서버 주소가 안 채워짐"
-    assert "#server" not in page.url, "설정 링크가 주소창에 남음"
+    assert "#server=" in page.url, "주소창에서 서버 주소가 사라짐 — 이 주소를 다른 기기로 보내면 빈칸이 됨"
     page.wait_for_function("document.activeElement && document.activeElement.id === 'syncCode'", timeout=3000)
+    # 코드까지 든 링크로 열어도 주소창에는 코드가 남지 않아야 함
+    page.goto(page.url.split("#")[0] + "#server=" + urllib.request.quote(SYNC, safe="") + "&code=" + urllib.request.quote(CODE, safe=""))
+    page.wait_for_function("typeof state !== 'undefined' && state.sync.code", timeout=5000)
+    assert "code" not in page.url, f"접속 코드가 주소창에 남음: {page.url}"
+    assert "#server=" in page.url, "코드 링크로 연 뒤 서버 주소가 주소창에서 사라짐"
+
+
+def flow_share_link_sets_up_another_device(page, shot):
+    """폰에서 연결한 뒤 '다른 기기 연결 링크' → 컴퓨터에서 열면 서버 칸이 채워지고 코드만 넣으면 같은 계획"""
+    srv_reset()
+    srv_put_mk(mk_snapshot())
+    ready(page)
+    connect(page)
+    assert "#server=" in page.url and "code" not in page.url, f"연결 뒤 주소창 상태가 이상함: {page.url}"
+    card = page.locator("#syncCard")
+    assert "서버 localhost:8791" in card.inner_text(), "연결된 서버 주소가 카드에 안 보임"
+    page.context.grant_permissions(["clipboard-read", "clipboard-write"])
+    page.click("#syncShareBtn")
+    page.wait_for_function("(() => { const t = document.getElementById('toast'); const s = document.getElementById('sheet'); return (t && !t.hidden && /복사/.test(t.textContent)) || (s && !s.hidden); })()", timeout=3000)
+    link = page.evaluate("navigator.clipboard.readText().catch(() => '')") or page.input_value("#panel input")
+    assert link.endswith("#server=" + urllib.request.quote(SYNC, safe="")), f"연결 링크가 이상함: {link}"
+    assert "code" not in link, "연결 링크에 접속 코드가 들어감"
+    # 새 기기(저장 내용 없음)에서 링크 열기
+    ctx2 = page.context.browser.new_context(viewport={"width": 390, "height": 844})
+    p2 = ctx2.new_page()
+    errs = []
+    p2.on("pageerror", lambda e: errs.append(str(e)))
+    p2.goto(link)
+    p2.wait_for_selector("#syncCard", timeout=5000)
+    assert p2.input_value("#syncServer") == SYNC, "다른 기기에서 링크를 열었는데 서버 칸이 비어 있음"
+    p2.fill("#syncCode", CODE)
+    p2.click("#syncConnect")
+    p2.wait_for_function("(() => { const s = document.getElementById('syncState'); return s && /맞춤/.test(s.textContent); })()", timeout=10000)
+    st2 = json.loads(p2.evaluate(f"localStorage.getItem('{KEY}')"))
+    assert sorted(g.get("src") for g in st2["goals"] if g.get("src")) == ["g3", "g7"], "다른 기기에서 목표까지 목표가 안 들어옴"
+    assert not errs, f"다른 기기 화면에서 JS 오류: {errs}"
+    ctx2.close()
+    # 연동을 끊으면 주소창의 서버 주소도 지움(다시 열었을 때 옛 서버가 되살아나지 않게)
+    tab(page, "goals")
+    page.locator("#syncCard button", has_text="연동 끊기").click()
+    page.click("#sheet .btn.primary")
+    page.wait_for_timeout(200)
+    assert "#server" not in page.url, "연동을 끊었는데 주소창에 서버 주소가 남음"
+    page.reload()
+    ready(page)
+    assert not saved(page)["sync"]["server"], "연동을 끊고 새로 열었는데 서버가 되살아남"
 
 
 def flow_linked_plan_is_readonly_with_tasks(page, shot):

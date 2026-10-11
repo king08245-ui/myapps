@@ -1,5 +1,5 @@
 // 배포할 때마다 VERSION을 올리면 설치된 앱이 새 화면을 받습니다.
-const VERSION = 'backplan-v2';
+const VERSION = 'backplan-v3';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './privacy.html',
   './icons/icon-192.png', './icons/icon-512.png', './icons/maskable-512.png', './icons/apple-touch-icon.png'];
 const FONT_HOSTS = ['fonts.googleapis.com', 'fonts.gstatic.com'];

@@ -1191,7 +1191,7 @@ function syncCard() {
         if (!st.needCode) throw new Error('서버에 ACCESS_CODE가 없어요. Cloudflare → backplan → 설정 → 변수 및 비밀에 넣어 주세요.');
         if (!st.codeOk) throw new Error('접속 코드가 맞지 않아요. Cloudflare에 넣은 ACCESS_CODE와 똑같이 적어 주세요.');
         state.sync = {...state.sync, server, code: c, err: null, rev: state.sync.server === server ? state.sync.rev : 0, sig: state.sync.server === server ? state.sync.sig : null};
-        syncEditing = false; save();
+        syncEditing = false; save(); setLinkHash(server);
         if (st.weakCode) toast('연결됐어요. 다만 접속 코드가 짧아요 — 6자 넘게 바꾸는 걸 권해요.');
         await syncNow('connect');
         if (!state.sync.err) toast(state.mk ? `목표까지와 맞췄어요 · 목표 ${state.goals.filter(linked).length}개` : '연결됐어요. 목표까지에서 ‘역산 플래너와 맞추기’를 누르면 목표가 들어와요.');
@@ -1206,11 +1206,14 @@ function syncCard() {
       h('div', {class: 'row'}, h('button', {class: 'btn primary', type: 'button', id: 'syncConnect', onclick: e => connect(e.currentTarget)}, '저장하고 연결'),
         syncEditing ? h('button', {class: 'btn', type: 'button', onclick: () => { syncEditing = false; render(); }}, '취소') : null));
   } else {
-    box.append(h('div', {class: 'row'}, h('button', {class: 'btn primary small', type: 'button', id: 'syncNowBtn', onclick: () => syncNow('manual')}, '지금 맞추기'),
+    box.append(h('div', {class: 'muted small-text num', style: 'word-break:break-all'}, '서버 ' + s.server.replace(/^https?:\/\//, '')),
+      h('div', {class: 'row'}, h('button', {class: 'btn primary small', type: 'button', id: 'syncNowBtn', onclick: () => syncNow('manual')}, '지금 맞추기'),
+      h('button', {class: 'btn small', type: 'button', id: 'syncShareBtn', onclick: shareLink}, '다른 기기 연결 링크'),
       h('button', {class: 'btn small', type: 'button', onclick: () => { syncEditing = true; render(); setTimeout(() => $('syncServer')?.focus(), 30); }}, '설정 바꾸기'),
-      h('button', {class: 'btn small danger', type: 'button', onclick: () => confirmSheet('연동을 끊을까요?', '이 기기의 목표와 기록은 그대로 남고, 서버와 더 맞추지 않아요.', '끊기', () => { state.sync = {server: '', code: '', rev: 0, at: null, err: null, sig: null}; commit(); })}, '연동 끊기')));
+      h('button', {class: 'btn small danger', type: 'button', onclick: () => confirmSheet('연동을 끊을까요?', '이 기기의 목표와 기록은 그대로 남고, 서버와 더 맞추지 않아요.', '끊기', () => { state.sync = {server: '', code: '', rev: 0, at: null, err: null, sig: null}; setLinkHash(''); commit(); })}, '연동 끊기')));
   }
   box.append(h('p', {class: 'muted small-text', style: 'margin:0'}, '목표까지(Claude 아티팩트)의 목표·단계·하루 분량이 들어오고, 여기서 끝낸 단계와 15분 기록이 목표까지로 돌아가요. 목표까지에서는 ‘역산 플래너와 맞추기’를 누르면 반영돼요.'));
+  if (!syncReady()) box.append(h('p', {class: 'muted small-text', style: 'margin:0'}, '다른 기기에서 이미 연결했다면, 그 기기의 목표 화면에서 ‘다른 기기 연결 링크’를 눌러 이 기기로 보내세요. 서버 주소가 채워지고 접속 코드만 넣으면 돼요(기기마다 처음 한 번).'));
   return box;
 }
 
@@ -1684,14 +1687,36 @@ async function syncNow(why) {
 }
 addEventListener('online', () => { if (syncReady()) syncNow('online'); });
 setInterval(() => { if (syncReady() && document.visibilityState === 'visible') syncNow('poll'); }, 120e3);
-// 설정 링크: …/backplan/#server=주소&code=코드 로 열면 저장하고 주소창에서 지운다
+// 설정 링크: …/backplan/#server=주소&code=코드 로 열면 저장한다.
+// 주소창에는 서버 주소만 남긴다(코드는 절대 안 남김) — 이 페이지 주소를 다른 기기로 보내면 그쪽도 서버 칸이 채워진다.
+function setLinkHash(server) {
+  try { history.replaceState(null, '', location.pathname + location.search + (server ? '#server=' + encodeURIComponent(server) : '')); } catch {}
+}
+function linkFor(server) { return location.origin + location.pathname + '#server=' + encodeURIComponent(server); }
 function readSettingsLink() {
   const hs = new URLSearchParams(location.hash.slice(1));
   if (!hs.get('server')) return false;
   const server = hs.get('server').trim().replace(/\/+$/, '');
   state.sync = {...state.sync, server, code: hs.has('code') ? hs.get('code') : state.sync.code, rev: state.sync.server === server ? state.sync.rev : 0, sig: state.sync.server === server ? state.sync.sig : null};
-  save(); history.replaceState(null, '', location.pathname + location.search);
+  save(); setLinkHash(server);
   return true;
+}
+// 다른 기기 연결 링크: 폰은 공유 창(카톡 등), 컴퓨터는 복사. 둘 다 안 되면 직접 복사할 수 있게 보여 줌
+async function shareLink() {
+  const url = linkFor(state.sync.server);
+  if (navigator.share && matchMedia('(pointer: coarse)').matches) {
+    try { await navigator.share({title: '역산 15분 플래너 연결', text: '이 링크를 열고 접속 코드만 넣으면 같은 계획이 들어와요.', url}); return; }
+    catch (e) { if (e && e.name === 'AbortError') return; }
+  }
+  try { await navigator.clipboard.writeText(url); toast('연결 링크를 복사했어요. 다른 기기에서 열고 접속 코드만 넣으세요.'); return; } catch {}
+  openSheet(p => {
+    const inp = h('input', {type: 'text', readonly: true, value: url, 'aria-label': '다른 기기 연결 링크', onfocus: e => e.target.select(),
+      style: 'min-height:46px;border:1px solid var(--line);border-radius:12px;background:var(--paper);color:var(--ink);padding:10px 12px;width:100%;font-size:14px'});
+    p.append(h('h2', {id: 'sheetTitle'}, '다른 기기 연결 링크'),
+      h('p', {class: 'muted', style: 'margin:0'}, '이 주소를 다른 기기에서 열고 접속 코드만 넣으세요. 접속 코드는 링크에 들어 있지 않아요.'), inp,
+      h('div', {class: 'row', style: 'justify-content:flex-end'}, h('button', {class: 'btn primary', type: 'button', onclick: closeSheet}, '닫기')));
+    setTimeout(() => inp.select(), 40);
+  });
 }
 addEventListener('hashchange', () => {
   if (!readSettingsLink()) return;
@@ -1710,6 +1735,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || ['localho
   addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
 
 const fromLink = readSettingsLink();
+if (!fromLink && state.sync.server) setLinkHash(state.sync.server);   // 이미 연결된 기기: 지금 주소를 보내도 서버 칸이 채워지게
 if (fromLink && !state.sync.code) { syncEditing = true; tab = 'goals'; document.querySelectorAll('.tabs button').forEach(b => b.dataset.tab === 'goals' ? b.setAttribute('aria-current', 'page') : b.removeAttribute('aria-current')); for (const v of Object.keys(views)) $('view-' + v).hidden = v !== 'goals'; }
 render();
 if (state.timer) runTick();
