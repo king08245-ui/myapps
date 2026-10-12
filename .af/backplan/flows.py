@@ -738,6 +738,121 @@ def flow_overdue_step_alert(page, shot):
     assert "지났는데" not in page.inner_text("#view-today"), "날짜를 고쳤는데 마감 지남 경고가 남음"
 
 
+def flow_step_without_tasks_still_shows_today(page, shot):
+    """할 일 없이 중간 목표만 있는 목표(오늘 마감)도 오늘·일정·순서도에 보이고, 거기서 바로 할 일을 적고 끝냄을 누름"""
+    fresh(page)
+    make_goal(page, title="한식조리기능사", days=40, mids=(("필기 합격", 20), ("필기 원서 접수", 0)), tasks=0)
+    st = saved(page)["goals"][0]
+    s_today = [s for s in st["steps"] if s["title"] == "필기 원서 접수"][0]
+    s_next = [s for s in st["steps"] if s["title"] == "필기 합격"][0]
+    assert s_today["due"] == kst(0), f"오늘 마감 중간 목표가 안 만들어짐: {s_today}"
+    mr = page.locator("#view-today .mrow")
+    assert mr.count() == 1 and "오늘 마감" in mr.inner_text() and "필기 원서 접수" in mr.inner_text(), f"오늘 마감 중간 목표가 오늘 화면에 없음: {page.inner_text('#view-today')[:300]}"
+    assert "15분 할 일이 없어요" in mr.inner_text(), "할 일이 없다는 안내가 없음"
+    # 일정: 오늘 주황 상자 안에 마감 표시
+    tab(page, "sched")
+    today_box = page.locator(".day.is-today")
+    assert today_box.count() == 1, "할 일 없이 오늘 마감만 있는데 오늘 상자가 없음"
+    assert today_box.locator(".mile", has_text="필기 원서 접수").count() == 1, f"오늘 마감 표시가 오늘 상자 밖에 있음: {page.inner_text('#view-sched')[:300]}"
+    assert "놓인 15분 없음" in today_box.inner_text(), "칸이 없는데 '15분 × 0' 같은 표시"
+    assert today_box.locator("button", has_text="15분 할 일 적기").count() == 1, "일정의 마감 표시에서 할 일을 적으러 갈 수 없음"
+    quiet(page, top=True)
+    shot("notask-sched", store=False)
+    # 순서도: 할 일 없는 단계(오늘·앞으로)에 '＋ 15분 할 일 적기' 가지
+    tab(page, "plan", flow=True)
+    adds = page.locator(".flow .fchip.add")
+    assert adds.count() == 2, f"할 일 없는 단계 2개에 '할 일 적기' 가지가 없음: {adds.count()}"
+    page.locator(".flow .frow", has_text="필기 합격").locator(".fchip.add").click()
+    assert page.locator("#pvList").get_attribute("aria-pressed") == "true", "할 일 적기를 눌렀는데 목록으로 안 바뀜"
+    focused = page.evaluate("document.activeElement && document.activeElement.id")
+    assert focused == "add-" + s_next["id"], f"그 단계의 할 일 칸에 커서가 안 감: {focused}"
+    page.keyboard.type("필기 기출 1회")
+    page.keyboard.press("Enter")
+    # 모든 목표 보기: 다른 목표가 있어도 오늘 마감이 묶음으로 보임
+    tab(page, "goals")
+    make_goal(page, title="토익 시험", days=30, mids=(), tasks=1)
+    pick(page, "모든 목표")
+    sec = page.locator(".goalsec", has_text="한식조리기능사")
+    assert sec.count() == 1 and sec.locator(".mrow").count() == 1, f"모든 목표 보기에서 오늘 마감 중간 목표가 빠짐: {page.inner_text('#view-today')[:400]}"
+    quiet(page, top=True)
+    shot("notask-today", store=False)
+    sec.locator(".mrow button", has_text="할 일 적기").click()
+    focused = page.evaluate("document.activeElement && document.activeElement.id")
+    assert focused == "add-" + s_today["id"], f"오늘 화면 '할 일 적기'가 그 단계 칸으로 안 감: {focused}"
+    page.keyboard.type("원서 사진 준비")
+    page.keyboard.press("Enter")
+    tab(page, "today")
+    assert rows(page).filter(has_text="원서 사진 준비").count() >= 1, "할 일을 적었는데 오늘 15분 칸이 안 생김"
+    mr = page.locator("#view-today .mrow")
+    assert mr.count() == 1 and mr.locator("button", has_text="할 일 적기").count() == 0, "할 일을 적었는데 '할 일 없음'이 남음"
+    # 끝냄 → 다음 단계 칸이 오늘부터 놓임(끝낸 단계가 다음 단계를 막지 않음)
+    mr.locator("button", has_text="끝냄").click()
+    assert page.locator("#view-today .mrow").count() == 0, "끝냄을 눌렀는데 오늘 마감 줄이 남음"
+    after = [s for s in saved(page)["goals"][0]["steps"] if s["id"] == s_today["id"]][0]
+    assert after.get("done"), "오늘 화면 끝냄이 저장되지 않음"
+    assert rows(page).filter(has_text="필기 기출 1회").count() >= 1, f"앞 단계를 끝냈는데 다음 단계 칸이 오늘 안 놓임: {rows(page).all_inner_texts()}"
+
+
+def flow_goals_without_tasks_are_not_hidden(page, shot):
+    """15분 할 일이 없는 목표는 모든 목표 보기에서 따로 알려 주고, 지금 단계에 할 일이 없으면 오늘 화면이 이유를 그대로 말함"""
+    fresh(page)
+    make_goal(page, title="한식요리자격증", days=30, mids=(("필기 공부", 10),), tasks=0)
+    tab(page, "goals")
+    make_goal(page, title="토익 시험", days=30, mids=(("단어장 1회독", 8),), tasks=1)
+    pick(page, "모든 목표")
+    box = page.locator("#view-today .notask")
+    assert box.count() == 1 and "한식요리자격증" in box.inner_text(), f"할 일 없는 목표를 따로 알려 주지 않음: {page.inner_text('#view-today')[:400]}"
+    rest = " ".join(page.locator("#view-today .rest").all_inner_texts())
+    assert "한식요리자격증" not in rest, f"할 일 없는 목표가 '오늘 할 일이 없는 목표'에도 섞임: {rest}"
+    st = saved(page)
+    s1 = [s for s in st["goals"][0]["steps"] if s["title"] == "필기 공부"][0]
+    box.locator("button", has_text="한식요리자격증").click()
+    focused = page.evaluate("document.activeElement && document.activeElement.id")
+    assert focused == "add-" + s1["id"], f"할 일 없는 목표 버튼이 지금 단계 할 일 칸으로 안 감: {focused}"
+    page.evaluate(f"""() => {{ const s = JSON.parse(localStorage.getItem('{KEY}')); const g = s.goals[1];
+        g.steps.find(x => x.title === '단어장 1회독').tasks = []; localStorage.setItem('{KEY}', JSON.stringify(s)); }}""")
+    page.reload()
+    ready(page)
+    pick(page, "토익 시험")
+    text = page.inner_text("#view-today")
+    assert "지금 단계 ‘단어장 1회독’에 15분 할 일이 없어요" in text, f"오늘 칸이 없는 이유를 말하지 않음: {text[:300]}"
+    assert "쉬는 날이거나" not in text, "할 일이 없어서 비는데 쉬는 날이라고 안내함"
+    page.locator("#view-today .card.empty button", has_text="15분 할 일 적기").click()
+    s2 = [s for s in saved(page)["goals"][1]["steps"] if s["title"] == "단어장 1회독"][0]
+    assert page.evaluate("document.activeElement && document.activeElement.id") == "add-" + s2["id"], "이유 카드의 할 일 적기가 그 단계 칸으로 안 감"
+
+
+def flow_wizard_typed_task_not_lost(page, shot):
+    """3단계에서 할 일을 적고 '할 일 추가'를 안 누른 채 '다음'을 눌러도 들어감 · 할 일이 없으면 4단계에서 알려 줌"""
+    fresh(page)
+    page.locator("button:visible", has_text=re.compile("목표 세우기")).first.click()
+    page.fill("#wzTitle", "한식 실기")
+    page.fill("#wzDeadline", kst(30))
+    page.click(".sheet-actions .btn.primary")
+    page.fill("#wzMid", "재료 손질 연습")
+    page.fill("#wzMidDate", kst(10))
+    page.click(".ask button")
+    page.click(".sheet-actions .btn.primary")
+    assert "할 일 없이" in page.inner_text(".sheet-actions .btn.primary"), "할 일이 없는데 '다음'만 보여 줌"
+    page.locator(".sheet .addtask").first.locator("input").fill("무 채썰기")
+    page.click(".sheet-actions .btn.primary")
+    assert "끝나요" in page.inner_text(".sum"), f"적어 둔 할 일이 4단계 요약에 안 들어감: {page.inner_text('.sum')}"
+    assert "에는 15분 칸이 생기지 않아요" not in page.inner_text("#panel"), "할 일이 있는데 할 일 없음 안내가 나옴"
+    page.click(".sheet-actions .btn:not(.primary)")   # 이전
+    page.locator(".sheet .card", has_text="무 채썰기").locator("button[aria-label$='빼기']").click()
+    page.click(".sheet-actions .btn.primary")
+    assert "할 일이 아직 없어요" in page.inner_text(".sum") and "생기지 않아요" in page.inner_text(".sum"), "할 일이 없을 때 4단계 안내가 없음"
+    page.click(".sheet-actions .btn:not(.primary)")
+    page.locator(".sheet .addtask").last.locator("input").fill("시험장 확인")
+    page.click(".sheet-actions .btn.primary")
+    assert "‘재료 손질 연습’" in page.inner_text("#panel"), "할 일이 없는 중간 목표를 4단계에서 알려 주지 않음"
+    page.click(".sheet-actions .btn.primary")   # 완료
+    page.wait_for_selector("#sheet[hidden]", state="attached", timeout=5000)
+    st = saved(page)["goals"][0]
+    fin = [s for s in st["steps"] if s.get("final")][0]
+    assert [k["title"] for k in fin["tasks"]] == ["시험장 확인"], f"적어 둔 할 일이 저장되지 않음: {fin['tasks']}"
+
+
 def flow_wizard_draft_survives_reload(page, shot):
     """Claude 앱에 다녀오는 사이 앱이 닫혀도 만들던 목표가 이어짐 · 그만둘 때는 확인(보류 7)"""
     ready(page)
