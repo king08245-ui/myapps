@@ -182,27 +182,135 @@ def flow_gps_near_me(page, shot):
     page.click("#nearBtn")
     assert "현재 위치" in page.inner_text("#resultTitle"), "내 근처 결과 제목이 없음"
     n = slips(page).count()
-    assert n > 0, "현재 위치 3km 안 가게가 없음(종로3가 기준)"
+    assert n > 0, "현재 위치 근처 가게가 없음(종로3가 기준)"
     d = km_values(page)
-    assert d and max(d) <= 3.05, f"3km 밖 가게가 섞임: {max(d) if d else None}"
-    # rough points must not sit inside the "1km 이내" bands
+    assert d and d == sorted(d), f"내 근처 목록이 가까운 순이 아님: {d[:8]}"
+    # rough points must not sit inside the close bands (500m·1km·3km) — their distance is only the neighbourhood's
     bad = page.evaluate("""() => { let g = '', bad = 0;
         for (const n of document.querySelectorAll('#results h2.group, #results article.slip')) {
           if (n.tagName === 'H2') { g = n.textContent; continue; }
           const t = n.querySelector('.dist')?.textContent || '';
-          if (/이내/.test(g) && /약|근처/.test(t)) bad++;
+          if (/(500m|1km|3km) 이내/.test(g) && /약|근처/.test(t)) bad++;
         } return bad; }""")
-    assert bad == 0, f"대략 위치 가게 {bad}곳이 거리 묶음(…이내)에 섞임"
+    assert bad == 0, f"대략 위치 가게 {bad}곳이 가까운 거리 묶음(…이내)에 섞임"
     to_results(page)
     shot("near-me")
     # near-me list follows channel switches
     n0 = page.locator("#resultNote").inner_text()
     page.locator("#channels button").first.click()
     assert page.locator("#resultNote").inner_text() != n0, "내 근처 목록이 채널 끄기를 따르지 않음"
-    assert "현재 위치 3km 안" in page.inner_text("#resultTitle"), "채널을 끄자 내 근처 목록이 사라짐"
+    assert "현재 위치 근처 전체" in page.inner_text("#resultTitle"), "채널을 끄자 내 근처 목록이 사라짐"
+    page.locator("#channels button").first.click()
     # picking a preset while looking at near-me updates the list and its title
     page.locator("#herePresets button", has_text="서울역").click()
-    assert page.inner_text("#resultTitle") == "서울역 3km 안", f"위치를 바꿔도 제목이 그대로: {page.inner_text('#resultTitle')}"
+    assert page.inner_text("#resultTitle") == "서울역 근처 전체", f"위치를 바꿔도 제목이 그대로: {page.inner_text('#resultTitle')}"
+
+
+def flow_near_me_has_no_distance_limit(page, shot):
+    """'내 근처 전체 보기'는 3km 제한 없이 위치를 아는 가게 전부를 가까운 순으로(대략 위치 가게도 거리 순서에 맞게)"""
+    ready(page)
+    page.locator("#herePresets button", has_text="공덕역").click()
+    page.click("#nearBtn")
+    note = page.inner_text("#resultNote")
+    total = count(page)
+    assert total >= 1000 and "거리 제한 없음" in note, f"거리 제한 없이 전부 나오지 않음: {note}"
+    groups = page.locator("#results h2.group").all_inner_texts()
+    all_names(page)
+    groups = page.locator("#results h2.group").all_inner_texts()
+    labels = [g.split(" · ")[0] for g in groups]
+    order = ["500m 이내", "1km 이내", "3km 이내", "대략 위치", "10km 이내", "50km 이내", "50km 밖"]
+    idx = [next(i for i, o in enumerate(order) if o in lab) for lab in labels]
+    assert idx == sorted(idx) and len(set(labels)) == len(labels), f"거리 묶음 순서가 뒤섞임: {labels}"
+    assert any("50km 밖" in lab for lab in labels), f"50km 밖 가게(부산·제주 등)가 안 나옴: {labels}"
+    assert slips(page).count() == total, f"'더 보기'를 다 열었는데 개수가 다름: {slips(page).count()} / {total}"
+    d = km_values(page)
+    assert max(d) > 100, f"멀리 있는 가게가 안 나옴(최대 {max(d)}km)"
+    # 지도로 보기: 처음엔 가까운 곳을 비추고, '전체'를 누르면 먼 가게까지 보임
+    page.click("#viewBtn")
+    page.wait_for_selector(".mapwrap svg circle.pin", timeout=8000)
+    near_pins = page.locator(".mapwrap svg circle.pin").count()
+    page.click(".mapctl button.wide")
+    page.wait_for_timeout(200)
+    all_pins = page.locator(".mapwrap svg circle.pin").count()
+    assert all_pins > near_pins and all_pins >= 1000, f"지도 '전체'에 먼 가게가 안 나옴: 처음 {near_pins} → 전체 {all_pins}"
+
+
+def gu_label_boxes(page):
+    return page.evaluate("""() => { const s = document.querySelector('.mapwrap svg').getBoundingClientRect();
+        const box = e => { const r = e.getBoundingClientRect(); return {t: e.textContent, l: r.left - s.left, r: r.right - s.left, top: r.top - s.top, b: r.bottom - s.top}; };
+        return {w: s.width, h: s.height, gu: [...document.querySelectorAll('.mapwrap svg .gulabel')].map(box),
+                stn: [...document.querySelectorAll('.mapwrap svg .stnlabel')].map(box)}; }""")
+
+
+def overlaps(a, b):
+    return a["l"] < b["r"] - 1 and b["l"] < a["r"] - 1 and a["top"] < b["b"] - 1 and b["top"] < a["b"] - 1
+
+
+def flow_map_shows_gu_names(page, shot):
+    """지도에 서울 구 경계와 이름: 이웃한 구는 다른 바탕색, 서울을 볼 때 구 이름이 여럿, 확대해도 보이는 구의 이름이 화면 안에(역 이름과 안 겹침)"""
+    ready(page)
+    page.locator("#herePresets button", has_text="공덕역").click()
+    page.click("#nearBtn")
+    page.click("#viewBtn")
+    page.wait_for_selector(".mapwrap svg .gulabel", timeout=8000)
+    tint = page.evaluate("Object.fromEntries([...document.querySelectorAll('.mapwrap svg path.gu')].map(p => [p.dataset.n, p.getAttribute('class')]))")
+    assert len(tint) == 25, f"서울 구 경계가 25개가 아님: {len(tint)}"
+    for a, b in (("마포구", "용산구"), ("마포구", "서대문구"), ("용산구", "중구"), ("중구", "종로구"), ("강남구", "서초구"), ("마포구", "영등포구")):
+        assert tint[a] != tint[b], f"맞닿은 {a}·{b}가 같은 바탕색: {tint[a]}"
+    g = gu_label_boxes(page)
+    names = [x["t"] for x in g["gu"]]
+    assert "마포구" in names and "용산구" in names and len(names) >= 10, f"서울 지도에 구 이름이 모자람: {names}"
+    page.evaluate("document.querySelector('.mapwrap').scrollIntoView({block: 'center'})")
+    page.wait_for_timeout(200)
+    shot("map-gu-seoul", store=False)
+    for term, expect in (("종로3가", ("종로구", "중구")), ("공덕역", ("마포구",))):
+        area(page, term)
+        page.wait_for_selector(".mapwrap svg circle.pin", timeout=8000)
+        g = gu_label_boxes(page)
+        names = [x["t"] for x in g["gu"]]
+        assert any(e in names for e in expect), f"{term} 근처를 확대한 지도에 구 이름이 없음: {names}"
+        for x in g["gu"]:
+            assert x["l"] >= -1 and x["top"] >= -1 and x["r"] <= g["w"] + 1 and x["b"] <= g["h"] + 1, f"구 이름이 지도 밖으로 잘림: {x}"
+        bad = [(a["t"], b["t"]) for i, a in enumerate(g["gu"]) for b in g["gu"][i + 1:] + g["stn"] if overlaps(a, b)]
+        assert not bad, f"구 이름이 다른 이름과 겹침: {bad}"
+    page.click(".mapctl button[aria-label='확대']")
+    page.click(".mapctl button[aria-label='확대']")
+    g = gu_label_boxes(page)
+    assert g["gu"], "많이 확대하자 구 이름이 모두 사라짐"
+    page.evaluate("document.querySelector('.mapwrap').scrollIntoView({block: 'center'})")
+    page.wait_for_timeout(200)
+    shot("map-gu-zoom", store=False)
+
+
+def flow_map_pin_shows_name(page, shot):
+    """지도에서 점을 누르면 그 가게 이름이 지도 위 말풍선으로 뜨고, 빈 곳을 누르면 사라짐"""
+    ready(page)
+    page.get_by_role("button", name="종로3가", exact=True).click()
+    page.click("#viewBtn")
+    page.wait_for_selector(".mapwrap svg circle.pin", timeout=8000)
+    assert page.locator(".mapwrap svg .sellabel").count() == 0, "아무것도 안 골랐는데 이름표가 있음"
+    for pick in ("first", "last"):
+        pin = getattr(page.locator(".mapwrap svg circle.pin"), pick)
+        name = pin.locator("title").text_content()
+        pin.dispatch_event("click")
+        page.wait_for_selector(".mapwrap + div article.slip", timeout=4000)
+        lab = page.locator(".mapwrap svg .sellabel text")
+        assert lab.count() == 1, "점을 눌렀는데 지도에 가게 이름이 안 뜸"
+        shown = lab.text_content()
+        assert shown == name or (shown.endswith("…") and name.startswith(shown[:-1])), f"지도 이름표가 고른 가게와 다름: {shown} / {name}"
+        card = page.locator(".mapwrap + div article.slip h3").evaluate("h => h.firstChild.textContent")
+        assert card == name, f"아래 카드가 고른 가게와 다름: {card} / {name}"
+        box = page.evaluate("""() => { const s = document.querySelector('.mapwrap svg').getBoundingClientRect(),
+            r = document.querySelector('.mapwrap svg .sellabel rect').getBoundingClientRect();
+            return [r.left - s.left, s.right - r.right, r.top - s.top, s.bottom - r.bottom]; }""")
+        assert min(box) >= -1, f"이름표가 지도 밖으로 잘림: {box}"
+    page.evaluate("document.querySelector('.mapwrap').scrollIntoView({block: 'center'})")
+    page.wait_for_timeout(200)
+    shot("map-name", store=False)
+    page.click(".mapctl button[aria-label='확대']")
+    assert page.locator(".mapwrap svg .sellabel").count() == 1, "확대하자 이름표가 사라짐"
+    page.locator(".mapwrap svg").click(position={"x": 30, "y": 30})
+    assert page.locator(".mapwrap svg .sellabel").count() == 0, "빈 곳을 눌렀는데 이름표가 남음"
 
 
 def flow_stale_gps_label(page, shot):
@@ -309,7 +417,8 @@ def flow_fixed_coordinates(page, shot):
     page.click("#nearBtn")
     all_names(page)
     cs = {c["n"]: c for c in cards(page)}
-    assert "골목길" not in cs, "황학동 가게(골목길)가 서울역 근처로 나옴(틀린 좌표)"
+    k = km_of(cs.get("골목길", {}).get("d", "")) if "골목길" in cs else None
+    assert k is None or k > 3.5, f"황학동 가게(골목길)가 서울역 가까이 나옴(틀린 좌표): {k}km"
     k = km_of(cs.get("무교동북어국집", {}).get("d", ""))
     assert k and 1.5 <= k <= 1.9, f"무교동북어국집 거리가 주소와 다름(서울역에서 약 1.7km여야 함): {k}"
     area(page, "종로3가")

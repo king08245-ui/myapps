@@ -24,6 +24,7 @@
   --bg:#F3F4F1; --paper:#FFFFFF; --ink:#1C1F1D; --muted:#5F6661; --line:#DADDD7;
   --accent:#C8361C; --accent-ink:#FFFFFF; --soft:#F8E6E1;
   --c1:#C8361C; --c2:#2F6F9F; --c3:#2E7D4F; --c4:#8A5A00; --water:#A9CFEA; --waterink:#3F77A1;
+  --gu0:#F1F2EE; --gu1:#E8EDE5; --gu2:#F3EEE4; --gu3:#E6EBEF; --gu-line:#9EA59F; --gu-ink:#454C47;
   --f-display:"Black Han Sans","IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
   --f-body:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
   --r:10px;
@@ -33,11 +34,13 @@
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#151716; --paper:#1E2120; --ink:#ECEEEA; --muted:#A3AAA5; --line:#323633;
   --accent:#F0644A; --accent-ink:#1A0D09; --soft:#3A1F19;
-  --c1:#F0644A; --c2:#6FA8D6; --c3:#6FCB94; --c4:#E2B54A; --water:#24496A; --waterink:#7FB2DA; color-scheme:dark}}
+  --c1:#F0644A; --c2:#6FA8D6; --c3:#6FCB94; --c4:#E2B54A; --water:#24496A; --waterink:#7FB2DA;
+  --gu0:#181B19; --gu1:#1C221E; --gu2:#221F19; --gu3:#1A1F23; --gu-line:#59615B; --gu-ink:#BEC5C0; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#151716; --paper:#1E2120; --ink:#ECEEEA; --muted:#A3AAA5; --line:#323633;
   --accent:#F0644A; --accent-ink:#1A0D09; --soft:#3A1F19;
-  --c1:#F0644A; --c2:#6FA8D6; --c3:#6FCB94; --c4:#E2B54A; --water:#24496A; --waterink:#7FB2DA; color-scheme:dark}
+  --c1:#F0644A; --c2:#6FA8D6; --c3:#6FCB94; --c4:#E2B54A; --water:#24496A; --waterink:#7FB2DA;
+  --gu0:#181B19; --gu1:#1C221E; --gu2:#221F19; --gu3:#1A1F23; --gu-line:#59615B; --gu-ink:#BEC5C0; color-scheme:dark}
 *{box-sizing:border-box}
 html,body{margin:0}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.55;padding-inline:16px;padding-block:20px 48px;
@@ -105,12 +108,16 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
 .maplegend span{display:inline-flex;align-items:center;gap:4px}
 .maplegend i{width:9px;height:9px;border-radius:50%;display:inline-block}
 .mapnote{font-size:12px;color:var(--muted);margin:6px 0 0}
-.gu{fill:var(--bg);stroke:var(--line);stroke-width:1}
+.gu{fill:var(--gu0);stroke:var(--gu-line);stroke-width:1.3;stroke-linejoin:round}
+.gu.t1{fill:var(--gu1)}.gu.t2{fill:var(--gu2)}.gu.t3{fill:var(--gu3)}
 .prov{fill:var(--bg);stroke:var(--line);stroke-width:1}
-.gulabel{fill:var(--muted);font-family:var(--f-body);font-weight:500;text-anchor:middle;pointer-events:none}
+.gulabel{fill:var(--gu-ink);font-family:var(--f-body);font-weight:700;text-anchor:middle;letter-spacing:.02em;pointer-events:none;paint-order:stroke;stroke:var(--paper);stroke-linejoin:round;stroke-opacity:.85}
 .pin{stroke:var(--paper);stroke-width:1.5;cursor:pointer}
 .pin.rough{fill-opacity:.35;stroke-dasharray:2 2}
 .pin.sel{stroke:var(--ink);stroke-width:3}
+.sellabel{pointer-events:none}
+.sellabel rect,.sellabel path{fill:var(--ink)}
+.sellabel text{fill:var(--paper);font-family:var(--f-body);font-weight:700}
 .me{fill:var(--ink);stroke:var(--paper);stroke-width:2}
 .ctr{fill:var(--accent);stroke:var(--paper);stroke-width:2}
 .melabel{fill:var(--ink);font-family:var(--f-body);font-weight:700;text-anchor:middle;pointer-events:none;paint-order:stroke;stroke:var(--paper);stroke-linejoin:round}
@@ -283,6 +290,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
   function km(p) { return state.origin && p.g ? dist(state.origin.lat, state.origin.lng, p.g[0], p.g[1]) : Infinity; }
   const fmtKm = d => d < 1 ? Math.round(d * 1000 / 10) * 10 + "m" : (d < 10 ? d.toFixed(1) : Math.round(d)) + "km";
   function band(d) { return d <= 0.5 ? "500m 이내" : d <= 1 ? "1km 이내" : d <= 3 ? "3km 이내" : d <= 10 ? "10km 이내" : d <= 50 ? "50km 이내" : "50km 밖"; }
+  const bandIdx = d => d <= 0.5 ? 0 : d <= 1 ? 1 : d <= 3 ? 2 : d <= 10 ? 3 : d <= 50 ? 4 : 5;
 
   function roughPoint(p, v) {
     // address first (most reliable), then the shop's area note, then the video title; the 4th item is the area name found
@@ -407,9 +415,10 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
   function nearby(scroll = true) {
     if (!state.db || !state.origin) return;
     state.cur = { type: "near" }; state.shown = 40;
-    const rows = state.db.shops.filter(p => !state.off.has(p.c) && km(p) <= 3);
-    $("resultTitle").textContent = `${state.origin.name} 3km 안`;
-    renderResults(state.origin.name, rows, "", null);
+    // 거리 제한 없이: 위치를 아는 가게 전부를 가까운 순으로(목록은 40곳씩 '더 보기', 지도는 처음에 가까운 곳을 비춤)
+    const rows = state.db.shops.filter(p => !state.off.has(p.c) && p.g);
+    $("resultTitle").textContent = `${state.origin.name} 근처 전체`;
+    renderResults(state.origin.name, rows, "거리 제한 없음", null);
     if (scroll) scrollToResults();
   }
   function rerun() {   // channel switched: run the same search (or near-me list) again
@@ -559,7 +568,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
     const ch = state.db.channels, offN = ch.filter(c => state.off.has(c.name)).length;
     if (offN === ch.length) return "채널이 모두 꺼져 있어요. 위의 채널 버튼을 눌러 켜 주세요.";
     const offNote = offN ? " (꺼 둔 채널은 빼고 찾았어요)" : "";
-    if (state.cur?.type === "near") return `${state.origin?.name || "이 위치"} 3km 안에서 소개된 가게가 없어요. 다른 역을 고르거나 위에서 동네 이름으로 찾아보세요.` + offNote;
+    if (state.cur?.type === "near") return `${state.origin?.name || "이 위치"} 근처에 보여 줄 가게가 없어요. 위에서 동네 이름이나 메뉴로 찾아보세요.` + offNote;
     if (state.mode === "area" && state.pending) return `${term} 위치를 찾는 중이에요…`;
     if (state.mode === "area" && state.cur?.offline) return `인터넷이 연결되지 않아 ${term} 위치를 찾지 못했어요. 인터넷이 없을 때는 지하철역 이름(예: 을지로4가)이나 구 이름(예: 중구)으로 찾을 수 있어요.` + offNote;
     return (state.mode === "area"
@@ -574,7 +583,10 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
     const ref = center || state.origin, cname = ref ? ref.name : "";
     const list = rows.slice();   // one entry per shop already (see buildShops)
     list.forEach(p => { p.km = ref && p.g ? dist(ref.lat, ref.lng, p.g[0], p.g[1]) : Infinity; });
-    if (ref) list.sort((a, b) => (a.rough - b.rough) || (a.km - b.km));   // shops with an address point first, then rough ones
+    // 거리 묶음 순서대로. 대략 위치(동네 이름으로 찍은 점)는 3km 안에서는 거리를 믿기 어려워 3km 묶음 뒤 '대략 위치'로 따로,
+    // 그보다 멀면 거리 묶음에 함께 넣는다(거리 제한이 없을 때 가까운 대략 위치 가게가 전국 가게 뒤로 밀리지 않게)
+    const rank = p => p.km === Infinity ? 9 : p.rough && p.km <= 3 ? 2.5 : bandIdx(p.km);
+    if (ref) list.sort((a, b) => (rank(a) - rank(b)) || (a.km - b.km));
     else list.sort((a, b) => b.d.localeCompare(a.d));                     // newest video first
     $("resultNote").textContent = `${list.length}곳` + (note ? " · " + note : "") + (ref ? ` · ${cname}에서 가까운 순` : "");
     if (!hintBusy) hint(hereHint());
@@ -591,7 +603,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
     if (!list.length) { box.append(el("div", { class: "empty" }, emptyText(term))); return; }
     const groups = new Map();
     for (const p of list.slice(0, state.shown)) {
-      const g = ref ? (p.km === Infinity ? "위치 정보 없음" : p.rough ? "대략 위치 (동네 기준)" : `${cname}에서 ${band(p.km)}`)
+      const g = ref ? (p.km === Infinity ? "위치 정보 없음" : p.rough && p.km <= 3 ? "대략 위치 (동네 기준)" : `${cname}에서 ${band(p.km)}`)
         : state.mode === "area" ? p.c : (gu(p.a) || p.ar || "지역 정보 없음");
       if (!groups.has(g)) groups.set(g, []); groups.get(g).push(p);
     }
@@ -610,9 +622,67 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
     if (bounds) return bounds;
     try {
       const [seoul, korea] = await Promise.all([fetch("map_seoul.json").then(r => r.json()), fetch("map_korea.json").then(r => r.json())]);
-      bounds = { seoul, korea };
-    } catch { bounds = { seoul: [], korea: [] }; }
+      bounds = { seoul, korea, tint: guTints(seoul) };
+    } catch { bounds = { seoul: [], korea: [], tint: [] }; }
     return bounds;
+  }
+  // ---------- 서울 구: 이웃한 구끼리 다른 바탕색, 이름은 보이는 부분 안쪽에 ----------
+  const outerRings = g => g.type === "Polygon" ? [g.coordinates[0]] : g.coordinates.map(p => p[0]);
+  function guTints(seoul) {   // 경계 점을 함께 쓰는 구끼리는 다른 색(4가지)
+    const key = p => p[0].toFixed(4) + "," + p[1].toFixed(4);
+    const sets = seoul.map(f => new Set(outerRings(f.g).flat().map(key)));
+    const nb = sets.map((s, i) => sets.map((t, j) => { if (i === j) return -1; let c = 0; for (const k of s) if (t.has(k) && ++c >= 2) return j; return -1; }).filter(j => j >= 0));
+    const out = [];
+    for (const i of seoul.map((_, i) => i).sort((a, b) => nb[b].length - nb[a].length)) {
+      const used = new Set(nb[i].map(j => out[j])); let c = 0; while (used.has(c)) c++; out[i] = c % 4;
+    }
+    return out;
+  }
+  const polyArea = r => { let s = 0; for (let i = 0, j = r.length - 1; i < r.length; j = i++) s += (r[j][0] - r[i][0]) * (r[j][1] + r[i][1]); return s / 2; };
+  function clipRect(ring, x0, y0, x1, y1) {   // 다각형을 화면 네모로 자름(Sutherland–Hodgman)
+    const cuts = [[p => p[0] >= x0, (a, b) => [x0, a[1] + (x0 - a[0]) / (b[0] - a[0]) * (b[1] - a[1])]],
+      [p => p[0] <= x1, (a, b) => [x1, a[1] + (x1 - a[0]) / (b[0] - a[0]) * (b[1] - a[1])]],
+      [p => p[1] >= y0, (a, b) => [a[0] + (y0 - a[1]) / (b[1] - a[1]) * (b[0] - a[0]), y0]],
+      [p => p[1] <= y1, (a, b) => [a[0] + (y1 - a[1]) / (b[1] - a[1]) * (b[0] - a[0]), y1]]];
+    let out = ring;
+    for (const [inside, cut] of cuts) {
+      const src = out; out = [];
+      for (let i = 0; i < src.length; i++) {
+        const a = src[(i + src.length - 1) % src.length], b = src[i];
+        if (inside(b)) { if (!inside(a)) out.push(cut(a, b)); out.push(b); } else if (inside(a)) out.push(cut(a, b));
+      }
+      if (!out.length) break;
+    }
+    return out;
+  }
+  function edgeDist(x, y, ring) {   // 경계까지 거리(안쪽 +, 바깥 −)
+    let inside = false, m = Infinity;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const [ax, ay] = ring[i], [bx, by] = ring[j];
+      if ((ay > y) !== (by > y) && x < (bx - ax) * (y - ay) / (by - ay) + ax) inside = !inside;
+      const dx = bx - ax, dy = by - ay; let t = dx || dy ? ((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy) : 0;
+      t = t < 0 ? 0 : t > 1 ? 1 : t;
+      const ex = ax + t * dx - x, ey = ay + t * dy - y; m = Math.min(m, ex * ex + ey * ey);
+    }
+    return (inside ? 1 : -1) * Math.sqrt(m);
+  }
+  function polylabel(ring, prec) {   // 경계에서 가장 먼 안쪽 점 — 모양이 굽은 구도 이름이 구 안에 놓이게
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const [x, y] of ring) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
+    const size = Math.min(x1 - x0, y1 - y0), cell = (x, y, h) => { const d = edgeDist(x, y, ring); return { x, y, h, d, max: d + h * Math.SQRT2 }; };
+    let best = cell((x0 + x1) / 2, (y0 + y1) / 2, 0);
+    if (!(size > 0)) return best;
+    const q = [];
+    for (let x = x0; x < x1; x += size) for (let y = y0; y < y1; y += size) q.push(cell(x + size / 2, y + size / 2, size / 2));
+    for (let n = 0; q.length && n < 800; n++) {
+      let m = 0; for (let i = 1; i < q.length; i++) if (q[i].max > q[m].max) m = i;
+      const c = q[m]; q[m] = q[q.length - 1]; q.pop();
+      if (c.d > best.d) best = c;
+      if (c.max - best.d <= prec) break;
+      const h = c.h / 2;
+      q.push(cell(c.x - h, c.y - h, h), cell(c.x + h, c.y - h, h), cell(c.x - h, c.y + h, h), cell(c.x + h, c.y + h, h));
+    }
+    return best;
   }
   function jitter(p) { // spread shops that only have an approximate point so they don't stack
     let h = 0; for (const ch of p.n) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
@@ -652,10 +722,68 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
         el("small", {}, fromMe ? `${o.name}에서 출발 · ${near.length}곳` : `가까운 ${near.length}곳`)));
     }
     box.append(wrap, card, el("p", { class: "mapnote" },
-      `점을 누르면 가게 정보가 아래에 떠요. 흐린 점은 대략 위치예요.` + (state.lastCenter ? " 마름모(◆)는 찾은 곳이에요." : "")
+      `점을 누르면 지도에 가게 이름이, 아래에 가게 정보가 떠요. 흐린 점은 대략 위치예요.` + (state.lastCenter ? " 마름모(◆)는 찾은 곳이에요." : "")
       + (missing ? ` 위치 정보가 없는 ${missing}곳은 지도에서 빠졌어요.` : "")));
 
     B = await loadBounds();
+    // 구마다 지도 좌표의 경계·넓이·이름 자리(경계에서 가장 먼 안쪽 점)를 한 번만 계산
+    const GU = B.seoul.map((f, i) => {
+      const ring = outerRings(f.g).map(r => r.map(([lng, lat]) => [X(lng), Y(lat)])).reduce((a, b) => Math.abs(polyArea(b)) > Math.abs(polyArea(a)) ? b : a);
+      const xs = ring.map(p => p[0]), ys = ring.map(p => p[1]);
+      const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+      return { n: f.n, tint: B.tint[i] || 0, ring, x0, x1, y0, y1, area: Math.abs(polyArea(ring)), lp: polylabel(ring, Math.max(x1 - x0, y1 - y0) / 80) };
+    });
+    // 구 이름: 그 구의 가운데가 화면 안이면 거기에, 확대해서 화면 밖이면 화면에 보이는 부분 안쪽에.
+    // 역·내 위치·한강 글자(blocked)나 다른 구 이름과 겹치면 그 구 안의 다른 자리로, 넓게 보이는 구 먼저
+    function guLabels(u, blocked, pinXY) {
+      const [vx, vy, vw, vh] = vb, fs = 12.5 * u, pad = 4 * u, cand = [], placed = blocked.slice();
+      // 점이 몇 개 깔리는지 빨리 세려고 점을 칸(글자 높이 크기)에 나눠 둠
+      const cs = fs * 1.35, grid = new Map();
+      for (const [x, y] of pinXY) { const k = Math.floor(x / cs) + "," + Math.floor(y / cs); grid.set(k, (grid.get(k) || 0) + 1); }
+      const pinsUnder = (p, w, h) => {
+        let n = 0; const r = 6.5 * u;
+        for (let i = Math.floor((p.x - w / 2 - r) / cs); i <= Math.floor((p.x + w / 2 + r) / cs); i++)
+          for (let j = Math.floor((p.y - h / 2 - r) / cs); j <= Math.floor((p.y + h / 2 + r) / cs); j++) n += grid.get(i + "," + j) || 0;
+        return n;
+      };
+      for (const d of GU) {
+        if (d.x1 < vx || d.x0 > vx + vw || d.y1 < vy || d.y0 > vy + vh) continue;
+        const w = d.n.length * fs + 6 * u, h = fs * 1.35, need = h * 0.45;
+        const X0 = vx + pad + w / 2, Y0 = vy + pad + h / 2, X1 = vx + vw - pad - w / 2, Y1 = vy + vh - pad - h / 2;
+        if (X1 <= X0 || Y1 <= Y0) continue;
+        const inV = p => p.x > X0 && p.x < X1 && p.y > Y0 && p.y < Y1;
+        let poly = d.ring, a = d.area;
+        const pts = [];
+        if (inV(d.lp)) pts.push(d.lp);
+        else {
+          poly = clipRect(d.ring, X0, Y0, X1, Y1);
+          if (poly.length < 3) continue;
+          a = Math.abs(polyArea(poly));
+          pts.push(polylabel(poly, Math.max(vw, vh) / 60));
+        }
+        let b0 = Infinity, c0 = Infinity, b1 = -Infinity, c1 = -Infinity;
+        for (const [x, y] of poly) { b0 = Math.min(b0, x); c0 = Math.min(c0, y); b1 = Math.max(b1, x); c1 = Math.max(c1, y); }
+        b0 = Math.max(b0, X0); c0 = Math.max(c0, Y0); b1 = Math.min(b1, X1); c1 = Math.min(c1, Y1);
+        const alt = [];
+        for (let i = 1; i < 6; i++) for (let j = 1; j < 6; j++) {
+          const x = b0 + (b1 - b0) * i / 6, y = c0 + (c1 - c0) * j / 6, dd = edgeDist(x, y, poly);
+          if (dd >= need) alt.push({ x, y, d: dd });
+        }
+        const ok = pts.filter(p => p.d >= need && inV(p)).concat(alt.sort((p, q) => q.d - p.d));
+        ok.forEach((p, i) => { p.cost = pinsUnder(p, w, h) + i * 0.01; });   // 점이 적은 자리 먼저, 같으면 가운데에 가까운 자리
+        ok.sort((p, q) => p.cost - q.cost);
+        if (ok.length) cand.push({ n: d.n, pts: ok, w, h, a });   // 이름이 들어갈 만큼 보이지 않으면 뺌
+      }
+      cand.sort((p, q) => q.a - p.a);
+      for (const c of cand) {
+        const hit = p => placed.some(b => Math.abs(b.x - p.x) < (b.w + c.w) / 2 && Math.abs(b.y - p.y) < (b.h + c.h) / 2);
+        const p = c.pts.find(q => !hit(q));
+        if (!p) continue;
+        placed.push({ x: p.x, y: p.y, w: c.w, h: c.h });
+        const t = svgEl("text", { x: p.x, y: p.y, class: "gulabel", "font-size": fs, "stroke-width": 3 * u, "dominant-baseline": "central" });
+        t.textContent = c.n; svg.append(t);
+      }
+    }
     function fit(list2) {
       let cand = list2;
       // start close to the focus: if there are shops within 15km, frame those (far-away ones stay reachable with "전체")
@@ -685,18 +813,21 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
       const u = vb[2] / Math.max(svg.clientWidth, 300); // one screen pixel in map units
       const gBase = svgEl("g");
       if (vb[2] > 60) B.korea.forEach(f => gBase.append(svgEl("path", { d: path(f.g), class: "prov", "vector-effect": "non-scaling-stroke" })));
-      B.seoul.forEach(f => gBase.append(svgEl("path", { d: path(f.g), class: "gu", "vector-effect": "non-scaling-stroke" })));
-      if (vb[2] < 40) B.seoul.forEach(f => {
-        const ring = (f.g.type === "Polygon" ? f.g.coordinates[0] : f.g.coordinates[0][0]);
-        const cx = ring.reduce((s, c) => s + c[0], 0) / ring.length, cy = ring.reduce((s, c) => s + c[1], 0) / ring.length;
-        const t = svgEl("text", { x: X(cx), y: Y(cy), class: "gulabel", "font-size": 11 * u }); t.textContent = f.n; gBase.append(t);
-      });
+      GU.forEach((d, i) => gBase.append(svgEl("path", { d: path(B.seoul[i].g), class: "gu t" + d.tint, "data-n": d.n, "vector-effect": "non-scaling-stroke" })));
       svg.append(gBase);
       const hanD = "M" + HAN.map(([lng, lat]) => X(lng).toFixed(3) + "," + Y(lat).toFixed(3)).join("L");
       svg.append(svgEl("path", { d: hanD, class: "han", "stroke-width": Math.max(0.85, 5 * u) }));
-      if (vb[2] < 40) { const t = svgEl("text", { x: X(126.93), y: Y(37.533) + 4 * u, class: "hanlabel", "font-size": 12 * u, transform: `rotate(-20 ${X(126.93)} ${Y(37.533)})` }); t.textContent = "한강"; svg.append(t); }
-      if (vb[2] < 18) (vb[2] < 7 ? STATIONS.concat(STATIONS2) : STATIONS).forEach(([n, la, lo]) => {
-        if ([state.origin, state.lastCenter].some(o => o && Math.abs(la - o.lat) < 0.003 && Math.abs(lo - o.lng) < 0.004)) return; // labelled already
+      // 구 이름이 피해 갈 자리: 한강 글자, 역 이름, 내 위치·찾은 곳 이름
+      const blocked = [];
+      if (vb[2] < 40) {
+        const t = svgEl("text", { x: X(126.93), y: Y(37.533) + 4 * u, class: "hanlabel", "font-size": 12 * u, transform: `rotate(-20 ${X(126.93)} ${Y(37.533)})` }); t.textContent = "한강"; svg.append(t);
+        blocked.push({ x: X(126.93) + 12 * u, y: Y(37.533), w: 56 * u, h: 26 * u });
+      }
+      const stns = vb[2] < 18 ? (vb[2] < 7 ? STATIONS.concat(STATIONS2) : STATIONS)
+        .filter(([, la, lo]) => ![state.origin, state.lastCenter].some(o => o && Math.abs(la - o.lat) < 0.003 && Math.abs(lo - o.lng) < 0.004)) : [];   // labelled already
+      for (const [n, la, lo] of stns) { const tw = (n.endsWith("역") ? n.length : n.length + 1) * 11 * u; blocked.push({ x: X(lo) + 2 * u + tw / 2, y: Y(la), w: tw + 12 * u, h: 16 * u }); }
+      for (const o of [state.origin, state.lastCenter]) if (o) blocked.push({ x: X(o.lng), y: Y(o.lat) - 7 * u, w: o.name.length * 12 * u + 10 * u, h: 30 * u });
+      stns.forEach(([n, la, lo]) => {
         svg.append(svgEl("rect", { x: X(lo) - 3.5 * u, y: Y(la) - 3.5 * u, width: 7 * u, height: 7 * u, rx: 1.5 * u, class: "stn", "vector-effect": "non-scaling-stroke" }));
         const t = svgEl("text", { x: X(lo) + 6 * u, y: Y(la) + 4 * u, class: "stnlabel", "font-size": 11 * u, "stroke-width": 3 * u }); t.textContent = n.endsWith("역") ? n : n + "역"; svg.append(t);
       });
@@ -709,15 +840,23 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
           if (rr / u < 34) return;          // too small to label without covering the place name
           // lower right of the ring: the zoom buttons sit top right and the legend bottom left
           const t = svgEl("text", { x: ox + rr * 0.72, y: oy + rr * 0.72 + 10 * u, class: "ringlabel", "font-size": 11 * u, "stroke-width": 3 * u }); t.textContent = d + "km"; svg.append(t);
+          blocked.push({ x: ox + rr * 0.72 + 14 * u, y: oy + rr * 0.72 + 6 * u, w: 36 * u, h: 16 * u });
         });
       }
-      const order = pts.slice().sort((a, b) => (a.p === state.sel) - (b.p === state.sel));
+      // 화면 밖 점은 그리지 않는다(거리 제한 없이 전국 가게를 띄워도 끌기·확대가 버벅이지 않게)
+      const [vx, vy, vw, vh] = vb, mg = 12 * u;
+      const inView = q => { const x = X(q.lng), y = Y(q.lat); return x >= vx - mg && x <= vx + vw + mg && y >= vy - mg && y <= vy + vh + mg; };
+      const order = pts.filter(q => q.p === state.sel || inView(q)).sort((a, b) => (a.p === state.sel) - (b.p === state.sel));
       for (const q of order) {
         const c = svgEl("circle", { cx: X(q.lng), cy: Y(q.lat), r: (q.p === state.sel ? 9 : 6.5) * u, fill: chColor(q.p.c), class: "pin" + (q.rough ? " rough" : "") + (q.p === state.sel ? " sel" : ""), "vector-effect": "non-scaling-stroke" });
         const tt = svgEl("title"); tt.textContent = q.p.n; c.append(tt);
         c.addEventListener("click", e => { e.stopPropagation(); state.sel = q.p; draw(); showCard(q.p, true); });
         svg.append(c);
       }
+      // 구 이름은 점 위에(점은 그대로 눌림), 점이 적은 자리를 골라서. 고른 가게 말풍선 자리는 비워 둔다
+      const sp = state.sel && pts.find(q => q.p === state.sel);
+      if (sp) blocked.push({ x: X(sp.lng), y: Y(sp.lat), w: Math.min(sp.p.n.length, 16) * 13.5 * u + 24 * u, h: 84 * u });
+      if (vb[2] < 40) guLabels(u, blocked, order.map(q => [X(q.lng), Y(q.lat)]));
       const c0 = state.lastCenter, o0 = state.origin;
       if (c0 && !(o0 && Math.abs(c0.lat - o0.lat) < 0.001 && Math.abs(c0.lng - o0.lng) < 0.0012)) {   // the place searched for
         const cx = X(c0.lng), cy = Y(c0.lat);
@@ -729,6 +868,26 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
         svg.append(svgEl("circle", { cx: ox, cy: oy, r: 7 * u, class: "me", "vector-effect": "non-scaling-stroke" }));
         const t = svgEl("text", { x: ox, y: oy - 12 * u, class: "melabel", "font-size": 12 * u, "stroke-width": 3 * u }); t.textContent = o0.name; svg.append(t);
       }
+      const sq = state.sel && pts.find(q => q.p === state.sel);
+      if (sq) selLabel(sq, u);
+    }
+    // 고른 점 위에 가게 이름 말풍선(맨 위에 그림). 지도 위쪽 끝이면 점 아래에, 좌우 끝이면 말풍선을 안쪽으로 민다
+    function selLabel(q, u) {
+      const sx = X(q.lng), sy = Y(q.lat), [vx, vy, vw] = vb;
+      const name = q.p.n.length > 16 ? q.p.n.slice(0, 15) + "…" : q.p.n;
+      const g = svgEl("g", { class: "sellabel", "aria-hidden": "true" });
+      const t = svgEl("text", { x: sx, y: sy, "font-size": 13.5 * u, "text-anchor": "middle", "dominant-baseline": "central" });
+      t.textContent = name; g.append(t); svg.append(g);
+      let tw = 0; try { tw = t.getBBox().width; } catch {}
+      if (!tw) tw = name.length * 13.5 * u;
+      const h = 26 * u, w = tw + 18 * u, gap = 13 * u, below = sy - vy < h + gap + 4 * u;
+      const cx = Math.min(Math.max(sx, vx + w / 2 + 4 * u), vx + vw - w / 2 - 4 * u);
+      const cy = below ? sy + gap + h / 2 : sy - gap - h / 2, edge = below ? cy - h / 2 : cy + h / 2;
+      const tx = Math.min(Math.max(sx, cx - w / 2 + h / 2), cx + w / 2 - h / 2);   // 꼬리는 말풍선의 곧은 변에서
+      const tipY = below ? sy + 9 * u : sy - 9 * u, inset = below ? 0.6 * u : -0.6 * u;
+      g.insertBefore(svgEl("path", { d: `M${tx - 5 * u},${edge + inset}L${sx},${tipY}L${tx + 5 * u},${edge + inset}Z` }), t);
+      g.insertBefore(svgEl("rect", { x: cx - w / 2, y: cy - h / 2, width: w, height: h, rx: h / 2 }), g.firstChild);
+      t.setAttribute("x", cx); t.setAttribute("y", cy);
     }
     function showCard(p, reveal) {
       card.replaceChildren(slip(p));
