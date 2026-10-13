@@ -23,7 +23,7 @@
 :root{
   --bg:#F3F4F1; --paper:#FFFFFF; --ink:#1C1F1D; --muted:#5F6661; --line:#DADDD7;
   --accent:#C8361C; --accent-ink:#FFFFFF; --soft:#F8E6E1;
-  --c1:#C8361C; --c2:#2F6F9F; --c3:#2E7D4F; --c4:#8A5A00; --water:#A9CFEA; --waterink:#3F77A1;
+  --c1:#C8361C; --c2:#2F6F9F; --c3:#2E7D4F; --c4:#B07A00; --c5:#6B4FC8; --c6:#B8327A; --c7:#008A8A; --water:#A9CFEA; --waterink:#3F77A1;
   --gu0:#F1F2EE; --gu1:#E8EDE5; --gu2:#F3EEE4; --gu3:#E6EBEF; --gu-line:#9EA59F; --gu-ink:#454C47; --seen:#A4AAA5;
   --f-display:"Black Han Sans","IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
   --f-body:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
@@ -34,12 +34,12 @@
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#151716; --paper:#1E2120; --ink:#ECEEEA; --muted:#A3AAA5; --line:#323633;
   --accent:#F0644A; --accent-ink:#1A0D09; --soft:#3A1F19;
-  --c1:#F0644A; --c2:#6FA8D6; --c3:#6FCB94; --c4:#E2B54A; --water:#24496A; --waterink:#7FB2DA;
+  --c1:#F0644A; --c2:#6FA8D6; --c3:#6FCB94; --c4:#E8B04A; --c5:#A592F2; --c6:#EE7BB5; --c7:#4CC9C9; --water:#24496A; --waterink:#7FB2DA;
   --gu0:#181B19; --gu1:#1C221E; --gu2:#221F19; --gu3:#1A1F23; --gu-line:#59615B; --gu-ink:#BEC5C0; --seen:#646B66; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#151716; --paper:#1E2120; --ink:#ECEEEA; --muted:#A3AAA5; --line:#323633;
   --accent:#F0644A; --accent-ink:#1A0D09; --soft:#3A1F19;
-  --c1:#F0644A; --c2:#6FA8D6; --c3:#6FCB94; --c4:#E2B54A; --water:#24496A; --waterink:#7FB2DA;
+  --c1:#F0644A; --c2:#6FA8D6; --c3:#6FCB94; --c4:#E8B04A; --c5:#A592F2; --c6:#EE7BB5; --c7:#4CC9C9; --water:#24496A; --waterink:#7FB2DA;
   --gu0:#181B19; --gu1:#1C221E; --gu2:#221F19; --gu3:#1A1F23; --gu-line:#59615B; --gu-ink:#BEC5C0; --seen:#646B66; color-scheme:dark}
 *{box-sizing:border-box}
 html,body{margin:0}
@@ -79,6 +79,8 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
 .slip{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:14px 14px 12px;display:flex;flex-direction:column;gap:6px;min-width:0}
 .slip h3{margin:0;font-size:17px;line-height:1.3;text-wrap:balance;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .tag{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;border:1px solid currentColor;white-space:nowrap}
+.tag.ch{color:var(--ink);border-color:var(--line);display:inline-flex;align-items:center;gap:5px;font-weight:500}
+.tag.ch i{width:8px;height:8px;border-radius:50%;flex:none}
 .desc{color:var(--accent);font-weight:500;font-size:14px}
 .meta{font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:2px;min-width:0}
 .links{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
@@ -207,7 +209,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
   const $ = id => document.getElementById(id);
   const AREA_Q = ["종로3가","을지로","광화문","은평구","성수동","망원동","신당동"];
   const MENU_Q = ["순대국","국밥","냉면","족발","칼국수","짬뽕","돈까스"];
-  const COLORS = ["--c1","--c2","--c3","--c4"];
+  const COLORS = ["--c1","--c2","--c3","--c4","--c5","--c6","--c7"];   // 채널 순서대로 고정(채널을 꺼도 색이 바뀌지 않게)
   const RADIUS = 1.0; // km: 동네 검색 때 이 반경 안의 가게도 포함
   const state = { mode: "area", off: new Set(), db: null, shown: 40, origin: null };
   const PRESETS = [
@@ -468,6 +470,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
     document.querySelectorAll("#results article.slip").forEach(a => {
       if (k && a.dataset.vk !== k) return;
       const n = slip(a._p); n.style.cssText = a.style.cssText; a.replaceWith(n);
+      if (slipCache.get(a._p) === a) slipCache.set(a._p, n);   // '더 보기'로 다시 그릴 때도 바뀐 카드로
     });
     if (mapDraw && document.contains(mapLegendSeen)) { mapLegendSeen.hidden = !state.visited.size; mapDraw(); }
     visitCount();
@@ -508,7 +511,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
         on ? state.off.add(c.name) : state.off.delete(c.name); saveOff(); renderChannels(); rerun();
       } }, el("span", { class: "sw", style: `background:${chColor(c.name)}` }), `${c.name} ${n}`));
     });
-    $("dbStat").textContent = `가게 ${state.db.shops.length}곳 · 영상 ${state.db.videos.length}개`;
+    $("dbStat").textContent = `가게 ${state.db.shops.length.toLocaleString("ko-KR")}곳 · 영상 ${state.db.videos.length.toLocaleString("ko-KR")}개`;
   }
 
   // ---------- search ----------
@@ -614,8 +617,10 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
       : `${term} 가게를 못 찾았어요. 더 넓은 말(예: 국밥, 고기)로 찾아보세요.`) + offNote;
   }
 
-  function renderResults(term, rows, note, center) {
+  let slipCache = new Map();   // 지금 결과 목록에서 이미 만든 카드 — '더 보기'는 새 카드만 만들고 나머지는 다시 씀
+  function renderResults(term, rows, note, center, more) {
     center = center || null;
+    if (!more) slipCache = new Map();
     state.lastTerm = term; state.lastRows = rows; state.lastNote = note; state.lastCenter = center;
     // distances are measured from the place searched for, or else from my position
     const ref = center || state.origin, cname = ref ? ref.name : "";
@@ -647,9 +652,9 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
     }
     for (const [g, ps] of groups) {
       box.append(el("h2", { class: "group" }, `${g} · ${ps.length}`));
-      ps.forEach(p => box.append(slip(p)));
+      ps.forEach(p => { let a = slipCache.get(p); if (!a) { a = slip(p); slipCache.set(p, a); } box.append(a); });
     }
-    if (list.length > state.shown) box.append(el("button", { type: "button", class: "more", onclick: () => { state.shown += 40; renderResults(term, rows, note, center); } }, `더 보기 (${list.length - state.shown}곳 남음)`));
+    if (list.length > state.shown) box.append(el("button", { type: "button", class: "more", onclick: () => { state.shown += 40; renderResults(term, rows, note, center, true); } }, `더 보기 (${list.length - state.shown}곳 남음)`));
   }
 
   // ---------- map view (drawn in SVG: district outlines + pins) ----------
@@ -806,16 +811,20 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
         for (const [x, y] of poly) { b0 = Math.min(b0, x); c0 = Math.min(c0, y); b1 = Math.max(b1, x); c1 = Math.max(c1, y); }
         b0 = Math.max(b0, X0); c0 = Math.max(c0, Y0); b1 = Math.min(b1, X1); c1 = Math.min(c1, Y1);
         const alt = [];
-        for (let i = 1; i < 6; i++) for (let j = 1; j < 6; j++) {
-          const x = b0 + (b1 - b0) * i / 6, y = c0 + (c1 - c0) * j / 6, dd = edgeDist(x, y, poly);
+        for (let i = 1; i < 10; i++) for (let j = 1; j < 10; j++) {
+          const x = b0 + (b1 - b0) * i / 10, y = c0 + (c1 - c0) * j / 10, dd = edgeDist(x, y, poly);
           if (dd >= need) alt.push({ x, y, d: dd });
         }
         const ok = pts.filter(p => p.d >= need && inV(p)).concat(alt.sort((p, q) => q.d - p.d));
-        ok.forEach((p, i) => { p.cost = pinsUnder(p, w, h) + i * 0.01; });   // 점이 적은 자리 먼저, 같으면 가운데에 가까운 자리
+        // 점이 적은 자리 먼저, 그래도 가운데에 가까운 자리를 더 좋아함(가게가 많아도 이름이 구 끝으로 밀려 이웃 이름과 부딪히지 않게)
+        ok.forEach((p, i) => { p.cost = Math.sqrt(pinsUnder(p, w, h)) * 0.5 + i; });
         ok.sort((p, q) => p.cost - q.cost);
         if (ok.length) cand.push({ n: d.n, pts: ok, w, h, a });   // 이름이 들어갈 만큼 보이지 않으면 뺌
       }
-      cand.sort((p, q) => q.a - p.a);
+      // 자리가 적은 구(작은 구·화면 끝에 걸친 구)부터 놓고, 같으면 넓게 보이는 구 먼저 — 가게가 많아도 작은 구 이름이 밀려나지 않게
+      // 화면 가운데(찾은 곳·내 위치 쪽)에 가까운 구부터 — 둘러볼 때 가장 필요한 이름이 자리를 먼저 차지하게
+      const mx = vx + vw / 2, my = vy + vh / 2, far = c => Math.hypot(c.pts[0].x - mx, c.pts[0].y - my) / Math.max(vw, vh);
+      cand.sort((p, q) => far(p) - far(q) || q.a - p.a);
       for (const c of cand) {
         const hit = p => placed.some(b => Math.abs(b.x - p.x) < (b.w + c.w) / 2 && Math.abs(b.y - p.y) < (b.h + c.h) / 2);
         const p = c.pts.find(q => !hit(q));
@@ -860,7 +869,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
       svg.append(svgEl("path", { d: hanD, class: "han", "stroke-width": Math.max(0.85, 5 * u) }));
       // 구 이름이 피해 갈 자리: 한강 글자, 역 이름, 내 위치·찾은 곳 이름
       const blocked = [];
-      if (vb[2] < 40) {
+      if (vb[2] < 24) {   // 서울 전체가 보일 만큼 넓게 보면 '한강' 글자는 점에 가려지고 구 이름 자리만 차지해서 뺌(파란 강줄기는 그대로)
         const t = svgEl("text", { x: X(126.93), y: Y(37.533) + 4 * u, class: "hanlabel", "font-size": 12 * u, transform: `rotate(-20 ${X(126.93)} ${Y(37.533)})` }); t.textContent = "한강"; svg.append(t);
         blocked.push({ x: X(126.93) + 12 * u, y: Y(37.533), w: 56 * u, h: 26 * u });
       }
@@ -996,7 +1005,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
     const art = el("article", { class: "slip" + (been ? " visited" : ""), "data-vk": visitKey(p) },
       el("h3", {}, p.n,
         been ? el("span", { class: "tag seen" }, "✓ 가 봤어요") : null,
-        (state.mode === "menu" || ref) ? el("span", { class: "tag", style: `color:${chColor(p.c)}` }, p.c) : null,
+        (state.mode === "menu" || ref) ? el("span", { class: "tag ch" }, el("i", { style: `background:${chColor(p.c)}` }), p.c) : null,
         ref && p.km !== Infinity ? el("span", { class: "dist", title: p.rough ? "동네 기준 대략 거리" : "주소 기준 직선거리" },
           // a rough point is only the centre of its neighbourhood, so "약 0m" would claim too much
           p.rough && p.km < 1 ? (p.g[3] ? `${p.g[3]} 근처` : "약 1km 안")
@@ -1004,6 +1013,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
       p.x ? el("div", { class: "desc" }, p.x) : null,
       el("div", { class: "meta" },
         p.a ? el("span", {}, "📍 " + p.a) : (p.ar ? el("span", {}, "📍 " + p.ar) : null),
+        p.k ? el("span", {}, "🍴 " + p.k) : null,
         el("span", {}, "▶ " + (v.t || "") + (v.d ? " · " + v.d.slice(0, 7).replace("-", ".") : "") + (p.vs.length > 1 ? ` 외 ${p.vs.length - 1}편` : ""))),
       el("div", { class: "links" },
         el("a", { href: vid, target: "_blank", rel: "noopener" }, p.s ? "영상 그 장면" : "영상 보기"),
@@ -1122,12 +1132,13 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
     const vs = [...new Set([best.v, ...rows.map(p => p.v)])];
     const shop = { n, c: best.c, v: best.v, s: best.s, vs, g: best.g, geo: best.geo, a: best.a || "",
       x: best.x || rows.map(p => p.x).find(Boolean) || "", ar: best.ar || rows.map(p => p.ar).find(Boolean) || "",
+      k: best.k || rows.map(p => p.k).find(Boolean) || "",
       d: vs.reduce((m, v) => (videos[v]?.d || "") > m ? videos[v].d : m, ""), rows: rows.length };
     shop.rough = !shop.g || shop.g[2] === 3;
     shop.tka = [...new Set(rows.flatMap(p => p.tka))];   // words of its addresses and area notes
     shop.tk = [...new Set(rows.flatMap(p => p.tk))];     // ...plus video titles and descriptions
     // what a menu search reads: names, descriptions, and the titles of videos about this one shop (see match)
-    shop.hay = rows.map(p => norm(p.n) + "|" + norm(p.x) + "|" + (perVideo[p.v] === 1 ? norm(videos[p.v]?.t) : "")).join("|");
+    shop.hay = rows.map(p => norm(p.n) + "|" + norm(p.x) + "|" + norm(p.k) + "|" + (perVideo[p.v] === 1 ? norm(videos[p.v]?.t) : "")).join("|");
     shop.lists = [...new Set(rows.map(p => norm(videos[p.v]?.t)).filter(t => LIST_MARK.test(t)))];
     return shop;
   }
@@ -1172,8 +1183,8 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
 
   fetch("places.json").then(r => r.json()).then(raw => {
     const videos = raw.videos.map(([id, t, d, c]) => ({ id, t, d, c }));
-    const places = raw.places.map(([n, x, a, ar, v, s, g]) => {
-      const p = { n, x, a, ar, v, s, c: videos[v]?.c || "" };
+    const places = raw.places.map(([n, x, a, ar, v, s, g, k]) => {
+      const p = { n, x, a, ar, v, s, k: k || "", c: videos[v]?.c || "" };   // k: 가게 종류(카카오 분류, 예: 냉면)
       p.geo = Array.isArray(g);
       p.g = p.geo ? g : roughPoint(p, videos[v]);
       p.tka = toks((a || "") + " " + (ar || ""));                            // words of the address and area note
@@ -1187,8 +1198,8 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
     renderChannels();
     const newest = videos.reduce((m, v) => v.d > m ? v.d : m, "");
     const precise = shops.filter(p => p.geo && p.g[2] <= 2).length, none = shops.filter(p => !p.g).length;
-    $("dataNote").textContent = `${newest.replace(/-/g, ".")}까지 올라온 영상 기준 · 가게 ${shops.length}곳 중 ${precise}곳은 주소로 찍은 위치, `
-      + `${shops.length - precise - none}곳은 동네 기준 대략 위치` + (none ? `, ${none}곳은 위치 정보 없음` : "");
+    $("dataNote").textContent = `${newest.replace(/-/g, ".")}까지 올라온 영상 기준 · 가게 ${shops.length.toLocaleString("ko-KR")}곳 중 ${precise.toLocaleString("ko-KR")}곳은 정확한 위치, `
+      + `${shops.length - precise - none}곳은 동네 기준 대략 위치` + (none ? `, ${none}곳은 위치 정보 없음` : "") + ". 위치와 가게 종류는 카카오 지도 검색으로 확인했어요.";
     showIntro();
   }).catch(() => $("results").replaceChildren(el("div", { class: "empty" }, "가게 데이터를 불러오지 못했어요. 인터넷 연결을 확인하고 새로고침해 주세요.")));
 

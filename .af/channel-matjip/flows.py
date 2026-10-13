@@ -47,7 +47,7 @@ def names(page):
 
 def all_names(page):
     """Open every '더 보기' page, then return all shop names."""
-    for _ in range(40):
+    for _ in range(200):   # 10/14부터 가게 4,800여 곳 — '내 근처 전체'는 120번 넘게 눌러야 끝까지
         more = page.locator("#results button.more")
         if not more.count():
             break
@@ -112,7 +112,9 @@ def flow_menu_search(page, shot):
     menu(page, "간짜장")
     ns = all_names(page)
     assert ns, "간짜장 결과가 없음"
-    assert "홍두깨" not in " ".join(ns) and "신성식당" not in ns, "간짜장 검색에 관계없는 가게가 섞임(예전 버그)"
+    # 예전 버그: 여러 가게가 나온 영상 제목의 '짜장면' 때문에 술맛여행놈 '홍두깨국수'가 걸림
+    # (맛삼인 '홍두깨칼국수'는 짜장면도 파는 집을 혼자 다룬 영상이라 나와도 맞음)
+    assert "홍두깨국수" not in ns and "신성식당" not in ns, "간짜장 검색에 관계없는 가게가 섞임(예전 버그)"
 
 
 def flow_menu_noise_and_recall(page, shot):
@@ -466,6 +468,7 @@ def flow_map_view(page, shot):
 def flow_rough_shop_map_links(page, shot):
     ready(page)
     area(page, "망원동")
+    all_names(page)   # 가게가 많아져 주소 없는 가게(대략 위치 묶음)는 '더 보기' 뒤에 있음
     hrefs = page.evaluate("""[...document.querySelectorAll('#results article.slip')]
         .filter(a => !a.querySelector('.meta span')?.textContent.startsWith('📍'))
         .map(a => a.querySelector('a[href*="map.naver.com"]').href)""")
@@ -681,3 +684,98 @@ def flow_keeps_other_apps_offline_copy(page, shot):
     keys = page.evaluate("caches.keys()")
     assert "dayroute-v9" in keys, f"하루동선의 오프라인 저장본을 지움: {keys}"
     assert "channel-matjip-v0" not in keys, f"이 앱의 옛 저장본이 남음: {keys}"
+
+
+# ---------- 10/14 — 유튜브 채널 4개 추가(맛삼인·쏘울맛집·하이갱스·서울 사는 남자) ----------
+NEW_CH = ["맛삼인", "쏘울맛집", "하이갱스", "서울 사는 남자"]
+
+
+def chip_counts(page):
+    out = {}
+    for t in page.locator("#channels button").all_inner_texts():
+        m = re.match(r"(.+?)\s+(\d+)$", t.strip())
+        if m:
+            out[m.group(1)] = int(m.group(2))
+    return out
+
+
+def flow_seven_channels_with_own_colors(page, shot):
+    """채널 7개가 버튼으로 나오고, 새 채널마다 가게가 있고, 채널 색이 모두 다르다"""
+    ready(page)
+    c = chip_counts(page)
+    assert len(c) == 7, f"채널이 7개가 아님: {list(c)}"
+    for ch in ["백년해방", "술맛여행놈", "쇼리뷰"] + NEW_CH:
+        assert c.get(ch, 0) > 0, f"{ch} 채널 가게가 없음: {c}"
+    assert c["하이갱스"] >= 1000 and c["쏘울맛집"] >= 300 and c["맛삼인"] >= 200, f"새 채널 가게 수가 너무 적음: {c}"
+    cols = page.evaluate("[...document.querySelectorAll('#channels .sw')].map(s => getComputedStyle(s).backgroundColor)")
+    assert len(cols) == 7 and len(set(cols)) == 7, f"채널 색이 겹침: {cols}"
+    stat = page.inner_text("#dbStat")
+    assert re.search(r"가게 [\d,]+곳", stat), f"전체 가게 수 표시가 없음: {stat}"
+
+
+def flow_new_channel_shops_found(page, shot):
+    """새 채널 가게가 동네·메뉴 검색에 나오고, 카드에 채널 이름(글자)·가게 종류·영상 장면이 붙는다"""
+    ready(page)
+    area(page, "횡성")
+    ns = all_names(page)
+    assert "수지막국수" in ns, f"횡성 검색에 하이갱스 '수지막국수'가 없음: {ns[:10]}"
+    card = page.locator("#results article.slip", has=page.locator("h3", has_text="수지막국수")).first
+    t = card.inner_text()
+    assert "하이갱스" in t, "카드에 채널 이름이 글자로 없음"
+    assert "🍴" in t, "카드에 가게 종류(예: 국수)가 없음"
+    href = card.locator("a", has_text="영상").get_attribute("href")
+    assert "&t=" in href, f"하이갱스 타임라인 장면으로 가는 링크가 아님: {href}"
+    # 채널 이름표는 글자색이 본문색(채널 색은 옆 점으로만) — 노란·연보라 채널 글자도 읽히게
+    ink, tag = page.evaluate("""() => [getComputedStyle(document.body).color,
+        getComputedStyle(document.querySelector('#results .tag.ch')).color]""")
+    assert ink == tag, f"채널 이름표 글자가 본문색이 아님: {tag} / {ink}"
+    to_results(page)
+    shot("new-channel")
+    menu(page, "고추장불고기")
+    ns = all_names(page)
+    assert any("정오네" in n for n in ns), f"메뉴 검색에 쏘울맛집 '정오네 고추장불고기'가 없음: {ns[:10]}"
+    menu(page, "간짜장")
+    ns = all_names(page)
+    assert "우강반점" in ns, f"간짜장 검색에 맛삼인 '우강반점'(당진)이 없음: {ns[:12]}"
+
+
+def flow_menu_uses_shop_kind(page, shot):
+    """이름에 메뉴가 없는 가게도 가게 종류(카카오 분류)로 메뉴 검색에 걸린다"""
+    ready(page)
+    menu(page, "냉면")
+    n_with = count(page)
+    kinds = page.evaluate("""() => [...document.querySelectorAll('#results article.slip')].filter(a =>
+        !/냉면/.test(a.querySelector('h3').firstChild.textContent) && /🍴[^\\n]*냉면/.test(a.innerText)).length""")
+    assert kinds >= 1, "가게 이름에 '냉면'이 없는데 종류가 냉면인 가게가 하나도 없음"
+    assert n_with >= 100, f"냉면 결과가 너무 적음({n_with})"
+
+
+def flow_new_channel_toggle(page, shot):
+    """하이갱스를 끄면 그 가게가 빠지고, 다시 켜면 돌아온다(새로고침 후에도 기억)"""
+    ready(page)
+    area(page, "횡성")
+    assert "수지막국수" in all_names(page), "횡성 검색에 수지막국수가 없음"
+    page.locator("#channels button", has_text="하이갱스").click()
+    assert "수지막국수" not in all_names(page), "하이갱스를 꺼도 수지막국수가 남음"
+    page.reload()
+    ready(page)
+    assert page.locator("#channels button", has_text="하이갱스").get_attribute("aria-pressed") == "false", "새로고침 후 하이갱스 끄기가 사라짐"
+    page.locator("#channels button", has_text="하이갱스").click()
+    area(page, "횡성")
+    assert "수지막국수" in all_names(page), "하이갱스를 다시 켰는데 수지막국수가 안 돌아옴"
+
+
+def flow_map_legend_fits_seven(page, shot):
+    """지도 범례에 채널 7개가 들어가도 지도 폭을 넘지 않고, 지도 높이의 절반을 가리지 않는다"""
+    ready(page)
+    page.locator("#herePresets button", has_text="공덕역").click()
+    page.click("#nearBtn")
+    page.click("#viewBtn")
+    page.wait_for_selector(".mapwrap svg circle.pin", timeout=8000)
+    r = page.evaluate("""() => { const w = document.querySelector('.mapwrap').getBoundingClientRect(), l = document.querySelector('.maplegend').getBoundingClientRect();
+        return {mw: w.width, mh: w.height, lw: l.width, lh: l.height, ll: l.left - w.left, lr: w.right - l.right,
+                n: document.querySelectorAll('.maplegend span:not([hidden])').length}; }""")
+    assert r["n"] >= 7, f"범례에 채널이 다 안 나옴: {r}"
+    assert r["ll"] >= 0 and r["lr"] >= 0, f"범례가 지도 밖으로 나감: {r}"
+    assert r["lh"] <= r["mh"] * 0.35, f"범례가 지도를 너무 가림: {r}"
+    shot("map-7ch", store=False)
