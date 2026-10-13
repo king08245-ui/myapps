@@ -24,7 +24,7 @@
   --bg:#F3F4F1; --paper:#FFFFFF; --ink:#1C1F1D; --muted:#5F6661; --line:#DADDD7;
   --accent:#C8361C; --accent-ink:#FFFFFF; --soft:#F8E6E1;
   --c1:#C8361C; --c2:#2F6F9F; --c3:#2E7D4F; --c4:#8A5A00; --water:#A9CFEA; --waterink:#3F77A1;
-  --gu0:#F1F2EE; --gu1:#E8EDE5; --gu2:#F3EEE4; --gu3:#E6EBEF; --gu-line:#9EA59F; --gu-ink:#454C47;
+  --gu0:#F1F2EE; --gu1:#E8EDE5; --gu2:#F3EEE4; --gu3:#E6EBEF; --gu-line:#9EA59F; --gu-ink:#454C47; --seen:#A4AAA5;
   --f-display:"Black Han Sans","IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
   --f-body:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
   --r:10px;
@@ -35,12 +35,12 @@
   --bg:#151716; --paper:#1E2120; --ink:#ECEEEA; --muted:#A3AAA5; --line:#323633;
   --accent:#F0644A; --accent-ink:#1A0D09; --soft:#3A1F19;
   --c1:#F0644A; --c2:#6FA8D6; --c3:#6FCB94; --c4:#E2B54A; --water:#24496A; --waterink:#7FB2DA;
-  --gu0:#181B19; --gu1:#1C221E; --gu2:#221F19; --gu3:#1A1F23; --gu-line:#59615B; --gu-ink:#BEC5C0; color-scheme:dark}}
+  --gu0:#181B19; --gu1:#1C221E; --gu2:#221F19; --gu3:#1A1F23; --gu-line:#59615B; --gu-ink:#BEC5C0; --seen:#646B66; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#151716; --paper:#1E2120; --ink:#ECEEEA; --muted:#A3AAA5; --line:#323633;
   --accent:#F0644A; --accent-ink:#1A0D09; --soft:#3A1F19;
   --c1:#F0644A; --c2:#6FA8D6; --c3:#6FCB94; --c4:#E2B54A; --water:#24496A; --waterink:#7FB2DA;
-  --gu0:#181B19; --gu1:#1C221E; --gu2:#221F19; --gu3:#1A1F23; --gu-line:#59615B; --gu-ink:#BEC5C0; color-scheme:dark}
+  --gu0:#181B19; --gu1:#1C221E; --gu2:#221F19; --gu3:#1A1F23; --gu-line:#59615B; --gu-ink:#BEC5C0; --seen:#646B66; color-scheme:dark}
 *{box-sizing:border-box}
 html,body{margin:0}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.55;padding-inline:16px;padding-block:20px 48px;
@@ -83,6 +83,13 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
 .meta{font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:2px;min-width:0}
 .links{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
 .links a{display:inline-flex;align-items:center;min-height:40px;font-size:13px;text-decoration:none;color:var(--ink);border:1px solid var(--line);border-radius:999px;padding:4px 12px}
+.visit{display:inline-flex;align-items:center;gap:4px;min-height:40px;font-size:13px;font-weight:700;border-radius:999px;padding:4px 12px;border:1.5px dashed var(--ink);background:transparent;color:var(--ink)}
+.visit[aria-pressed=true]{border-style:solid;background:var(--ink);color:var(--paper)}
+.slip.visited{background:var(--bg)}
+.slip.visited h3,.slip.visited .desc{color:var(--muted)}
+.slip.visited .dist{background:transparent;border:1px solid var(--line);color:var(--muted)}
+.tag.seen{color:var(--muted)}
+.maplegend i.seen{background:var(--seen)}
 .links a:hover{border-color:var(--ink)}
 .group{font-family:var(--f-display);font-size:18px;margin:8px 0 0;font-weight:400}
 .count{font-variant-numeric:tabular-nums}
@@ -115,6 +122,9 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
 .pin{stroke:var(--paper);stroke-width:1.5;cursor:pointer}
 .pin.rough{fill-opacity:.35;stroke-dasharray:2 2}
 .pin.sel{stroke:var(--ink);stroke-width:3}
+.pin.seen{fill:var(--seen)}
+.plabel{fill:var(--ink);font-family:var(--f-body);font-weight:700;text-anchor:middle;pointer-events:none;paint-order:stroke;stroke:var(--paper);stroke-linejoin:round}
+.plabel.seen{fill:var(--muted);font-weight:500}
 .sellabel{pointer-events:none}
 .sellabel rect,.sellabel path{fill:var(--ink)}
 .sellabel text{fill:var(--paper);font-family:var(--f-body);font-weight:700}
@@ -132,6 +142,8 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
 .foot{border-top:1px solid var(--line);padding-top:14px;display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--muted)}
 .foot p{margin:0}
 .foot a{color:var(--muted)}
+.foot .backup{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.foot .backup button{min-height:40px;padding:4px 12px;font-size:12px;border-radius:999px}
 </style>
 </head>
 <body>
@@ -183,6 +195,9 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
 
   <footer class="foot">
     <p id="dataNote"></p>
+    <p class="backup"><span id="visitCount">가 본 집은 이 기기에만 저장돼요.</span>
+      <button type="button" id="visitExport">가 본 집 내보내기</button>
+      <button type="button" id="visitImportBtn">가져오기</button><input type="file" id="visitImport" accept="application/json,.json" hidden aria-hidden="true" tabindex="-1"></p>
     <p>새 채널이나 새 영상을 넣고 싶으면 Claude에게 채널 링크를 보내 주세요. · <a href="privacy.html">개인정보처리방침</a></p>
   </footer>
 </div>
@@ -437,6 +452,29 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
   }
   try { const o = JSON.parse(localStorage.getItem("cfn.off") || "[]"); o.forEach(x => state.off.add(x)); } catch {}
   const saveOff = () => { try { localStorage.setItem("cfn.off", JSON.stringify([...state.off])); } catch {} };
+  // 가 본 집: 이 기기에 저장. 같은 가게면 채널이 달라도 함께 표시(이름 + 주소 도로명·번지, 주소가 없으면 동네)
+  state.visited = new Set();
+  try { const v = JSON.parse(localStorage.getItem("cfn.visited") || "[]"); if (Array.isArray(v)) v.forEach(k => typeof k === "string" && state.visited.add(k)); } catch {}
+  const saveVisited = () => { try { localStorage.setItem("cfn.visited", JSON.stringify([...state.visited])); } catch {} };
+  const visitKey = p => p.vk || (p.vk = nameKey(p.n) + "|" + (addrKey(p.a)?.road || p.ar || (p.g && p.g[3]) || ""));
+  const seen = p => state.visited.has(visitKey(p));
+  let mapDraw = null, mapLegendSeen = null;
+  function toggleVisited(p) {
+    const k = visitKey(p);
+    if (state.visited.has(k)) state.visited.delete(k); else state.visited.add(k);
+    saveVisited(); refreshVisited(k);
+  }
+  function refreshVisited(k) {   // 목록을 다시 그리지 않고(스크롤·지도 확대 그대로) 그 가게 카드와 지도 점만 바꾼다
+    document.querySelectorAll("#results article.slip").forEach(a => {
+      if (k && a.dataset.vk !== k) return;
+      const n = slip(a._p); n.style.cssText = a.style.cssText; a.replaceWith(n);
+    });
+    if (mapDraw && document.contains(mapLegendSeen)) { mapLegendSeen.hidden = !state.visited.size; mapDraw(); }
+    visitCount();
+  }
+  function visitCount(extra) {
+    $("visitCount").textContent = (state.visited.size ? `가 본 집 ${state.visited.size}곳 · 이 기기에 저장` : "가 본 집은 이 기기에만 저장돼요.") + (extra ? " · " + extra : "");
+  }
 
   // ---------- render chrome ----------
   function renderQuick() {
@@ -616,6 +654,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
 
   // ---------- map view (drawn in SVG: district outlines + pins) ----------
   const NS = "http://www.w3.org/2000/svg";
+  const KM_PER_UNIT = 1.1132, NAMES_KM = 3.6;   // 지도 1칸 ≈ 1.11km(위도·경도 0.01도) · 이 폭보다 좁게 확대하면 가게 이름을 모두
   const svgEl = (tag, attrs = {}) => { const n = document.createElementNS(NS, tag); for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v); return n; };
   let bounds = null;
   async function loadBounds() {
@@ -707,6 +746,8 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
       el("button", { type: "button", class: "wide", onclick: () => { fit(pts); draw(); } }, "전체"));
     const legend = el("div", { class: "maplegend" });
     state.db.channels.filter(c => !state.off.has(c.name)).forEach(c => legend.append(el("span", {}, el("i", { style: `background:${chColor(c.name)}` }), c.name)));
+    mapLegendSeen = el("span", {}, el("i", { class: "seen" }), "가 본 집"); mapLegendSeen.hidden = !state.visited.size; legend.append(mapLegendSeen);
+    mapDraw = draw;   // 가 본 집을 바꾸면 이 지도만 다시 그림(확대·위치 그대로)
     wrap.append(svg, ctl, legend);
     const card = el("div", {});
     // Real Google Maps: the nearest shops with an address point (within 10km of the place searched for, or of me)
@@ -722,7 +763,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
         el("small", {}, fromMe ? `${o.name}에서 출발 · ${near.length}곳` : `가까운 ${near.length}곳`)));
     }
     box.append(wrap, card, el("p", { class: "mapnote" },
-      `점을 누르면 지도에 가게 이름이, 아래에 가게 정보가 떠요. 흐린 점은 대략 위치예요.` + (state.lastCenter ? " 마름모(◆)는 찾은 곳이에요." : "")
+      `점을 누르면 지도에 가게 이름이, 아래에 가게 정보가 떠요. 3km 안쪽으로 확대하면 가게 이름이 모두 보여요. 흐린 점은 대략 위치, 회색 점은 가 본 집이에요.` + (state.lastCenter ? " 마름모(◆)는 찾은 곳이에요." : "")
       + (missing ? ` 위치 정보가 없는 ${missing}곳은 지도에서 빠졌어요.` : "")));
 
     B = await loadBounds();
@@ -848,14 +889,16 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
       const inView = q => { const x = X(q.lng), y = Y(q.lat); return x >= vx - mg && x <= vx + vw + mg && y >= vy - mg && y <= vy + vh + mg; };
       const order = pts.filter(q => q.p === state.sel || inView(q)).sort((a, b) => (a.p === state.sel) - (b.p === state.sel));
       for (const q of order) {
-        const c = svgEl("circle", { cx: X(q.lng), cy: Y(q.lat), r: (q.p === state.sel ? 9 : 6.5) * u, fill: chColor(q.p.c), class: "pin" + (q.rough ? " rough" : "") + (q.p === state.sel ? " sel" : ""), "vector-effect": "non-scaling-stroke" });
-        const tt = svgEl("title"); tt.textContent = q.p.n; c.append(tt);
+        const been = seen(q.p);
+        const c = svgEl("circle", { cx: X(q.lng), cy: Y(q.lat), r: (q.p === state.sel ? 9 : 6.5) * u, fill: chColor(q.p.c), class: "pin" + (q.rough ? " rough" : "") + (q.p === state.sel ? " sel" : "") + (been ? " seen" : ""), "vector-effect": "non-scaling-stroke" });
+        const tt = svgEl("title"); tt.textContent = q.p.n + (been ? " (가 봤어요)" : ""); c.append(tt);
         c.addEventListener("click", e => { e.stopPropagation(); state.sel = q.p; draw(); showCard(q.p, true); });
         svg.append(c);
       }
       // 구 이름은 점 위에(점은 그대로 눌림), 점이 적은 자리를 골라서. 고른 가게 말풍선 자리는 비워 둔다
       const sp = state.sel && pts.find(q => q.p === state.sel);
       if (sp) blocked.push({ x: X(sp.lng), y: Y(sp.lat), w: Math.min(sp.p.n.length, 16) * 13.5 * u + 24 * u, h: 84 * u });
+      if (vw * KM_PER_UNIT <= NAMES_KM) shopNames(order, u, blocked);   // 약 3.5km 안쪽으로 확대하면 가게 이름을 모두(겹치는 것만 빼고)
       if (vb[2] < 40) guLabels(u, blocked, order.map(q => [X(q.lng), Y(q.lat)]));
       const c0 = state.lastCenter, o0 = state.origin;
       if (c0 && !(o0 && Math.abs(c0.lat - o0.lat) < 0.001 && Math.abs(c0.lng - o0.lng) < 0.0012)) {   // the place searched for
@@ -871,10 +914,29 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
       const sq = state.sel && pts.find(q => q.p === state.sel);
       if (sq) selLabel(sq, u);
     }
+    // 확대했을 때 가게 이름: 점 위(안 되면 아래)에, 다른 이름·역·말풍선 자리와 겹치면 뺀다. 가운데·정확한 위치 먼저
+    function shopNames(list, u, blocked) {
+      const [vx, vy, vw, vh] = vb, fs = 11.5 * u, h = fs * 1.3, mx = vx + vw / 2, my = vy + vh / 2;
+      const tw = str => [...str].reduce((a, ch) => a + (/[가-힣ㄱ-ㅎㅏ-ㅣ一-龥✓]/.test(ch) ? 1 : 0.6), 0) * fs + 4 * u;
+      const d2 = q => (X(q.lng) - mx) ** 2 + (Y(q.lat) - my) ** 2;
+      const cand = list.filter(q => q.p !== state.sel).sort((a, b) => (a.rough - b.rough) || (d2(a) - d2(b)));
+      for (const q of cand) {
+        const been = seen(q.p), base = q.p.n.length > 10 ? q.p.n.slice(0, 9) + "…" : q.p.n, name = (been ? "✓ " : "") + base;
+        const w = tw(name), x = X(q.lng), y = Y(q.lat), off = 6.5 * u + h / 2 + 1.5 * u;
+        for (const by of [y - off, y + off]) {
+          if (x - w / 2 < vx + 2 * u || x + w / 2 > vx + vw - 2 * u || by - h / 2 < vy + 2 * u || by + h / 2 > vy + vh - 2 * u) continue;
+          if (blocked.some(o => Math.abs(o.x - x) < (o.w + w) / 2 && Math.abs(o.y - by) < (o.h + h) / 2)) continue;
+          blocked.push({ x, y: by, w, h });
+          const t = svgEl("text", { x, y: by, class: "plabel" + (been ? " seen" : ""), "font-size": fs, "stroke-width": 3 * u, "dominant-baseline": "central" });
+          t.textContent = name; svg.append(t);
+          break;
+        }
+      }
+    }
     // 고른 점 위에 가게 이름 말풍선(맨 위에 그림). 지도 위쪽 끝이면 점 아래에, 좌우 끝이면 말풍선을 안쪽으로 민다
     function selLabel(q, u) {
       const sx = X(q.lng), sy = Y(q.lat), [vx, vy, vw] = vb;
-      const name = q.p.n.length > 16 ? q.p.n.slice(0, 15) + "…" : q.p.n;
+      const name = (seen(q.p) ? "✓ " : "") + (q.p.n.length > 16 ? q.p.n.slice(0, 15) + "…" : q.p.n);
       const g = svgEl("g", { class: "sellabel", "aria-hidden": "true" });
       const t = svgEl("text", { x: sx, y: sy, "font-size": 13.5 * u, "text-anchor": "middle", "dominant-baseline": "central" });
       t.textContent = name; g.append(t); svg.append(g);
@@ -930,8 +992,10 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
     // map links search "address + name"; without an address, "area + name" so the map app looks in the right town
     const q = encodeURIComponent((p.a ? p.a.replace(/\s*\d+층.*$/, "") : (p.ar || (p.g && p.g[3]) || "")) + " " + p.n);
     const vid = "https://www.youtube.com/watch?v=" + v.id + (p.s ? "&t=" + p.s + "s" : "");
-    return el("article", { class: "slip" },
+    const been = seen(p);
+    const art = el("article", { class: "slip" + (been ? " visited" : ""), "data-vk": visitKey(p) },
       el("h3", {}, p.n,
+        been ? el("span", { class: "tag seen" }, "✓ 가 봤어요") : null,
         (state.mode === "menu" || ref) ? el("span", { class: "tag", style: `color:${chColor(p.c)}` }, p.c) : null,
         ref && p.km !== Infinity ? el("span", { class: "dist", title: p.rough ? "동네 기준 대략 거리" : "주소 기준 직선거리" },
           // a rough point is only the centre of its neighbourhood, so "약 0m" would claim too much
@@ -945,7 +1009,11 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
         el("a", { href: vid, target: "_blank", rel: "noopener" }, p.s ? "영상 그 장면" : "영상 보기"),
         el("a", { href: "https://map.naver.com/p/search/" + q, target: "_blank", rel: "noopener" }, "네이버지도"),
         el("a", { href: "https://map.kakao.com/?q=" + q, target: "_blank", rel: "noopener" }, "카카오맵"),
-        el("a", { href: "https://www.google.com/maps/search/?api=1&query=" + q, target: "_blank", rel: "noopener" }, "구글지도")));
+        el("a", { href: "https://www.google.com/maps/search/?api=1&query=" + q, target: "_blank", rel: "noopener" }, "구글지도"),
+        el("button", { type: "button", class: "visit", "aria-pressed": String(been), "aria-label": `${p.n} 가 본 집 ${been ? "표시 지우기" : "으로 표시"}`, onclick: () => toggleVisited(p) },
+          been ? "✓ 가 봤어요" : "가 봤어요")));
+    art._p = p;
+    return art;
   }
 
   // <shops> ---------- one entry per shop ----------
@@ -1071,6 +1139,27 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
   $("modeMenu").addEventListener("click", () => setMode("menu"));
   $("hereForm").addEventListener("submit", e => { e.preventDefault(); lookupOrigin($("hereInput").value); });
   $("nearBtn").addEventListener("click", () => nearby());
+  // 가 본 집 백업: 폰이면 공유(카톡·드라이브), 아니면 내려받기. 가져오기는 지금 목록에 더한다(지우지 않음)
+  $("visitExport").addEventListener("click", async () => {
+    if (!state.visited.size) return visitCount("아직 가 본 집이 없어요");
+    const names = {}; (state.db?.shops || []).forEach(p => { const k = visitKey(p); if (state.visited.has(k)) names[k] = p.n; });
+    const day = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" }), fname = `맛집수첩-가본집-${day}.json`;
+    const file = new File([JSON.stringify({ app: "channel-matjip", kind: "visited", at: new Date().toISOString(), visited: [...state.visited], names }, null, 1)], fname, { type: "application/json" });
+    if (matchMedia("(pointer:coarse)").matches && navigator.canShare?.({ files: [file] })) { try { await navigator.share({ files: [file], title: fname }); return; } catch {} }
+    const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(file), download: fname }); document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  });
+  $("visitImportBtn").addEventListener("click", () => $("visitImport").click());
+  $("visitImport").addEventListener("change", async e => {
+    const f = e.target.files[0]; e.target.value = ""; if (!f) return;
+    try {
+      const j = JSON.parse(await f.text());
+      if (!j || j.app !== "channel-matjip" || !Array.isArray(j.visited)) throw 0;
+      let added = 0; for (const k of j.visited) if (typeof k === "string" && !state.visited.has(k)) { state.visited.add(k); added++; }
+      saveVisited(); refreshVisited(null); visitCount(added ? `${added}곳 더함` : "새로 더할 곳 없음");
+    } catch { visitCount("맛집수첩 가 본 집 백업 파일이 아니에요"); }
+  });
+  visitCount();
   $("viewBtn").addEventListener("click", () => {
     state.view = state.view === "map" ? "list" : "map"; state.sel = null;
     try { localStorage.setItem("cfn.view", state.view); } catch {}

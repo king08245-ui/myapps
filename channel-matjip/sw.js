@@ -1,5 +1,5 @@
 // 배포할 때마다 VERSION을 올리면 설치된 앱이 새 버전(새 가게 데이터 포함)을 받습니다.
-const VERSION = 'channel-matjip-v4';
+const VERSION = 'channel-matjip-v5';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './places.json', './map_seoul.json', './map_korea.json',
   './privacy.html', './icons/icon-192.png', './icons/icon-512.png', './icons/maskable-512.png'];
 const FONT_HOSTS = ['fonts.googleapis.com', 'fonts.gstatic.com'];

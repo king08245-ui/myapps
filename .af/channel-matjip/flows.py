@@ -282,6 +282,118 @@ def flow_map_shows_gu_names(page, shot):
     shot("map-gu-zoom", store=False)
 
 
+def svg_boxes(page, sel):
+    return page.evaluate("""(sel) => { const s = document.querySelector('.mapwrap svg').getBoundingClientRect();
+        return [...document.querySelectorAll(sel)].map(e => { const r = e.getBoundingClientRect();
+          return {t: e.textContent, l: r.left - s.left, r: r.right - s.left, top: r.top - s.top, b: r.bottom - s.top, w: s.width, h: s.height}; }); }""", sel)
+
+
+def map_km(page):
+    """지금 지도 폭(km): viewBox 폭 × 1.113"""
+    return float(page.get_attribute(".mapwrap svg", "viewBox").split()[2]) * 1.1132
+
+
+def flow_zoomed_in_shows_all_names(page, shot):
+    """3km 안팎으로 확대하면 고르지 않아도 점 위에 가게 이름이 뜨고(겹치지 않게), 넓게 보면 사라짐"""
+    ready(page)
+    area(page, "종로3가")
+    page.click("#viewBtn")
+    page.wait_for_selector(".mapwrap svg circle.pin", timeout=8000)
+    for _ in range(4):
+        if map_km(page) <= 3.5:
+            break
+        page.click(".mapctl button[aria-label='확대']")
+    assert map_km(page) <= 3.6, f"확대가 안 됨: {map_km(page):.1f}km"
+    labels = svg_boxes(page, ".mapwrap svg .plabel")
+    assert len(labels) >= 5, f"{map_km(page):.1f}km 폭으로 확대했는데 가게 이름이 거의 없음: {len(labels)}개"
+    titles = set(page.locator(".mapwrap svg circle.pin title").all_text_contents())
+    for x in labels:
+        base = x["t"].replace("✓ ", "")
+        assert any(t == base or (base.endswith("…") and t.startswith(base[:-1])) for t in titles), f"지도에 없는 가게 이름: {x['t']}"
+        assert x["l"] >= -1 and x["top"] >= -1 and x["r"] <= x["w"] + 1 and x["b"] <= x["h"] + 1, f"가게 이름이 지도 밖으로 잘림: {x}"
+    gus = svg_boxes(page, ".mapwrap svg .gulabel")
+    bad = [(a["t"], b["t"]) for i, a in enumerate(labels) for b in labels[i + 1:] + gus if overlaps(a, b)]
+    assert not bad, f"가게 이름끼리(또는 구 이름과) 겹침: {bad[:3]}"
+    page.evaluate("document.querySelector('.mapwrap').scrollIntoView({block: 'center'})")
+    page.wait_for_timeout(200)
+    shot("map-names", store=False)
+    # 고른 가게는 말풍선 하나로만(같은 이름이 두 번 뜨지 않게)
+    pin = page.locator(".mapwrap svg circle.pin").first
+    name = pin.locator("title").text_content()
+    pin.dispatch_event("click")
+    page.wait_for_selector(".mapwrap svg .sellabel", timeout=3000)
+    dup = [x for x in svg_boxes(page, ".mapwrap svg .plabel") if x["t"].replace("✓ ", "") == name]
+    assert not dup, f"고른 가게 이름이 말풍선과 이름표로 두 번 뜸: {name}"
+    for _ in range(3):
+        page.click(".mapctl button[aria-label='축소']")
+    assert map_km(page) > 3.6 and page.locator(".mapwrap svg .plabel").count() == 0, f"넓게 봤는데 가게 이름이 남음({map_km(page):.1f}km)"
+
+
+def slips_by_vk(page, vk):
+    return page.evaluate("""(vk) => [...document.querySelectorAll('#results article.slip')].filter(a => a.dataset.vk === vk)
+        .map(a => ({cls: a.className, text: a.innerText, pressed: a.querySelector('button.visit')?.getAttribute('aria-pressed')}))""", vk)
+
+
+def flow_visited_shops_marked_gray(page, shot):
+    """가 본 집 체크: 카드·지도 점이 회색, 새로고침해도 남고, 지도에서 바꿔도 확대가 그대로, 백업으로 옮기기"""
+    import tempfile
+    ready(page)
+    area(page, "종로3가")
+    first = slips(page).first
+    name = first.locator("h3").evaluate("h => h.firstChild.textContent")
+    vk = first.get_attribute("data-vk")
+    first.locator("button.visit").click()
+    marked = slips_by_vk(page, vk)
+    assert marked and all("visited" in m["cls"] for m in marked), "가 봤어요를 눌렀는데 카드가 회색으로 안 바뀜"
+    assert "✓ 가 봤어요" in marked[0]["text"] and marked[0]["pressed"] == "true", "가 본 집 표시가 카드에 없음"
+    assert "가 본 집 1곳" in page.inner_text("#visitCount"), f"가 본 집 수가 안 보임: {page.inner_text('#visitCount')}"
+    page.reload()
+    ready(page)
+    area(page, "종로3가")
+    again = slips_by_vk(page, vk)
+    assert again and "visited" in again[0]["cls"], "새로고침하자 가 본 집 표시가 사라짐"
+    to_results(page)
+    shot("visited", store=False)
+    # 지도: 회색 점 + 범례, 지도에서 바꿔도 확대·위치 그대로
+    page.click("#viewBtn")
+    page.wait_for_selector(".mapwrap svg circle.pin", timeout=8000)
+    gray = page.locator(".mapwrap svg circle.pin.seen")
+    assert gray.count() >= 1 and "(가 봤어요)" in gray.first.locator("title").text_content(), "가 본 집 점이 회색이 아님"
+    assert page.locator(".maplegend span:not([hidden])", has_text="가 본 집").count() == 1, "지도 범례에 가 본 집이 없음"
+    page.click(".mapctl button[aria-label='확대']")
+    vb0 = page.get_attribute(".mapwrap svg", "viewBox")
+    other = page.locator(".mapwrap svg circle.pin:not(.seen)").first
+    other_name = other.locator("title").text_content()
+    other.dispatch_event("click")
+    page.wait_for_selector(".mapwrap + div article.slip", timeout=4000)
+    page.locator(".mapwrap + div article.slip button.visit").click()
+    assert page.get_attribute(".mapwrap svg", "viewBox") == vb0, "지도에서 가 봤어요를 누르자 확대·위치가 처음으로 돌아감"
+    sel = page.locator(".mapwrap svg circle.pin.sel")
+    assert "seen" in (sel.get_attribute("class") or ""), f"지도에서 체크한 가게({other_name}) 점이 회색이 안 됨"
+    assert page.locator(".mapwrap + div article.slip.visited").count() == 1, "지도 아래 카드가 회색으로 안 바뀜"
+    assert page.locator(".mapwrap svg .sellabel text").text_content().startswith("✓ "), "가 본 집 말풍선에 체크 표시가 없음"
+    page.locator(".mapwrap + div article.slip button.visit").click()   # 다시 누르면 지움
+    assert "seen" not in (page.locator(".mapwrap svg circle.pin.sel").get_attribute("class") or ""), "체크를 지웠는데 점이 회색으로 남음"
+    # 백업 내보내기 → 지우고 → 가져오기
+    with page.expect_download() as dl:
+        page.click("#visitExport")
+    path = dl.value.path()
+    data = json.load(open(path, encoding="utf-8"))
+    assert data["app"] == "channel-matjip" and vk in data["visited"] and data["names"].get(vk) == name, f"백업 파일 내용이 이상함: {data}"
+    page.evaluate("localStorage.removeItem('cfn.visited')")
+    page.reload()
+    ready(page)
+    assert "가 본 집 1곳" not in page.inner_text("#visitCount"), "지웠는데 가 본 집이 남음"
+    f = tempfile.NamedTemporaryFile("w", suffix=".json", delete=False, encoding="utf-8")
+    json.dump(data, f, ensure_ascii=False)
+    f.close()
+    page.set_input_files("#visitImport", f.name)
+    page.wait_for_function("document.getElementById('visitCount').textContent.includes('1곳 더함')", timeout=4000)
+    page.set_input_files("#visitImport", f.name)   # 같은 파일을 또 가져와도 늘지 않음
+    page.wait_for_function("document.getElementById('visitCount').textContent.includes('새로 더할 곳 없음')", timeout=4000)
+    assert "가 본 집 1곳" in page.inner_text("#visitCount"), "백업을 가져왔는데 가 본 집이 돌아오지 않음"
+
+
 def flow_map_pin_shows_name(page, shot):
     """지도에서 점을 누르면 그 가게 이름이 지도 위 말풍선으로 뜨고, 빈 곳을 누르면 사라짐"""
     ready(page)
