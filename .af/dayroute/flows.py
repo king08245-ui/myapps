@@ -635,8 +635,10 @@ def flow_place_add_by_search_then_start_there(page, shot):
     assert not page.is_visible("#plAdd"), "저장했는데 추가 칸이 그대로 열려 있음"
     chip = page.locator("#placeChips button", has_text="집")
     chip.click()
-    assert page.input_value("#from") == "집", "칩을 눌렀는데 출발지가 집이 아님"
-    assert chip.get_attribute("aria-pressed") == "true", "고른 출발지 칩이 표시되지 않음"
+    assert page.is_visible("#placeAct"), "칩을 눌렀는데 출발·들르기·복귀 고르는 칸이 안 열림"
+    page.click("#paStart")
+    assert page.input_value("#from") == "집", "‘출발지로’를 눌렀는데 출발지가 집이 아님"
+    assert "출발" in chip.inner_text() and not page.is_visible("#placeAct"), f"칩에 '출발' 표시가 없거나 고르는 칸이 남음: {chip.inner_text()}"
     mock_stats(reset=True)
     assert not plan_now(page, "카페, 공원")
     start = page.locator("#timeline .stop.start .card").inner_text()
@@ -656,8 +658,9 @@ def flow_place_names_in_request(page, shot):
     places(page, ("집", HOME), ("도서관", LIB), ("단골카페", CAFE))
     connect(page)
     bodies = plan_bodies(page)
-    assert "도서관 2시간, 집" in page.inner_text("#reqNote"), f"요청 칸 아래 안내가 없음: {page.inner_text('#reqNote')}"
     page.fill("#req", "도서관 2시간, 점심, 단골카페 1시간, 집")
+    chips = page.evaluate("[...document.querySelectorAll('#placeChips button:not(.addchip)')].map(b => b.innerText.replace(/\\s+/g, ' ').trim())")
+    assert any("집" in c and "복귀" in c for c in chips) and any("도서관" in c and "들르기" in c for c in chips), f"칩에 맡은 역할(들르기·복귀)이 안 보임: {chips}"
     shot("places-form")
     mock_stats(reset=True)
     assert not plan_now(page, "도서관 2시간, 점심, 단골카페 1시간, 집")
@@ -815,6 +818,8 @@ def flow_places_small_screen(page, shot):
     connect(page)
     page.locator("#plList .place").nth(3).locator("button", has_text="이름").click()
     page.click("#plAddBtn")
+    page.locator("#placeChips button", has_text="주말에가는").click()   # 출발·들르기·복귀 고르는 칸도 넘치지 않아야 함
+    assert page.is_visible("#placeAct")
     ok = page.evaluate("document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1")
     assert ok, "작은 화면에서 가로 스크롤이 생김"
     page.evaluate("document.querySelector('.placebar').scrollIntoView({block: 'start'})")
@@ -837,3 +842,55 @@ def flow_no_places_server_parses(page, shot):
     page.wait_for_function("document.getElementById('keys').textContent.includes('서버 연결됨')", timeout=10000)
     assert not plan_now(page, "카페, 공원")
     assert "acts" not in bodies[-1], "요청에 저장한 이름이 없는데 폰에서 해석해 보냄"
+
+
+def flow_place_chip_start_via_end(page, shot):
+    """칩 하나로 출발·중간·복귀: 집 → 출발지로, 도서관 → 중간에 들르기, 집 → 마지막에 복귀, 단골카페 → 복귀 앞에 들르기 · 칩에 역할 표시 · 예시를 눌러도 마지막 복귀는 남음"""
+    places(page, ("집", HOME), ("도서관", LIB), ("단골카페", CAFE))
+    connect(page)
+    page.fill("#from", "서울역")
+    page.fill("#req", "점심")
+    def use(name, btn):
+        page.locator("#placeChips button", has_text=name).click()
+        page.click(btn)
+    use("집", "#paStart")
+    assert page.input_value("#from") == "집", "출발지가 집이 아님"
+    use("도서관", "#paVia")
+    assert page.input_value("#req") == "점심, 도서관 1시간", f"중간에 들르기가 안 들어감: {page.input_value('#req')}"
+    use("집", "#paEnd")
+    assert page.input_value("#req") == "점심, 도서관 1시간, 집 복귀", f"마지막 복귀가 안 들어감: {page.input_value('#req')}"
+    use("단골카페", "#paVia")
+    assert page.input_value("#req") == "점심, 도서관 1시간, 단골카페 1시간, 집 복귀", f"들르기가 복귀 앞에 안 들어감: {page.input_value('#req')}"
+    use("단골카페", "#paEnd")
+    use("집", "#paEnd")
+    assert page.input_value("#req") == "점심, 도서관 1시간, 단골카페 1시간, 집 복귀", f"마지막 복귀를 바꾸면 하나만 남아야 함: {page.input_value('#req')}"
+    chips = {c.split()[1]: c for c in page.evaluate("[...document.querySelectorAll('#placeChips button:not(.addchip)')].map(b => b.innerText.replace(/\\s+/g, ' ').trim())")}
+    assert "출발·복귀" in chips["집"] and "들르기" in chips["도서관"] and "들르기" in chips["단골카페"], f"칩 역할 표시가 다름: {chips}"
+    page.locator("#placeChips button", has_text="도서관").click()
+    page.evaluate("document.querySelector('.placebar').scrollIntoView({block: 'center'})")
+    shot("place-actions")
+    page.locator("#placeChips button", has_text="도서관").click()
+    assert not page.is_visible("#placeAct"), "같은 칩을 다시 눌러도 고르는 칸이 안 닫힘"
+    assert not plan_now(page)
+    names = stop_names(page)
+    assert names[1:] == ["마포중앙도서관", "스타벅스 공덕역점", "집"] and len(names) == 4, f"출발·들르기·복귀대로 짜지 않음: {names}"
+    assert "집" in page.locator("#timeline .stop.start .card").inner_text() and "도착" in card(page, 3).locator("h3").inner_text()
+    page.locator("[data-ex]", has_text="쉬는 날").click()
+    assert page.input_value("#req") == "사우나, 영화, 저녁, 집 복귀", f"예시를 눌렀더니 마지막 복귀가 사라짐: {page.input_value('#req')}"
+
+
+def flow_place_return_from_end_card(page, shot):
+    """복귀 없이 끝난 일정은 시간표 끝 카드의 '돌아가기 🏠 집'으로 마지막에 집을 더함 — 더한 뒤엔 다시 묻지 않음"""
+    places(page, ("집", HOME), ("도서관", LIB))
+    connect(page)
+    assert not plan_now(page, "카페, 공원")
+    end = page.locator("#timeline .stop.end .card")
+    assert end.locator("button", has_text="집").count() == 1, "끝 카드에 '돌아가기' 칩이 없음"
+    page.evaluate("document.querySelector('#timeline .stop.end').scrollIntoView({block: 'center'})")
+    shot("end-return")
+    end.locator("button", has_text="집").click()
+    idle(page)
+    names = stop_names(page)
+    assert names[-1] == "집" and len(names) == 3, f"마지막에 집으로 돌아오지 않음: {names}"
+    assert "도착" in card(page, 2).locator("h3").inner_text(), "더한 집이 도착(복귀)이 아님"
+    assert page.locator("#timeline .stop.end .card button").count() == 0, "이미 복귀했는데 또 '돌아가기'를 물음"

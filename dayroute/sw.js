@@ -1,5 +1,5 @@
 // 배포할 때마다 VERSION을 올리면 설치된 앱이 새 화면을 받습니다.
-const VERSION = 'dayroute-v3';
+const VERSION = 'dayroute-v4';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './privacy.html', './demo.json',
   './icons/icon-192.png', './icons/icon-512.png', './icons/maskable-512.png'];
 const FONT_HOSTS = ['fonts.googleapis.com', 'fonts.gstatic.com'];

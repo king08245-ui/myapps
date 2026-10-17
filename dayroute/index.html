@@ -68,11 +68,19 @@ button{font:inherit;cursor:pointer;color:var(--ink)}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .chips button{font-size:13.5px;border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:0 12px;min-height:40px}
 /* 즐겨찾기 장소 칩: 누르면 출발지로(고른 칩은 진하게), 바꾸기·추가 검색에서는 그곳으로 */
-.chips button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink);font-weight:700}
+.chips button[aria-expanded="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink);font-weight:700}
+.chips button[aria-expanded="true"] small{color:inherit}
+.chips button small{font-size:12px;font-weight:700;color:var(--accent)}
 .chips .addchip{border:1.5px dashed var(--accent);color:var(--accent);background:var(--surface);font-weight:700}
-.chips .chiplab{font-size:12.5px;font-weight:700;color:var(--muted);align-self:center;margin-right:2px}
+.chiplab{font-size:12.5px;font-weight:700;color:var(--muted);align-self:center;margin-right:2px}
 .placebar{display:flex;flex-direction:column;gap:6px}
 .placebar .lab{margin:0}
+/* 즐겨찾기 장소를 어디에 쓸지 고르는 칸 */
+.pact{border:1.5px solid var(--ink);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:8px;background:var(--surface)}
+.pact-top{display:flex;flex-wrap:wrap;gap:2px 10px;align-items:baseline}
+.pact-top span{font-size:12.5px;color:var(--muted)}
+.pact-btns{display:flex;gap:6px;flex-wrap:wrap}
+.pact-btns .pick{flex:1 1 auto;font-weight:700}
 .status{font-size:13.5px;color:var(--muted);min-height:1.2em;margin:0}
 .status.err{color:var(--warn);font-weight:700}
 .note{font-size:12.5px;color:var(--muted);margin:0}
@@ -217,16 +225,24 @@ body.busy #timeline button,body.busy #timeline select,body.busy #timeline input,
       <button type="button" data-ex="박물관 2시간, 점심, 카페, 저녁">박물관 코스</button>
       <button type="button" data-ex="사우나, 영화, 저녁">쉬는 날</button>
     </div>
-    <p class="note" id="reqNote" hidden></p>
+    <div class="placebar">
+      <span class="lab" id="placeLab" hidden>즐겨찾기 장소 · 눌러서 출발·들르기·복귀로</span>
+      <div class="chips" id="placeChips" role="group" aria-label="즐겨찾기 장소"></div>
+      <!-- 칩을 누르면 이 칸이 열려 그 장소를 어디에 쓸지 고른다 -->
+      <div class="pact" id="placeAct" hidden>
+        <div class="pact-top"><b id="paName"></b><span id="paHint"></span></div>
+        <div class="pact-btns">
+          <button type="button" class="pick" id="paStart">출발지로</button>
+          <button type="button" class="pick" id="paVia">중간에 들르기</button>
+          <button type="button" class="pick" id="paEnd">마지막에 복귀</button>
+        </div>
+      </div>
+    </div>
     <div class="row2">
       <div><label for="from">출발지</label>
         <div class="from"><input id="from" type="text" value="공덕역" autocomplete="off" list="placeNames"><button type="button" class="btn" id="hereBtn" aria-label="현재 위치에서 출발">📍 현재</button></div>
         <datalist id="placeNames"></datalist></div>
       <div><label for="start">출발 시각</label><input type="time" id="start" value="10:00"></div>
-    </div>
-    <div class="placebar">
-      <span class="lab" id="placeLab" hidden>즐겨찾기 장소 · 누르면 출발지로</span>
-      <div class="chips" id="placeChips" role="group" aria-label="즐겨찾기 장소"></div>
     </div>
     <div>
       <span class="lab" id="modeLabel">이동 수단</span>
@@ -276,7 +292,7 @@ body.busy #timeline button,body.busy #timeline select,body.busy #timeline input,
 
   <section class="panel" id="placesPanel" aria-labelledby="plTitle">
     <h2 id="plTitle">📍 즐겨찾기 장소</h2>
-    <p class="note" id="plEmpty">집·도서관·자주 가는 카페를 저장해 두면 출발지로 바로 고르고, 요청에 이름만 적어도(예: 도서관 2시간, 점심, 집) 그곳으로 일정을 짜요.</p>
+    <p class="note" id="plEmpty">집·도서관·자주 가는 카페를 저장해 두면 출발지, 중간에 들를 곳, 마지막에 돌아갈 곳으로 눌러서 넣을 수 있어요. 요청에 이름만 적어도(예: 도서관 2시간, 점심, 집 복귀) 그곳으로 일정을 짜요.</p>
     <div class="favlist" id="plList"></div>
     <p class="status" id="plMsg" role="status" hidden></p>
     <button type="button" class="btn" id="plAddBtn" aria-controls="plAdd">＋ 장소 추가</button>
@@ -351,7 +367,8 @@ function setBusy(b) { busy = b; $("go").disabled = b; document.body.classList.to
 function setMode(m) { mode = m; $("mCar").setAttribute("aria-pressed", m === "car"); $("mTransit").setAttribute("aria-pressed", m === "transit"); }
 $("mCar").onclick = () => { setMode("car"); saveForm(); };
 $("mTransit").onclick = () => { setMode("transit"); saveForm(); };
-document.querySelectorAll("[data-ex]").forEach(b => b.onclick = () => { $("req").value = b.dataset.ex; saveForm(); });
+// 예시를 누르면 요청을 바꾸되, 정해 둔 마지막 복귀('…, 집 복귀')는 남긴다
+document.querySelectorAll("[data-ex]").forEach(b => b.onclick = () => { const end = endPart(); $("req").value = b.dataset.ex + (end ? ", " + end : ""); saveForm(); renderPlaceChips(); });
 function saveForm() {
   store.form = { req: $("req").value, from: $("from").value, start: $("start").value, mode, budget: $("budget").value, originLL, at: Date.now() };
   save();
@@ -652,6 +669,11 @@ const removeAct = i => {
   return editActs(arr => { arr.splice(i, 1); });
 };
 const setStay = (i, m) => editActs(arr => { arr[i].a = { ...arr[i].a, minutes: m }; });
+// 시간표 끝 카드 '돌아가기' → 마지막에 즐겨찾기 장소로 돌아오는 구간을 더함
+const returnTo = f => editActs(arr => {
+  if (arr.length >= 12) { setStatus("한 번에 12곳까지예요. 다른 곳을 빼고 더해 주세요.", true); return false; }
+  arr.push({ a: { category: "custom", label: f.alias + " 복귀", query: f.place.name, minutes: 0, named: true, isReturn: true }, p: { ...f.place, keep: true, favId: f.id } });
+});
 const setLegMode = (i, v) => editActs(arr => { arr[i].m = v || undefined; arr[i].k = undefined; });
 const setLegPath = (i, k) => { if (busy) return; showOpts = i; editActs(arr => { arr[i].k = k; }); };
 const LMODES = [["", "기본"], ["walk", "도보"], ["car", "승용차"], ["bus", "버스"], ["subway", "지하철"], ["train", "KTX·기차"]];
@@ -869,6 +891,16 @@ function renderPlan() {
       card.append(ed);
     } else {
       const h = el("h3"); h.append(el("span", "tm", fmt(it.t)), (it.type === "start" ? "출발 · " : "일정 끝 · ") + it.place.name); card.append(h);
+      // 일정이 복귀 없이 끝나면 즐겨찾기 장소로 돌아가기 (집이 먼저)
+      const lastAct = d.acts[d.acts.length - 1];
+      if (it.type === "end" && store.places.length && !(lastAct && lastAct.isReturn)) {
+        const row = el("div", "edit"); row.append(el("span", "chiplab", "돌아가기"));
+        [...store.places].sort((a, b) => isHomeP(b) - isHomeP(a)).slice(0, 4).forEach(f => {
+          const b = el("button", "pick", iconOf(f) + " " + f.alias); b.type = "button"; b.setAttribute("aria-label", ro(f.alias) + " 돌아가기");
+          b.onclick = () => returnTo(f); row.append(b);
+        });
+        card.append(row);
+      }
     }
     li.append(card); tl.append(li);
     if ((it.type === "stop" && !it.ret) || it.type === "start" || it.type === "miss") {
@@ -1067,31 +1099,72 @@ function upsertPlace(alias, p) {
 function say(id, t, err) { const s = $(id); s.textContent = t || ""; s.hidden = !t; s.classList.toggle("err", !!err); }
 const plMsg = (t, err) => say("plMsg", t, err), plStat = (t, err) => say("plStat", t, err);
 
-// 출발지 칩(누르면 출발지로) · 출발지 자동완성 · 요청 안내 · 패널 목록 · 바꾸기 검색 칩
+/* 요청 칸 아래 즐겨찾기 장소 칩 — 누르면 '출발지로 / 중간에 들르기 / 마지막에 복귀'를 고르는 칸이 열림.
+   칩에는 지금 맡은 역할(출발·들르기·복귀)이 붙는다. 중간·복귀는 요청 문장에 넣으므로 사용자가 보고 고칠 수 있음 */
+let actPlace = null;   // 고르는 칸을 연 장소
+const ROLE_ORDER = ["출발", "들르기", "복귀"];
+function placeRoles() {
+  const roles = new Map(store.places.map(f => [f.id, new Set()]));
+  const add = (f, r) => f && roles.has(f.id) && roles.get(f.id).add(r);
+  add(findPlace($("from").value), "출발");
+  const parts = subParts($("req").value);
+  parts.forEach((p, n) => {
+    const r = favPart(p, n === 0, n === parts.length - 1);
+    if (r && r.origin) add(r.origin, "출발"); else if (r && r.act) add(r.f, r.act.isReturn ? "복귀" : "들르기");
+  });
+  return roles;
+}
 function renderPlaceChips() {
   const box = $("placeChips"); box.replaceChildren();
-  const cur = pkey($("from").value);
+  if (actPlace && !store.places.some(f => f.id === actPlace.id)) actPlace = null;
+  const roles = placeRoles();
   store.places.forEach(f => {
+    const r = ROLE_ORDER.filter(x => roles.get(f.id).has(x));
     const b = el("button", null, iconOf(f) + " " + f.alias); b.type = "button";
-    b.setAttribute("aria-pressed", String(!!cur && (pkey(f.alias) === cur || pkey(f.place.name) === cur)));
-    b.setAttribute("aria-label", f.alias + "에서 출발");
-    b.onclick = () => {
-      $("from").value = f.alias; originLL = null; saveForm(); renderPlaceChips();
-      setStatus(`출발지를 ‘${f.alias}’${jong(f.alias) && jong(f.alias) !== 8 ? "으로" : "로"} 정했어요.`);
-    };
+    if (r.length) b.append(" ", el("small", null, r.join("·")));
+    b.setAttribute("aria-expanded", String(!!actPlace && actPlace.id === f.id)); b.setAttribute("aria-controls", "placeAct");
+    b.setAttribute("aria-label", f.alias + (r.length ? " (지금 " + r.join("·") + ")" : "") + " — 출발·들르기·복귀 고르기");
+    b.onclick = () => { actPlace = actPlace && actPlace.id === f.id ? null : f; renderPlaceChips(); };
     box.append(b);
   });
   const add = el("button", "addchip", store.places.length ? "＋" : "＋ 집·자주 가는 곳 저장"); add.type = "button";
   add.setAttribute("aria-label", "즐겨찾기 장소 추가"); add.onclick = () => openPlaceAdd();
   box.append(add);
   $("placeLab").hidden = !store.places.length;
+  $("placeAct").hidden = !actPlace;
+  if (actPlace) {
+    const a = actPlace.alias;
+    $("paName").textContent = iconOf(actPlace) + " " + a;
+    $("paHint").textContent = isHomeP(actPlace) ? `요청 끝에 ‘${a} 복귀’라고 적어도 돼요` : `요청에 ‘${a} 2시간’처럼 적어도 돼요`;
+  }
 }
+// 요청 문장을 쉼표 토막으로 다루기 — 맨 끝 토막이 '…복귀/귀가'(또는 시간 없는 '집')면 마지막 복귀로 봄
+const reqParts = () => $("req").value.split(/[,，\n]/).map(s => s.trim()).filter(Boolean);
+function isReturnPart(s) { const r = favPart(s, false, true); return /복귀|귀가|돌아(오|가|와)/.test(s) || !!(r && r.act && r.act.isReturn); }
+function endPart() { const p = reqParts(); return p.length && isReturnPart(p[p.length - 1]) ? p[p.length - 1] : ""; }
+function setReq(parts) { $("req").value = parts.join(", "); saveForm(); renderPlaceChips(); }
+$("paStart").onclick = () => {
+  const f = actPlace; if (!f) return;
+  $("from").value = f.alias; originLL = null; actPlace = null; saveForm(); renderPlaceChips();
+  setStatus(`‘${f.alias}’에서 출발해요.`);
+};
+$("paVia").onclick = () => {   // 마지막 복귀가 있으면 그 앞에 넣음. 시간을 적어 둬야 맨 끝 '집'도 복귀가 아니라 들르기로 읽힘
+  const f = actPlace; if (!f) return;
+  const parts = reqParts(), at = parts.length && isReturnPart(parts[parts.length - 1]) ? parts.length - 1 : parts.length;
+  parts.splice(at, 0, f.alias + " 1시간"); actPlace = null; setReq(parts);
+  setStatus(`요청에 ‘${f.alias} 1시간’을 넣었어요. 머무는 시간은 고쳐 적어도 돼요.`);
+};
+$("paEnd").onclick = () => {   // 이미 있던 마지막 복귀는 바꿈
+  const f = actPlace; if (!f) return;
+  const parts = reqParts();
+  if (parts.length && isReturnPart(parts[parts.length - 1])) parts.pop();
+  parts.push(f.alias + " 복귀"); actPlace = null; setReq(parts);
+  setStatus(`마지막에 ${ro(f.alias)} 돌아와요.`);
+};
+$("req").addEventListener("input", () => renderPlaceChips());
 function renderPlaces() {
   renderPlaceChips();
   $("placeNames").replaceChildren(...store.places.map(f => { const o = el("option"); o.value = f.alias; o.label = f.place.name; return o; }));
-  const other = store.places.find(f => !isHomeP(f)), home = store.places.find(isHomeP);
-  const ex = [other && other.alias + " 2시간", home && home.alias].filter(Boolean).join(", ");
-  $("reqNote").hidden = !ex; $("reqNote").textContent = ex ? `★ 저장한 장소 이름을 적으면 그곳으로 가요 — 예: ${ex}` : "";
   const box = $("plList"); box.replaceChildren();
   $("plEmpty").hidden = store.places.length > 0; box.hidden = !store.places.length;
   store.places.forEach(f => box.append(placeRow(f)));
@@ -1227,7 +1300,7 @@ $("plAddBtn").onclick = () => openPlaceAdd();
 $("plClose").onclick = () => closePlaceAdd();
 function savedMsg(r) {
   const a = r.rec.alias;
-  plMsg(r.replaced ? `‘${a}’ 위치를 새로 저장했어요.` : `‘${a}’${jong(a) ? "을" : "를"} 저장했어요. 출발지 칩으로 고르거나 요청에 ‘${a}’${jong(a) ? "이라고" : "라고"} 적으면 이곳으로 가요.`);
+  plMsg(r.replaced ? `‘${a}’ 위치를 새로 저장했어요.` : `‘${a}’${jong(a) ? "을" : "를"} 저장했어요. 위 ‘즐겨찾기 장소’ 칩을 눌러 출발·들르기·복귀로 넣거나, 요청에 ‘${a}’${jong(a) ? "이라고" : "라고"} 적으면 돼요.`);
 }
 let plSeq = 0;
 $("plForm").addEventListener("submit", async e => {
