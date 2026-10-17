@@ -1200,8 +1200,8 @@ function kakaoFind(q, bias) {
     if (k && !k.length && bias) k = await kw({ size: 10 });   // 20km 안에 없으면 전국에서
     const a = /\d/.test(q) ? await addr() : [];
     if (k === null && !a.length) throw new Error("카카오 장소 찾기가 지금 안 돼요. 잠시 뒤 다시 해 보세요.");
-    const seen = new Set();
-    return a.concat(k || []).filter(p => { const key = p.name + "|" + (+p.x).toFixed(5); if (seen.has(key)) return false; seen.add(key); return true; }).slice(0, 10);
+    const seen = new Set(), parking = !/주차/.test(q);   // '마포중앙도서관' → 그 공영주차장은 빼고(주차장을 찾을 때만 남김)
+    return a.concat(k || []).filter(p => { const key = p.name + "|" + (+p.x).toFixed(5); if (seen.has(key) || (parking && /주차장/.test(p.category || ""))) return false; seen.add(key); return true; }).slice(0, 10);
   };
   return Promise.race([run(), later(12000).then(() => { throw new Error("장소 찾기가 너무 늦어요. 인터넷 연결을 확인하세요."); })]);
 }

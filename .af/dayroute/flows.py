@@ -627,6 +627,7 @@ def flow_place_add_by_search_then_start_there(page, shot):
     page.click("#plGo")
     page.wait_for_selector("#plResults li .use", timeout=8000)
     assert "공덕래미안5차아파트" in page.inner_text("#plResults"), f"찾은 곳이 안 보임: {page.inner_text('#plResults')}"
+    assert "주차장" not in page.inner_text("#plResults"), "장소 찾기 결과에 공영주차장이 섞임"
     shot("place-search")
     page.locator("#plResults li .use").first.click()
     assert page.locator("#plList .place", has_text="집").count() == 1, "저장한 장소가 목록에 없음"
