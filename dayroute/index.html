@@ -67,6 +67,12 @@ button{font:inherit;cursor:pointer;color:var(--ink)}
 .go:disabled{opacity:.6;cursor:wait}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .chips button{font-size:13.5px;border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:0 12px;min-height:40px}
+/* 즐겨찾기 장소 칩: 누르면 출발지로(고른 칩은 진하게), 바꾸기·추가 검색에서는 그곳으로 */
+.chips button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink);font-weight:700}
+.chips .addchip{border:1.5px dashed var(--accent);color:var(--accent);background:var(--surface);font-weight:700}
+.chips .chiplab{font-size:12.5px;font-weight:700;color:var(--muted);align-self:center;margin-right:2px}
+.placebar{display:flex;flex-direction:column;gap:6px}
+.placebar .lab{margin:0}
 .status{font-size:13.5px;color:var(--muted);min-height:1.2em;margin:0}
 .status.err{color:var(--warn);font-weight:700}
 .note{font-size:12.5px;color:var(--muted);margin:0}
@@ -99,6 +105,7 @@ button{font:inherit;cursor:pointer;color:var(--ink)}
 .pill{display:inline-block;font-size:12px;font-weight:700;padding:1px 7px;border-radius:5px;background:var(--soft);color:var(--ink)}
 .pill.no{background:var(--warn-bg);color:var(--warn)}
 .pill.ok{background:var(--ok-bg);color:var(--ok)}
+.pill.star{background:var(--sel);color:var(--accent)}
 .pick{font-size:13.5px;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:0 12px;min-height:40px}
 .pick.meal{border-color:var(--accent);color:var(--accent);font-weight:700}
 .pick.x{color:var(--warn)}
@@ -149,6 +156,15 @@ button{font:inherit;cursor:pointer;color:var(--ink)}
 .fav span{display:block;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fav .pick{min-height:40px}
 .favlist{display:flex;flex-direction:column;gap:6px}
+.fav.place{grid-template-columns:26px minmax(0,1fr) auto auto}
+.pic{font-size:19px;text-align:center;line-height:1}
+.ren{display:flex;gap:6px;align-items:center;min-width:0;flex:1 1 100%}
+.ren input{flex:1;min-width:0;min-height:40px;padding:6px 10px}
+.fav .ren{grid-column:2 / -1}
+.pladd{display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--line);padding-top:12px}
+.pladd .results{margin:0 -14px}
+.pltools{display:flex;gap:8px;flex-wrap:wrap}
+.pltools .btn{flex:1 1 auto}
 .backup{display:flex;gap:8px;flex-wrap:wrap}
 .backup .btn{flex:1 1 auto;display:inline-flex;align-items:center;justify-content:center;font-size:13.5px}
 .foot{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:6px}
@@ -164,7 +180,7 @@ button{font:inherit;cursor:pointer;color:var(--ink)}
 .mk.opt{background:#7d8a91;min-width:22px;height:22px;font-size:11px;cursor:pointer}
 @media (prefers-reduced-motion:no-preference){.mk.cand{transition:transform .15s}}
 /* 계산 중에는 고치기 버튼을 잠가 둔다(두 번 눌러도 한 번만 반영) */
-body.busy #timeline button,body.busy #timeline select,body.busy #timeline input,body.busy #results .use,body.busy #favList button,body.busy #favSave{pointer-events:none;opacity:.55}
+body.busy #timeline button,body.busy #timeline select,body.busy #timeline input,body.busy #results .use,body.busy #tchips button,body.busy #favList button,body.busy #favSave{pointer-events:none;opacity:.55}
 </style>
 </head>
 <body>
@@ -201,10 +217,16 @@ body.busy #timeline button,body.busy #timeline select,body.busy #timeline input,
       <button type="button" data-ex="박물관 2시간, 점심, 카페, 저녁">박물관 코스</button>
       <button type="button" data-ex="사우나, 영화, 저녁">쉬는 날</button>
     </div>
+    <p class="note" id="reqNote" hidden></p>
     <div class="row2">
       <div><label for="from">출발지</label>
-        <div class="from"><input id="from" type="text" value="공덕역" autocomplete="off"><button type="button" class="btn" id="hereBtn" aria-label="현재 위치에서 출발">📍 현재</button></div></div>
+        <div class="from"><input id="from" type="text" value="공덕역" autocomplete="off" list="placeNames"><button type="button" class="btn" id="hereBtn" aria-label="현재 위치에서 출발">📍 현재</button></div>
+        <datalist id="placeNames"></datalist></div>
       <div><label for="start">출발 시각</label><input type="time" id="start" value="10:00"></div>
+    </div>
+    <div class="placebar">
+      <span class="lab" id="placeLab" hidden>즐겨찾기 장소 · 누르면 출발지로</span>
+      <div class="chips" id="placeChips" role="group" aria-label="즐겨찾기 장소"></div>
     </div>
     <div>
       <span class="lab" id="modeLabel">이동 수단</span>
@@ -230,8 +252,8 @@ body.busy #timeline button,body.busy #timeline select,body.busy #timeline input,
       <div class="summary" id="summary"></div>
       <p class="parsed" id="parsed"></p>
       <div class="tools">
-        <input id="favName" type="text" placeholder="즐겨찾기 이름" aria-label="즐겨찾기 이름">
-        <button type="button" class="btn" id="favSave">★ 즐겨찾기 저장</button>
+        <input id="favName" type="text" placeholder="경로 이름" aria-label="즐겨찾기 경로 이름">
+        <button type="button" class="btn" id="favSave">★ 경로 저장</button>
         <button type="button" class="btn" id="imgSave">이미지로 저장</button>
       </div>
     </div>
@@ -242,6 +264,7 @@ body.busy #timeline button,body.busy #timeline select,body.busy #timeline input,
     <div class="maphead"><h2 id="mapTitle">지도</h2><button type="button" class="btn" id="mapToggle" aria-expanded="true">지도 접기</button></div>
     <div class="searchbar" id="searchbar" hidden>
       <div class="target" id="target"></div>
+      <div class="chips" id="tchips" hidden></div>
       <form class="sform" id="sform">
         <input id="q" type="search" placeholder="예: 국밥, 김밥, 칼국수" aria-label="경로 근처 검색어">
         <button id="qgo" type="submit">검색</button>
@@ -251,16 +274,32 @@ body.busy #timeline button,body.busy #timeline select,body.busy #timeline input,
     <ul class="results" id="results"></ul>
   </section>
 
+  <section class="panel" id="placesPanel" aria-labelledby="plTitle">
+    <h2 id="plTitle">📍 즐겨찾기 장소</h2>
+    <p class="note" id="plEmpty">집·도서관·자주 가는 카페를 저장해 두면 출발지로 바로 고르고, 요청에 이름만 적어도(예: 도서관 2시간, 점심, 집) 그곳으로 일정을 짜요.</p>
+    <div class="favlist" id="plList"></div>
+    <p class="status" id="plMsg" role="status" hidden></p>
+    <button type="button" class="btn" id="plAddBtn" aria-controls="plAdd">＋ 장소 추가</button>
+    <div class="pladd" id="plAdd" hidden>
+      <div><label for="plAlias">부를 이름</label><input id="plAlias" type="text" maxlength="20" placeholder="예: 집, 도서관, 단골카페" autocomplete="off"></div>
+      <div><label for="plQ">장소 찾기</label>
+        <form class="sform" id="plForm"><input id="plQ" type="search" placeholder="장소 이름이나 주소" autocomplete="off"><button type="submit" id="plGo">찾기</button></form></div>
+      <div class="pltools"><button type="button" class="btn" id="plHere">📍 지금 있는 곳으로 저장</button><button type="button" class="btn" id="plClose">닫기</button></div>
+      <p class="status" id="plStat" role="status" hidden></p>
+      <ul class="results" id="plResults"></ul>
+    </div>
+  </section>
+
   <section class="panel" aria-labelledby="favTitle">
-    <h2 id="favTitle">★ 즐겨찾기</h2>
-    <p class="note" id="favEmpty">저장한 경로가 없어요. 일정을 짠 뒤 ‘즐겨찾기 저장’을 누르세요.</p>
+    <h2 id="favTitle">★ 즐겨찾기 경로</h2>
+    <p class="note" id="favEmpty">저장한 경로가 없어요. 일정을 짠 뒤 ‘★ 경로 저장’을 누르세요.</p>
     <div class="favlist" id="favList"></div>
     <div class="backup">
       <button type="button" class="btn" id="exportBtn">백업 내보내기</button>
       <label class="btn" for="importFile">백업 가져오기</label>
       <input type="file" id="importFile" accept="application/json,.json" hidden>
     </div>
-    <p class="note">즐겨찾기는 이 폰에만 저장돼요. 폰을 바꿀 때나 PC판 즐겨찾기(favorites.json)를 옮길 때 백업 파일을 쓰세요.</p>
+    <p class="note">즐겨찾기 장소와 경로는 이 폰에만 저장돼요. 폰을 바꿀 때나 PC판 즐겨찾기(favorites.json)를 옮길 때 백업 파일을 쓰세요.</p>
   </section>
 
   <footer class="foot">
@@ -290,6 +329,9 @@ const stepColor = s => !s ? "#3D5BAB" : s.type === "subway" ? (SUBWAY[s.subwayCo
 const KEY = "dayroute:v1";
 const store = (() => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; } })();
 if (!Array.isArray(store.favs)) store.favs = [];
+// 즐겨찾기 장소: [{ id, alias:'집', place:{name,x,y,address,category,url}, savedAt }] — 좌표가 깨진 것은 버림
+const okPlace = f => !!(f && typeof f.alias === "string" && f.alias.trim() && f.place && Number.isFinite(+f.place.x) && Number.isFinite(+f.place.y) && +f.place.x && +f.place.y);
+store.places = Array.isArray(store.places) ? store.places.filter(okPlace) : [];
 function save() {
   try { localStorage.setItem(KEY, JSON.stringify(store)); return true; }
   catch { setStatus("폰 저장 공간이 부족해 저장하지 못했어요. 오래된 즐겨찾기를 지워 주세요.", true); return false; }
@@ -319,7 +361,7 @@ function applyForm(f) {
   if (f.budget) $("budget").value = f.budget; setMode(f.mode || "car"); originLL = f.originLL || null;
 }
 ["req", "from", "start", "budget"].forEach(id => $(id).addEventListener("change", saveForm));
-$("from").addEventListener("input", () => { if ($("from").value.trim() !== "현재 위치") originLL = null; });
+$("from").addEventListener("input", () => { if ($("from").value.trim() !== "현재 위치") originLL = null; renderPlaceChips(); });
 if (store.form) applyForm(store.form);
 
 /* ---------- 현재 위치에서 출발 ---------- */
@@ -328,7 +370,7 @@ $("hereBtn").onclick = () => {
   setStatus("현재 위치 찾는 중…");
   navigator.geolocation.getCurrentPosition(pos => {
     originLL = { x: +pos.coords.longitude.toFixed(6), y: +pos.coords.latitude.toFixed(6) };
-    $("from").value = "현재 위치"; saveForm(); setStatus("현재 위치에서 출발해요.");
+    $("from").value = "현재 위치"; saveForm(); renderPlaceChips(); setStatus("현재 위치에서 출발해요.");
   }, err => setStatus(err && err.code === 1 ? "위치 권한이 꺼져 있어요. 브라우저 설정에서 위치를 허용하거나 출발지를 글로 적어 주세요." : "현재 위치를 찾지 못했어요. 출발지를 글로 적어 주세요.", true),
   { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 });
 };
@@ -420,19 +462,23 @@ async function checkServer(fromSetup, quiet) {
 
 /* ---------- 지도 (카카오 지도) ---------- */
 let map = null, mapLoading = false, planLayer = [], candLayer = [], clickLayer = [], optLayer = [];
+let mapReady = null;   // 지도(카카오 SDK)가 준비되면 끝나는 약속 — 즐겨찾기 장소 찾기가 기다림
 function mapMsg(t) { const m = $("mapmsg"); if (!m) return; m.textContent = t; m.hidden = !t; }
 function loadMap(jsKey) {
   if (map || mapLoading) return;
   if (!jsKey) { mapMsg("지도를 보려면 서버(Cloudflare) 설정에 KAKAO_JS_KEY를 넣으세요. 지도 없이도 일정 짜기와 장소 바꾸기는 돼요."); return; }
   mapLoading = true;
+  let done; mapReady = new Promise(r => { done = r; });
   const s = document.createElement("script");
-  s.src = "https://dapi.kakao.com/v2/maps/sdk.js?autoload=false&appkey=" + encodeURIComponent(jsKey);
-  const fail = () => { mapLoading = false; mapMsg(`지도를 불러오지 못했어요. 카카오 developers → 내 애플리케이션 → 플랫폼 → Web에 ${location.origin} 이 등록돼 있는지 확인하세요. 지도 없이도 나머지는 돼요.`); };
+  // services: 즐겨찾기 장소를 이름·주소로 찾고, 지금 위치의 주소를 알아낼 때 씀
+  s.src = "https://dapi.kakao.com/v2/maps/sdk.js?autoload=false&libraries=services&appkey=" + encodeURIComponent(jsKey);
+  const fail = () => { mapLoading = false; done(false); mapMsg(`지도를 불러오지 못했어요. 카카오 developers → 내 애플리케이션 → 플랫폼 → Web에 ${location.origin} 이 등록돼 있는지 확인하세요. 지도 없이도 나머지는 돼요.`); };
   s.onload = () => {
     try {
       kakao.maps.load(() => {
         try {
           map = new kakao.maps.Map($("map"), { center: new kakao.maps.LatLng(37.5443, 126.9515), level: 6 });
+          mapLoading = false; done(true);
           map.addControl(new kakao.maps.ZoomControl(), kakao.maps.ControlPosition.RIGHT);
           mapMsg("");
           kakao.maps.event.addListener(map, "click", e => {
@@ -541,10 +587,20 @@ async function makePlan(fresh, next = {}, onOk) {
   if (busy) return false;
   setBusy(true); setStatus(fresh ? "장소를 찾고 경로를 계산하는 중…" : "바꾼 장소로 다시 계산하는 중…");
   try {
+    let pk = next.picks || picks, mine = null;
+    const lm = next.legModes || legModes, lp = next.legPaths || legPaths;
+    if (fresh) {
+      // 요청에 즐겨찾기 장소가 있으면('도서관 2시간, 집') 폰에서 먼저 해석해 그 자리에 저장한 곳을 넣어 보낸다
+      mine = await withPlaces($("req").value);
+      if (mine) {
+        pk = mine.picks;
+        if (mine.origin) { $("from").value = mine.origin.alias; originLL = null; saveForm(); renderPlaceChips(); }   // '집에서 출발'
+      }
+    }
     const from = $("from").value.trim();
-    const pk = next.picks || picks, lm = next.legModes || legModes, lp = next.legPaths || legPaths;
-    const body = { text: $("req").value, origin: from, originLL: from === "현재 위치" && originLL ? originLL : undefined,
+    const body = { text: $("req").value, origin: from, originLL: originFor(from, fresh),
       start: $("start").value || "10:00", mode, budget: $("budget").value, picks: pk, legModes: lm, legPaths: lp };
+    if (mine) body.acts = mine.acts;
     if (!fresh && plan) {
       body.acts = next.acts || plan.acts;
       // 앞서 계산한 구간·출발지를 같이 보내 바뀐 곳 앞뒤만 새로 계산(무료 한도·ODsay 하루 횟수 아낌)
@@ -552,6 +608,7 @@ async function makePlan(fresh, next = {}, onOk) {
       if (plan.originQuery && plan.items[0] && plan.items[0].place) body.originPlace = { ...plan.items[0].place, q: plan.originQuery };
     }
     const d = await api("/api/plan", body, 60000);
+    if (mine && d.source === "kept") d.source = "rule";   // 폰에서 서버와 같은 규칙으로 해석함
     plan = d; picks = pk; legModes = lm; legPaths = lp; demo = false;
     if (fresh) { target = null; results = []; showOpts = null; renderTarget(); renderResults(); if (map) clear(candLayer); $("favName").value = ""; }
     if (onOk) onOk();
@@ -634,6 +691,7 @@ function cancelTarget() { target = null; results = []; if (map) { clear(candLaye
 function renderTarget() {
   const t = $("target"); t.replaceChildren();
   $("searchbar").hidden = !target;
+  renderTargetChips();
   if (!target) return;
   t.append(el("b", null, target.add ? "장소 추가" : target.label + " 바꾸기"), " · " + (target.clicked ? "지도에서 누른 곳 근처" : target.next ? "앞뒤 장소 사이 경로 근처" : "앞 장소 근처"));
   if (map) t.append(" · ", el("b", null, "지도를 누르면 그 근처에서 찾아요"));
@@ -671,25 +729,30 @@ function renderResults() {
     if (target.meal && p.cheap) meta.prepend(el("span", "pill ok", "가성비"), " ");
     mid.append(meta); li.append(mid);
     const use = el("button", "use", target.add ? "추가" : "여기로"); use.type = "button";
-    use.onclick = async ev => {
+    use.onclick = ev => {
       ev.stopPropagation();
-      if (busy || !target) return;
-      const pk = { name: p.name, x: p.x, y: p.y, address: p.address, category: p.category, url: p.url };
-      const act = target.add ? target.after + 1 : target.act;
-      let ok;
-      if (target.add) {
-        const at = target.after + 1, q = $("q").value.trim();
-        ok = await editActs(arr => { arr.splice(at, 0, { a: { category: "custom", label: q || catTail(p.category) || p.name, query: p.name, minutes: /카페|커피/.test(q) ? 50 : 60, named: true }, p: pk }); });
-      } else {
-        // 고른 곳은 성공했을 때만 반영 — 실패하면 검색 결과가 남아 있어 다시 고를 수 있음
-        ok = await makePlan(false, { picks: { ...picks, [target.act]: pk } }, clearTarget);
-      }
-      if (!ok) return;
-      const card = document.querySelector(`#timeline .card[data-act="${act}"]`);
-      (card || $("planArea")).scrollIntoView({ behavior: smooth(), block: "center" });
+      const q = $("q").value.trim();
+      applyChoice({ name: p.name, x: p.x, y: p.y, address: p.address, category: p.category, url: p.url },
+        { label: q || catTail(p.category) || p.name, query: p.name, minutes: /카페|커피/.test(q) ? 50 : 60 });
     };
     li.append(use); list.append(li);
   });
+}
+// 검색 결과나 즐겨찾기 장소 칩에서 고른 곳으로 바꾸기/더하기. add: 장소 추가일 때 새 활동의 이름·검색어·머무는 시간
+async function applyChoice(pk, add) {
+  if (busy || !target) return;
+  const act = target.add ? target.after + 1 : target.act;
+  let ok;
+  if (target.add) {
+    const at = target.after + 1;
+    ok = await editActs(arr => { arr.splice(at, 0, { a: { category: "custom", label: add.label, query: add.query || pk.name, minutes: add.minutes, named: true }, p: pk }); });
+  } else {
+    // 고른 곳은 성공했을 때만 반영 — 실패하면 검색 결과가 남아 있어 다시 고를 수 있음
+    ok = await makePlan(false, { picks: { ...picks, [target.act]: pk } }, clearTarget);
+  }
+  if (!ok) return;
+  const card = document.querySelector(`#timeline .card[data-act="${act}"]`);
+  (card || $("planArea")).scrollIntoView({ behavior: smooth(), block: "center" });
 }
 
 /* ---------- 시간표 ---------- */
@@ -702,7 +765,7 @@ function renderPlan() {
   s.append(box(fmt(d.start) + " – " + fmt(d.end), "하루 일정"), box(dur(d.moving), "총 이동 (" + (d.mode === "car" ? "자가용" : "대중교통") + ")"), box(d.items.filter(i => i.type === "stop" && !i.ret).length + "곳", "방문"));
   const pz = $("parsed"); pz.replaceChildren();
   pz.append(d.source === "ai" ? "AI가 해석한 요청: " : d.source === "rule" ? "키워드로 해석한 요청: " : "요청: ");
-  pz.append(el("code", null, d.acts.map(a => a.label + " " + dur(a.minutes)).join(" → ")));
+  pz.append(el("code", null, d.acts.map(a => a.isReturn ? a.label : a.label + " " + dur(a.minutes)).join(" → ")));
 
   const tl = $("timeline"); tl.replaceChildren(); let n = 0;
   d.items.forEach((it, idx) => {
@@ -752,12 +815,14 @@ function renderPlan() {
       if (target && target.act === it.act) card.classList.add("active");
       const h = el("h3"); h.append(el("span", "tm", fmt(it.t)), el("span", "num", it.ret ? "도착" : String(++n)));
       const a = el("a", null, it.place.name); a.href = it.place.url || "#"; a.target = "_blank"; a.rel = "noopener"; h.append(a); card.append(h);
-      const m = el("div", "meta");
-      m.append(el("span", "pill", it.label));
+      const m = el("div", "meta"), fv = favOf(it.place);
+      // 즐겨찾기 장소면 ★ 표시 (활동 이름이 그 이름으로 시작하면 한 칸으로: ★ 도서관, ★ 집 복귀)
+      if (fv && pkey(it.label).startsWith(pkey(fv.alias))) m.append(el("span", "pill star", "★ " + it.label));
+      else { m.append(el("span", "pill", it.label)); if (fv) m.append(el("span", "pill star", "★ " + fv.alias)); }
       if (catTail(it.place.category)) m.append(el("span", null, catTail(it.place.category)));
       if (!it.ret) m.append(el("span", null, dur(it.stay) + " · " + fmt(it.t + it.stay) + "까지"));
       if (it.picked) m.append(el("span", "pill ok", "직접 고름"));
-      if (it.needsParking) m.append(el("span", "pill no", "주차 확인"));
+      if (it.needsParking && !fv) m.append(el("span", "pill no", "주차 확인"));   // 늘 가는 곳은 묻지 않음
       card.append(m);
       if (it.place.address) card.append(el("div", "meta", it.place.address));
       // 자주 쓰는 것(바꾸기·머무는 시간)은 바로, 순서·빼기는 '⋯' 안에 (작은 화면에서 줄이 넘치지 않게)
@@ -785,12 +850,23 @@ function renderPlan() {
         undo.onclick = () => { if (demoOnly()) return setStatus(DEMO_MSG, true); const pk = { ...picks }; delete pk[it.act]; makePlan(false, { picks: pk }); };
         ex.append(undo);
       }
+      if (!fv) {
+        const sv = el("button", "pick", "☆ 장소 저장"); sv.type = "button"; sv.setAttribute("aria-label", it.place.name + " 즐겨찾기 장소로 저장");
+        sv.onclick = () => askAlias(ex, it.place, it.place.name);
+        ex.append(sv);
+      }
       card.append(ed, ex);
     } else if (it.type === "miss") {
       card.dataset.act = it.act;
       const h = el("h3"); h.append(el("span", "tm", fmt(it.t)), it.label + " — 찾지 못함"); card.append(h);
       const ed = el("div", "edit"); const ch = el("button", "pick meal", "다른 곳으로 바꾸기"); ch.type = "button"; ch.onclick = () => choose(idx);
-      const rm = el("button", "pick x", "빼기"); rm.type = "button"; rm.onclick = () => removeAct(it.act); ed.append(ch, rm); card.append(ed);
+      const rm = el("button", "pick x", "빼기"); rm.type = "button"; rm.onclick = () => removeAct(it.act); ed.append(ch, rm);
+      // '귀가'·'집'을 못 찾았으면 집을 저장하라고 알려 줌
+      if (/집|귀가/.test(it.label) && !store.places.some(isHomeP)) {
+        card.append(el("div", "meta", "집을 즐겨찾기 장소로 저장하면 ‘귀가’·‘집’이라고만 적어도 바로 찾아요."));
+        const hb = el("button", "pick", "＋ 집 저장"); hb.type = "button"; hb.onclick = () => openPlaceAdd("집"); ed.append(hb);
+      }
+      card.append(ed);
     } else {
       const h = el("h3"); h.append(el("span", "tm", fmt(it.t)), (it.type === "start" ? "출발 · " : "일정 끝 · ") + it.place.name); card.append(h);
     }
@@ -833,11 +909,11 @@ $("favSave").onclick = () => {
   // 저장본은 지금 일정의 복사본 — 저장한 뒤 화면에서 고쳐도 즐겨찾기는 그대로
   const state = clone({ req: $("req").value, from: $("from").value, start: $("start").value, mode, budget: $("budget").value, originLL, picks: demo ? picks : pinned(), legModes, legPaths, plan });
   const top = store.favs[0];
-  if (top && favSig(top.name, top.state && top.state.plan) === favSig(name, state.plan)) return setStatus("이미 저장된 즐겨찾기예요: " + name);
+  if (top && favSig(top.name, top.state && top.state.plan) === favSig(name, state.plan)) return setStatus("이미 저장된 경로예요: " + name);
   const stops = plan.items.filter(i => i.type === "stop" && !i.ret).length;
   store.favs.unshift({ id: Date.now().toString(36), name, summary: `${fmt(plan.start)}–${fmt(plan.end)} · ${stops}곳 · ${plan.mode === "car" ? "자가용" : "대중교통"}`, state, savedAt: new Date().toISOString() });
   store.favs = store.favs.slice(0, 200);
-  if (save()) { setStatus("즐겨찾기에 저장했어요: " + name); renderFavs(); }
+  if (save()) { setStatus("즐겨찾기 경로에 저장했어요: " + name); renderFavs(); }
   else store.favs.shift();
 };
 function restoreState(s, name) {
@@ -847,7 +923,7 @@ function restoreState(s, name) {
   picks = s.picks || {}; legModes = s.legModes || {}; legPaths = s.legPaths || {}; plan = s.plan; showOpts = null; target = null; results = [];
   if (map) { clear(candLayer); clear(clickLayer); }
   $("favName").value = name || "";
-  renderTarget(); renderResults(); renderPlan(); drawPlan();
+  renderTarget(); renderResults(); renderPlan(); drawPlan(); renderPlaceChips();
 }
 function openFav(id) {
   if (busy) return;   // 계산 중에 열면 곧 도착할 결과가 불러온 일정을 덮으므로 막음
@@ -859,6 +935,419 @@ function openFav(id) {
   $("planArea").scrollIntoView({ behavior: smooth(), block: "start" });
 }
 
+/* ---------- 요청 해석 (서버 worker.js의 ruleParse를 그대로 옮김) ----------
+   즐겨찾기 장소가 들어간 요청만 폰에서 먼저 해석한다 — 활동 번호를 알아야 그 자리에 저장한 곳을 넣을 수 있어서.
+   서버 것을 고치면 여기도 같이 고칠 것(검수 흐름 client_parser_matches_server가 둘을 비교).
+   옛 아이폰(사파리 16.4 전)에서도 돌게, '뒤를 보는' 정규식 한 곳만 같은 뜻의 다른 모양으로 바꿈 */
+const CAT = {
+  gym:        { ko: "헬스장",   q: "헬스장",   min: 60 },
+  lunch:      { ko: "점심",     q: "맛집",     min: 60, code: "FD6" },
+  cafe:       { ko: "카페",     q: "카페",     min: 50, code: "CE7" },
+  exhibition: { ko: "전시",     q: "미술관 박물관", min: 90 },
+  park:       { ko: "공원 산책", q: "공원",     min: 60 },
+  cinema:     { ko: "영화",     q: "영화관",   min: 130 },
+  sauna:      { ko: "사우나",   q: "사우나",   min: 90 },
+  dinner:     { ko: "저녁",     q: "맛집",     min: 90, code: "FD6" },
+};
+const KW = [
+  ["gym", /헬스|운동|짐|PT|웨이트|필라테스/], ["lunch", /점심|브런치/], ["cafe", /카페|커피/],
+  ["exhibition", /전시|박물관|미술관|갤러리|기념관/], ["park", /공원|산책|한강|숲길/],
+  ["cinema", /영화|극장|시네마/], ["sauna", /사우나|찜질|목욕/], ["dinner", /저녁|갈비|술|다이닝/],
+];
+const GENERIC = /^(헬스장?|헬스클럽|운동|짐|PT|웨이트|필라테스|전시(회|관)?|박물관|미술관|갤러리|기념관|공원|산책|공원산책|숲길|영화(관)?|극장|시네마|사우나|찜질(방)?|목욕(탕)?|브런치)$/;
+const VAGUE = { 헬스: "헬스장", 운동: "헬스장", 짐: "헬스장", 전시: "미술관 박물관", 전시회: "미술관 박물관", 산책: "공원", 공원산책: "공원", 영화: "영화관", 찜질: "찜질방", 목욕: "목욕탕" };
+const isMeal = c => c === "lunch" || c === "dinner";
+const splitAfterVerb = raw => raw.replace(/(먹고|보고|가고|하고)\s+/g, "$1\u0001").split("\u0001");   // 서버: raw.split(/(?<=먹고|보고|가고|하고)\s+/)
+function ruleParse(text) {
+  const parts = String(text || "").split(/[,，\n]|그리고|→/).map(s => s.trim()).filter(Boolean);
+  const out = [];
+  for (const raw of parts) {
+    const sub = splitAfterVerb(raw).map(s => s.trim()).filter(Boolean);
+    for (const part of sub) {
+      let min = null;
+      const h = part.match(/(\d+(?:\.\d+)?)\s*시간/), m = part.match(/(\d+)\s*분/);
+      if (h || m) min = Math.round((h ? parseFloat(h[1]) * 60 : 0) + (m ? parseInt(m[1], 10) : 0));
+      const needsParking = /주차/.test(part);
+      const isReturn = /복귀|귀가|돌아(오|가)/.test(part);
+      const clean = part.replace(/\d+(\.\d+)?\s*(시간|분)/g, "").replace(/주차(되는|가능한|가능|있는)?/g, "")
+        .replace(/(책\s*)?사기|사러|구경하기|구경|먹기|먹고|먹으러|보기|보고|가고|하기|하고|가기|들르기|복귀|귀가|돌아오기|돌아가기|오후엔|오전엔|저녁엔|에서/g, " ")
+        .replace(/\s+/g, " ").trim();
+      let anchor = null, target = clean;
+      const nm = clean.match(/^(.+?)\s*(근처|주변|앞|옆)\s+(.+)$/);
+      if (nm) { anchor = nm[1].trim(); target = nm[3].trim(); }
+      const near = !anchor && /근처|주변/.test(clean);
+      let named = target.replace(/(\S)(점심|저녁|식사)(?=\s|$)/g, "$1").replace(/(^|\s)(점심|저녁|식사|밥|맛집|카페|커피|근처|주변)(?=\s|$)/g, " ").replace(/\s+/g, " ").trim();
+      const word = named.replace(/\s+/g, "");
+      const kind = GENERIC.test(word) ? (VAGUE[word] || named) : "", kindLabel = kind && !VAGUE[word] ? named : "";
+      if (kind) named = "";
+      const catOf = c => (kindLabel && isMeal(c) ? "custom" : c);
+      if (near && !isReturn) {
+        const hitN = KW.find(([, re]) => re.test(part));
+        const cat = hitN ? catOf(hitN[0]) : "custom";
+        const q = named.length >= 2 ? named : kind || (hitN ? CAT[hitN[0]].q : target.replace(/근처|주변/g, "").trim());
+        out.push({ category: cat, label: clean, query: q || "맛집", nearPrev: true, minutes: min || (hitN ? CAT[hitN[0]].min : 60), needsParking });
+        continue;
+      }
+      if (isReturn || named.length >= 2 || anchor) {
+        const hitN = KW.find(([, re]) => re.test(part));
+        const cat = hitN ? catOf(hitN[0]) : "custom";
+        out.push({ category: cat, label: isReturn ? (named || clean) + " 복귀" : clean, query: (named.length >= 2 ? named : kind || target) || clean,
+          anchor: anchor && !/^(근처|주변)$/.test(anchor) ? anchor : null, named: named.length >= 2, isReturn,
+          minutes: isReturn ? 0 : (min || (hitN ? CAT[hitN[0]].min : 60)), needsParking });
+        continue;
+      }
+      const hit = KW.find(([, re]) => re.test(part));
+      if (hit) {
+        out.push({ category: catOf(hit[0]), label: kindLabel || CAT[hit[0]].ko, query: kind || CAT[hit[0]].q, minutes: min || CAT[hit[0]].min, needsParking });
+      } else {
+        const q = part.replace(/\d+(\.\d+)?\s*(시간|분)/g, "").replace(/주차(되는|가능한|가능|있는)?/g, "")
+          .replace(/(먹고|보고|가고|하고|오후엔|오전엔|저녁엔|에서|가기|하기)/g, "").trim();
+        if (q.length >= 2) out.push({ category: "custom", label: q, query: q, minutes: min || 60, needsParking });
+      }
+    }
+  }
+  return out;
+}
+
+/* ---------- 즐겨찾기 장소 (집·도서관·자주 가는 카페) ----------
+   쓰는 곳: 출발지(칩을 누르거나 이름을 적기), 요청 문장('도서관 2시간, 점심, 집'·'귀가'·'집에서 출발'·'집 근처 카페'),
+   바꾸기·추가 검색의 칩. 이름은 띄어쓰기·끝 조사(으로·에서·에…)를 빼고 똑같을 때만 같은 곳으로 본다 */
+const HOME_RE = /^(집|자택|본가|숙소)$/;
+function pkey(s) {
+  const k = String(s || "").replace(/\s+/g, "").toLowerCase();
+  const t = k.replace(/(으로|에서|에게|까지|부터|로|에|을|를)$/, "") || k;
+  return t === "우리집" || t === "내집" ? "집" : t;
+}
+const isHomeP = f => HOME_RE.test(pkey(f.alias));
+function findPlace(s) {
+  const k = pkey(s); if (!k) return null;
+  return store.places.find(f => pkey(f.alias) === k) || store.places.find(f => pkey(f.place.name) === k) || null;
+}
+function distM(a, b) {
+  const r = Math.PI / 180, dl = (+b.y - +a.y) * r, dn = (+b.x - +a.x) * r;
+  const s = Math.sin(dl / 2) ** 2 + Math.cos(+a.y * r) * Math.cos(+b.y * r) * Math.sin(dn / 2) ** 2;
+  return 2 * 6371000 * Math.asin(Math.sqrt(s));
+}
+// 일정의 이 장소가 즐겨찾기 장소인지 (즐겨찾기에서 넣은 곳, 또는 이름이 같고 300m 안)
+function favOf(p) {
+  if (!p || !store.places.length) return null;
+  const byId = p.favId && store.places.find(f => f.id === p.favId);
+  if (byId) return byId;
+  const k = pkey(p.name);
+  return store.places.find(f => (pkey(f.place.name) === k || pkey(f.alias) === k) && distM(f.place, p) < 300) || null;
+}
+function iconOf(f) {
+  const a = f.alias + " " + (f.place.category || "") + " " + f.place.name;
+  return isHomeP(f) ? "🏠" : /회사|직장|사무실|오피스/.test(a) ? "🏢" : /도서관|서점/.test(a) ? "📚" : /카페|커피/.test(a) ? "☕"
+    : /헬스|피트니스|운동|체육|수영|필라테스|요가/.test(a) ? "💪" : /학교|대학|학원/.test(a) ? "🏫" : /공원|산책|숲/.test(a) ? "🌳"
+    : /음식점|식당|맛집|밥집/.test(a) ? "🍚" : "⭐";
+}
+const jong = w => { const c = String(w).trim().slice(-1).charCodeAt(0); return c >= 0xAC00 && c <= 0xD7A3 ? (c - 0xAC00) % 28 : 0; };
+const ro = w => w + (jong(w) && jong(w) !== 8 ? "으로" : "로");   // 집으로·카페로·서울로
+const placeLink = (name, x, y) => `https://map.kakao.com/link/map/${encodeURIComponent(name)},${y},${x}`;
+function placeObj(p) {   // 저장하는 장소 모양 (카카오 검색 결과·일정의 장소·지금 위치)
+  const name = String(p.name || "").slice(0, 60);
+  return { name, x: String(+p.x), y: String(+p.y), address: String(p.address || "").slice(0, 120),
+    category: String(p.category || "").slice(0, 120), url: String(p.url || "") || placeLink(name, +p.x, +p.y) };
+}
+// 저장(같은 이름이 있으면 그 자리를 새 위치로) — 성공하면 { rec, replaced }, 못 하면 { error }
+function upsertPlace(alias, p) {
+  alias = String(alias || "").trim().slice(0, 20) || String(p.name || "").slice(0, 20);
+  if (!alias) return { error: "부를 이름을 적어 주세요." };
+  const old = store.places.find(f => pkey(f.alias) === pkey(alias));
+  if (!old && store.places.length >= 30) return { error: "즐겨찾기 장소는 30곳까지예요. 안 쓰는 곳을 지운 뒤 저장해 주세요." };
+  const rec = { id: old ? old.id : Date.now().toString(36) + Math.random().toString(36).slice(2, 6), alias, place: placeObj(p), savedAt: new Date().toISOString() };
+  const before = store.places.slice();
+  if (old) store.places[store.places.indexOf(old)] = rec; else store.places.push(rec);
+  if (!save()) { store.places = before; return { error: "폰 저장 공간이 부족해 저장하지 못했어요." }; }
+  renderPlaces(); if (plan) renderPlan();
+  return { rec, replaced: !!old };
+}
+// 패널 안내(저장·이름·삭제)와 장소 추가 칸 안내(찾기·지금 위치) — 비어 있으면 자리를 차지하지 않게 숨김
+function say(id, t, err) { const s = $(id); s.textContent = t || ""; s.hidden = !t; s.classList.toggle("err", !!err); }
+const plMsg = (t, err) => say("plMsg", t, err), plStat = (t, err) => say("plStat", t, err);
+
+// 출발지 칩(누르면 출발지로) · 출발지 자동완성 · 요청 안내 · 패널 목록 · 바꾸기 검색 칩
+function renderPlaceChips() {
+  const box = $("placeChips"); box.replaceChildren();
+  const cur = pkey($("from").value);
+  store.places.forEach(f => {
+    const b = el("button", null, iconOf(f) + " " + f.alias); b.type = "button";
+    b.setAttribute("aria-pressed", String(!!cur && (pkey(f.alias) === cur || pkey(f.place.name) === cur)));
+    b.setAttribute("aria-label", f.alias + "에서 출발");
+    b.onclick = () => {
+      $("from").value = f.alias; originLL = null; saveForm(); renderPlaceChips();
+      setStatus(`출발지를 ‘${f.alias}’${jong(f.alias) && jong(f.alias) !== 8 ? "으로" : "로"} 정했어요.`);
+    };
+    box.append(b);
+  });
+  const add = el("button", "addchip", store.places.length ? "＋" : "＋ 집·자주 가는 곳 저장"); add.type = "button";
+  add.setAttribute("aria-label", "즐겨찾기 장소 추가"); add.onclick = () => openPlaceAdd();
+  box.append(add);
+  $("placeLab").hidden = !store.places.length;
+}
+function renderPlaces() {
+  renderPlaceChips();
+  $("placeNames").replaceChildren(...store.places.map(f => { const o = el("option"); o.value = f.alias; o.label = f.place.name; return o; }));
+  const other = store.places.find(f => !isHomeP(f)), home = store.places.find(isHomeP);
+  const ex = [other && other.alias + " 2시간", home && home.alias].filter(Boolean).join(", ");
+  $("reqNote").hidden = !ex; $("reqNote").textContent = ex ? `★ 저장한 장소 이름을 적으면 그곳으로 가요 — 예: ${ex}` : "";
+  const box = $("plList"); box.replaceChildren();
+  $("plEmpty").hidden = store.places.length > 0; box.hidden = !store.places.length;
+  store.places.forEach(f => box.append(placeRow(f)));
+  renderTargetChips();
+}
+function placeRow(f) {
+  const row = el("div", "fav place");
+  const pic = el("span", "pic", iconOf(f)); pic.setAttribute("aria-hidden", "true");
+  const t = el("div"); t.append(el("b", null, f.alias), el("span", null, [f.place.name !== f.alias ? f.place.name : "", f.place.address].filter(Boolean).join(" · ") || "저장한 위치"));
+  const rn = el("button", "pick", "이름"); rn.type = "button"; rn.setAttribute("aria-label", f.alias + " 이름 바꾸기");
+  rn.onclick = () => renameRow(row, f);
+  const del = el("button", "pick x", "삭제"); del.type = "button"; let armedAt = 0;
+  del.onclick = () => {   // 경로 즐겨찾기와 같이: '한 번 더'를 보고 다시 눌러야 지움
+    const now = Date.now();
+    if (!armedAt) { armedAt = now; del.textContent = "한 번 더"; setTimeout(() => { armedAt = 0; del.textContent = "삭제"; }, 2500); return; }
+    if (now - armedAt < 600) return;
+    store.places = store.places.filter(x => x.id !== f.id); save(); renderPlaces(); if (plan) renderPlan();
+    plMsg(`‘${f.alias}’${jong(f.alias) ? "을" : "를"} 지웠어요.`);
+  };
+  row.append(pic, t, rn, del);
+  return row;
+}
+function renameRow(row, f) {
+  const wrap = el("div", "ren"), inp = el("input"), ok = el("button", "pick", "저장"), no = el("button", "pick", "취소");
+  inp.type = "text"; inp.maxLength = 20; inp.value = f.alias; inp.setAttribute("aria-label", "새 이름");
+  ok.type = no.type = "button";
+  const kept = [...row.childNodes];
+  no.onclick = () => row.replaceChildren(...kept);
+  ok.onclick = () => {
+    const v = inp.value.trim().slice(0, 20);
+    if (!v) return inp.focus();
+    if (store.places.some(x => x.id !== f.id && pkey(x.alias) === pkey(v))) { plMsg(`‘${v}’ 이름은 이미 있어요. 다른 이름을 적어 주세요.`, true); return inp.focus(); }
+    const before = f.alias; f.alias = v;
+    if (!save()) { f.alias = before; return; }
+    // 출발지에 옛 이름이 적혀 있었으면 새 이름으로
+    if (pkey($("from").value) === pkey(before)) { $("from").value = v; saveForm(); }
+    renderPlaces(); if (plan) renderPlan();
+    plMsg(`이름을 ‘${v}’${jong(v) && jong(v) !== 8 ? "으로" : "로"} 바꿨어요.`);
+  };
+  inp.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); ok.click(); } else if (e.key === "Escape") no.click(); };
+  wrap.append(inp, ok, no);
+  row.replaceChildren(kept[0], wrap);
+  inp.focus(); inp.select();
+}
+// 바꾸기·추가 검색 칸 위의 즐겨찾기 장소 칩 → 누르면 그곳으로 바꾸거나 더함
+function renderTargetChips() {
+  const box = $("tchips"); box.replaceChildren();
+  box.hidden = !target || !store.places.length;
+  if (box.hidden) return;
+  box.append(el("span", "chiplab", "즐겨찾기 장소"));
+  store.places.forEach(f => {
+    const b = el("button", null, iconOf(f) + " " + f.alias); b.type = "button";
+    b.setAttribute("aria-label", target.add ? f.alias + " 추가" : ro(f.alias) + " 바꾸기");
+    b.onclick = () => applyChoice({ ...f.place, favId: f.id, ...(target.add ? { keep: true } : {}) },
+      { label: f.alias, query: f.place.name, minutes: /카페|커피/.test(f.alias + (f.place.category || "")) ? 50 : 60 });
+    box.append(b);
+  });
+}
+// 시간표 카드 '⋯' → '☆ 장소 저장': 그 자리에서 부를 이름을 물어 저장
+function askAlias(box, place, def) {
+  const kept = [...box.childNodes];
+  const wrap = el("div", "ren"), inp = el("input"), ok = el("button", "pick", "저장"), no = el("button", "pick", "취소");
+  inp.type = "text"; inp.maxLength = 20; inp.value = def || ""; inp.placeholder = "부를 이름 (예: 집, 단골카페)"; inp.setAttribute("aria-label", "부를 이름");
+  ok.type = no.type = "button";
+  no.onclick = () => box.replaceChildren(...kept);
+  ok.onclick = () => {
+    const alias = inp.value.trim() || place.name;
+    const r = upsertPlace(alias, place);   // 저장되면 시간표를 다시 그려 ★ 표시가 붙음
+    if (r.error) return setStatus(r.error, true);
+    const a = r.rec.alias;
+    setStatus(r.replaced ? `‘${a}’ 위치를 이곳으로 바꿨어요.` : `‘${a}’${jong(a) ? "을" : "를"} 즐겨찾기 장소에 저장했어요.`); savedMsg(r);
+  };
+  inp.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); ok.click(); } else if (e.key === "Escape") no.click(); };
+  wrap.append(inp, ok, no); box.replaceChildren(wrap);
+  inp.focus(); inp.select();
+}
+
+/* 장소 추가: 이름·주소로 찾기(카카오 지도 SDK services) 또는 지금 위치 */
+const kakaoSvc = () => window.kakao && kakao.maps && kakao.maps.services ? kakao.maps.services : null;
+const later = ms => new Promise(r => setTimeout(r, ms));
+async function ensureKakao() {
+  if (kakaoSvc()) return kakaoSvc();
+  if (checking) await checking; else if (base == null && (store.server || localServer())) await connect(false, true);
+  if (mapReady) await Promise.race([mapReady, later(10000)]);
+  return kakaoSvc();
+}
+function biasPoint() {   // 찾을 때 이 근처를 먼저 (출발지 → 지난 일정 출발점 → 지도 가운데)
+  const f = findPlace($("from").value); if (f) return f.place;
+  if (originLL && $("from").value.trim() === "현재 위치") return originLL;
+  const s = plan && plan.items && plan.items[0] && plan.items[0].place; if (s && +s.x) return s;
+  if (map) { const c = map.getCenter(); return { x: c.getLng(), y: c.getLat() }; }
+  return null;
+}
+function kakaoFind(q, bias) {
+  const S = kakaoSvc();
+  const conv = d => ({ name: d.place_name, x: d.x, y: d.y, address: d.road_address_name || d.address_name, category: d.category_name, url: d.place_url });
+  const kw = opt => new Promise(res => new S.Places().keywordSearch(q, (data, st) => res(st === S.Status.OK ? data.map(conv) : st === S.Status.ZERO_RESULT ? [] : null), opt));
+  const addr = () => new Promise(res => new S.Geocoder().addressSearch(q, (data, st) => res(st === S.Status.OK ? data.slice(0, 3).map(d => {
+    const ra = d.road_address;
+    return { name: (ra && ra.building_name) || d.address_name, x: d.x, y: d.y, address: (ra && ra.address_name) || d.address_name, category: "주소", url: "" };
+  }) : [])));
+  const run = async () => {
+    const opt = { size: 10 };
+    if (bias) { opt.location = new kakao.maps.LatLng(+bias.y, +bias.x); opt.radius = 20000; opt.sort = S.SortBy.ACCURACY; }
+    let k = await kw(opt);
+    if (k && !k.length && bias) k = await kw({ size: 10 });   // 20km 안에 없으면 전국에서
+    const a = /\d/.test(q) ? await addr() : [];
+    if (k === null && !a.length) throw new Error("카카오 장소 찾기가 지금 안 돼요. 잠시 뒤 다시 해 보세요.");
+    const seen = new Set();
+    return a.concat(k || []).filter(p => { const key = p.name + "|" + (+p.x).toFixed(5); if (seen.has(key)) return false; seen.add(key); return true; }).slice(0, 10);
+  };
+  return Promise.race([run(), later(12000).then(() => { throw new Error("장소 찾기가 너무 늦어요. 인터넷 연결을 확인하세요."); })]);
+}
+function reverseAddr(x, y) {
+  const S = kakaoSvc(); if (!S) return Promise.resolve("");
+  return Promise.race([new Promise(res => new S.Geocoder().coord2Address(x, y, (d, st) => {
+    const a = st === S.Status.OK && d && d[0];
+    res(a ? (a.road_address && a.road_address.address_name) || (a.address && a.address.address_name) || "" : "");
+  })), later(6000).then(() => "")]);
+}
+function openPlaceAdd(alias) {
+  $("plAdd").hidden = false; $("plAddBtn").hidden = true;
+  if (alias != null) $("plAlias").value = alias;
+  plMsg(""); plStat("");
+  $("placesPanel").scrollIntoView({ behavior: smooth(), block: "start" });
+  setTimeout(() => ($("plAlias").value ? $("plQ") : $("plAlias")).focus({ preventScroll: true }), 350);
+}
+function closePlaceAdd() {
+  $("plAdd").hidden = true; $("plAddBtn").hidden = false;
+  $("plResults").replaceChildren(); $("plQ").value = ""; $("plAlias").value = ""; plStat(""); plSeq++;
+}
+$("plAddBtn").onclick = () => openPlaceAdd();
+$("plClose").onclick = () => closePlaceAdd();
+function savedMsg(r) {
+  const a = r.rec.alias;
+  plMsg(r.replaced ? `‘${a}’ 위치를 새로 저장했어요.` : `‘${a}’${jong(a) ? "을" : "를"} 저장했어요. 출발지 칩으로 고르거나 요청에 ‘${a}’${jong(a) ? "이라고" : "라고"} 적으면 이곳으로 가요.`);
+}
+let plSeq = 0;
+$("plForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const q = $("plQ").value.trim();
+  if (!q) { plStat("찾을 장소 이름이나 주소를 적어 주세요.", true); return $("plQ").focus(); }
+  const my = ++plSeq; $("plResults").replaceChildren(); plStat("찾는 중…");
+  const S = await ensureKakao();
+  if (my !== plSeq) return;
+  if (!S) return plStat(base == null ? "서버를 연결하면 장소를 찾을 수 있어요. 지금 있는 곳이면 ‘📍 지금 있는 곳으로 저장’을 누르세요."
+    : "장소 찾기는 카카오 지도가 있어야 돼요(지도 키 확인). 지금 있는 곳이면 ‘📍 지금 있는 곳으로 저장’을 누르세요.", true);
+  let list;
+  try { list = await kakaoFind(q, biasPoint()); } catch (err) { if (my === plSeq) plStat(err.message, true); return; }
+  if (my !== plSeq) return;
+  if (!list.length) return plStat("찾지 못했어요. 다른 이름이나 도로명 주소로 해 보세요.", true);
+  plStat("저장할 곳을 고르세요.");
+  const ul = $("plResults");
+  list.forEach((p, i) => {
+    const li = el("li"); li.append(el("span", "rn", String(i + 1)));
+    const mid = el("div"); mid.append(el("div", "rname", p.name), el("div", "rmeta", [p.category === "주소" ? "주소" : catTail(p.category), p.address].filter(Boolean).join(" · ")));
+    const b = el("button", "use", "저장"); b.type = "button"; b.setAttribute("aria-label", p.name + " 저장");
+    b.onclick = () => {
+      const r = upsertPlace($("plAlias").value.trim() || p.name, p);
+      if (r.error) return plStat(r.error, true);
+      closePlaceAdd(); savedMsg(r);
+    };
+    li.append(mid, b); ul.append(li);
+  });
+});
+$("plHere").onclick = () => {
+  const alias = $("plAlias").value.trim();
+  if (!alias) { plStat("먼저 부를 이름(예: 집)을 적어 주세요.", true); return $("plAlias").focus(); }
+  if (!navigator.geolocation) return plStat("이 기기에서는 현재 위치를 쓸 수 없어요. 이름이나 주소로 찾아 주세요.", true);
+  plStat("지금 위치 찾는 중…");
+  navigator.geolocation.getCurrentPosition(async pos => {
+    const x = +pos.coords.longitude.toFixed(6), y = +pos.coords.latitude.toFixed(6);
+    const address = await ensureKakao().then(S => S ? reverseAddr(x, y) : "", () => "");
+    const r = upsertPlace(alias, { name: alias, x, y, address, category: "", url: "" });
+    if (r.error) return plStat(r.error, true);
+    closePlaceAdd(); savedMsg(r);
+  }, err => plStat(err && err.code === 1 ? "위치 권한이 꺼져 있어요. 브라우저 설정에서 위치를 허용하거나 이름·주소로 찾아 주세요." : "현재 위치를 찾지 못했어요. 이름이나 주소로 찾아 주세요.", true),
+  { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 });
+};
+
+/* 요청 문장에서 즐겨찾기 장소 찾기 — 한 토막('도서관 2시간', '집으로 복귀', '집에서 출발', '집 근처 카페')씩 */
+const subParts = text => String(text || "").split(/[,，\n]|그리고|→/).map(s => s.trim()).filter(Boolean)
+  .flatMap(raw => splitAfterVerb(raw.replace(/(출발해서|출발한\s*뒤|출발한\s*다음|출발\s*후)\s+/g, "$1\u0001")).map(s => s.trim()).filter(Boolean));   // '집에서 출발해서 도서관'도 나눔
+function favPart(part, first, last) {
+  const hm = part.match(/(\d+(?:\.\d+)?)\s*시간/), mm = part.match(/(\d+)\s*분/);
+  const min = hm || mm ? Math.round((hm ? parseFloat(hm[1]) * 60 : 0) + (mm ? parseInt(mm[1], 10) : 0)) : null;
+  let s = part.replace(/\d+(\.\d+)?\s*(시간|분)/g, " ");
+  const ret = /복귀|귀가|돌아(오|가|와)/.test(s), start = /출발/.test(s);
+  s = s.replace(/(으로|로|에)?\s*(복귀|귀가|돌아오기|돌아가기|돌아와서|돌아가서|돌아오|돌아가|돌아와)/g, " ")
+    .replace(/(에서)?\s*출발(하기|해서|하고|한\s*뒤|한\s*다음|\s*후)?/g, " ")
+    .replace(/(에|으로|로)?\s*(가기|가서|가고|들르기|들러서|들르고|들러)(?=\s|$)/g, " ")
+    .replace(/주차(되는|가능한|가능|있는)?/g, " ").replace(/\s+/g, " ").trim();
+  // 'A 근처 B' — A가 즐겨찾기 장소면 그 근처에서 B를 찾는다. A 없이 '근처 카페'는 앞 장소 근처(서버가 함)
+  const nm = s.match(/^(.+?)\s*(근처|주변|앞|옆)\s+(.+)$/);
+  if (nm) { const f = findPlace(nm[1]); return f ? { near: f } : null; }
+  if (/근처|주변/.test(s)) return null;
+  const words = s.split(" ").filter(Boolean);
+  let hit = null;
+  for (let len = words.length; len >= 1 && !hit; len--)
+    for (let i = 0; i + len <= words.length; i++) { const f = findPlace(words.slice(i, i + len).join("")); if (f) { hit = { f, rest: words.length - len }; break; } }
+  if (!hit) {
+    const home = ret && !words.length ? store.places.find(isHomeP) : null;   // '귀가'·'돌아가기'만 적었으면 집
+    if (!home) return null;
+    hit = { f: home, rest: 0 };
+  }
+  const f = hit.f, home = isHomeP(f);
+  // 출발: '집에서 출발', 또는 맨 앞에 시간 없이 '집'만 (집 → … → 집)
+  if (first && (start || (home && !last && min == null && !hit.rest && !ret))) return { origin: f };
+  // 돌아오기: '복귀·귀가', 또는 맨 끝에 시간 없이 '집'만
+  const isRet = ret || (home && last && min == null && !hit.rest);
+  const kw = KW.find(([, re]) => re.test(part));
+  return { f, act: { category: kw ? kw[0] : "custom", label: (isRet ? f.alias + " 복귀" : s || f.alias).slice(0, 60), query: (f.place.name || f.alias).slice(0, 80),
+    named: true, isReturn: isRet, minutes: min != null ? min : isRet ? 0 : kw ? CAT[kw[0]].min : 60, needsParking: /주차/.test(part) } };
+}
+// 즐겨찾기 장소가 하나라도 나오면 { acts, picks, origin }, 아니면 null(서버가 해석)
+async function withPlaces(text) {
+  if (!store.places.length) return null;
+  const parts = subParts(text), acts = [], picks = {}, near = [];
+  let origin = null, hit = false;
+  parts.forEach((part, n) => {
+    const r = favPart(part, n === 0, n === parts.length - 1);
+    if (!r) { acts.push(...ruleParse(part)); return; }
+    hit = true;
+    if (r.origin) { origin = r.origin; return; }
+    if (r.near) {
+      for (const a of ruleParse(part)) { if (a.anchor) { near.push({ i: acts.length, f: r.near }); a.anchor = null; } acts.push(a); }
+      return;
+    }
+    picks[acts.length] = { ...r.f.place, keep: true, favId: r.f.id };
+    acts.push(r.act);
+  });
+  if (!hit) return null;
+  if (!acts.length) throw new Error("요청에서 갈 곳을 찾지 못했어요. 예: 도서관 2시간, 점심, 집");
+  if (acts.length > 12) throw new Error("한 번에 12곳까지 짤 수 있어요. 일정을 나눠 주세요.");
+  for (const { i, f } of near) {   // '집 근처 카페': 저장한 곳 1km 안에서 먼저 골라 둠
+    const a = acts[i];
+    const d = await api("/api/nearby", { query: a.query, budget: $("budget").value, prev: { x: f.place.x, y: f.place.y }, meal: isMeal(a.category) }, 30000);
+    const used = new Set(Object.values(picks).map(p => p.name));
+    const p = (d.results || []).find(c => !used.has(c.name));
+    if (p) picks[i] = { name: p.name, x: p.x, y: p.y, address: p.address, category: p.category, url: p.url, keep: true };
+    else a.nearPrev = true;   // 저장한 곳 근처에 없으면 앞 장소 근처에서
+  }
+  // '귀가'만 적고 집을 저장하지 않았으면 서버가 '찾지 못함' 카드로 보여 줌(빈 검색어는 서버가 버려 번호가 밀리므로 채움)
+  acts.forEach(a => { if (!a.query) { a.query = "집"; a.label = "집 복귀"; } });
+  return { acts, picks, origin };
+}
+// 출발 좌표: 즐겨찾기 장소 → 저장한 곳, '현재 위치' → 폰 위치, 좌표로 출발한 일정을 고칠 때 → 그 출발점
+function originFor(from, fresh) {
+  const f = findPlace(from);
+  if (f) return { x: +f.place.x, y: +f.place.y };
+  if (from === "현재 위치" && originLL) return originLL;
+  const s = !fresh && plan && plan.originQuery == null && plan.items && plan.items[0] && plan.items[0].place;
+  if (s && s.name === from && Number.isFinite(+s.x)) return { x: +s.x, y: +s.y };
+  return undefined;
+}
+
 /* ---------- 백업 (폰 바꿀 때, PC판 favorites.json 옮길 때) ---------- */
 async function shareOrDownload(file) {
   if (matchMedia("(pointer:coarse)").matches && navigator.canShare?.({ files: [file] })) { try { await navigator.share({ files: [file], title: file.name }); return; } catch (e) { if (e.name === "AbortError") return; } }
@@ -866,22 +1355,30 @@ async function shareOrDownload(file) {
   document.body.append(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
 }
 $("exportBtn").onclick = () => {
-  const data = { favs: store.favs, form: store.form, server: store.server || "" };   // 접속 코드는 넣지 않음
+  const data = { favs: store.favs, places: store.places, form: store.form, server: store.server || "" };   // 접속 코드는 넣지 않음
   shareOrDownload(new File([JSON.stringify({ app: KEY, at: new Date().toISOString(), data }, null, 1)], `하루동선-백업-${todayKST()}.json`, { type: "application/json" }));
 };
 $("importFile").onchange = async e => {
   const file = e.target.files[0]; e.target.value = ""; if (!file) return;
-  let favs = null, j = null;
+  let favs = null, places = [], j = null;
   try { j = JSON.parse(await file.text()); } catch { return setStatus("백업 파일을 읽지 못했어요.", true); }
-  if (j && j.app === KEY && j.data) favs = j.data.favs || [];
+  if (j && j.app === KEY && j.data) { favs = Array.isArray(j.data.favs) ? j.data.favs : []; places = Array.isArray(j.data.places) ? j.data.places.filter(okPlace) : []; }
   else if (Array.isArray(j) && j.every(f => f && f.name && f.state)) favs = j;     // PC판 favorites.json
   if (!favs) return setStatus("하루동선 백업 파일이 아니에요.", true);
-  if (!confirm(`즐겨찾기 ${favs.length}개를 가져올까요? 같은 즐겨찾기는 새것으로 바뀌고, 나머지는 그대로 둬요.`)) return;
+  const what = [favs.length && `경로 ${favs.length}개`, places.length && `장소 ${places.length}개`].filter(Boolean).join("와 ");
+  if (!what) return setStatus("백업 파일에 가져올 즐겨찾기가 없어요.", true);
+  if (!confirm(`즐겨찾기 ${what}를 가져올까요? 같은 것은 새것으로 바뀌고, 나머지는 그대로 둬요.`)) return;
   const byId = new Map(store.favs.map(f => [f.id, f]));
   favs.forEach(f => byId.set(f.id || Math.random().toString(36).slice(2), f));
+  const before = { favs: store.favs, places: store.places };
   store.favs = [...byId.values()].sort((a, b) => String(b.savedAt || "").localeCompare(String(a.savedAt || ""))).slice(0, 200);
+  // 장소는 부르는 이름이 같으면 가져온 것으로 바꿈
+  const pl = store.places.slice();
+  places.forEach(f => { const i = pl.findIndex(x => pkey(x.alias) === pkey(f.alias)); const rec = { id: f.id || Math.random().toString(36).slice(2), alias: String(f.alias).trim().slice(0, 20), place: placeObj(f.place), savedAt: f.savedAt || new Date().toISOString() }; if (i >= 0) pl[i] = rec; else pl.push(rec); });
+  store.places = pl.slice(0, 30);
   if (j.data && j.data.server && !store.server) store.server = j.data.server;
-  if (save()) { renderFavs(); setStatus(`즐겨찾기 ${favs.length}개를 가져왔어요.`); }
+  if (save()) { renderFavs(); renderPlaces(); if (plan) renderPlan(); setStatus(`즐겨찾기 ${what}를 가져왔어요.`); }
+  else { store.favs = before.favs; store.places = before.places; }
 };
 
 /* ---------- 이미지로 저장 ---------- */
@@ -956,7 +1453,7 @@ $("demoBtn").onclick = async () => {
 };
 
 /* ---------- 시작 ---------- */
-renderFavs();
+renderFavs(); renderPlaces();
 if (store.last && store.last.plan) {   // 지난번 일정을 그대로 보여 준다(폰을 다시 열었을 때)
   restoreState(store.last, store.last.favName);
   if (store.form && (store.form.at || 0) > (store.last.at || 0)) applyForm(store.form);   // 그 뒤에 새로 적던 입력은 살린다

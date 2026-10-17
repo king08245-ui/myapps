@@ -1,12 +1,18 @@
 # 하루동선 폰 화면 자동 검수 흐름 — 시험용 API(카카오·ODsay 흉내, test/mock_api.py)와 Worker 코드(local.mjs)가 떠 있어야 함
 #   API: http://127.0.0.1:8788 (접속 코드 1234)   흉내 서버: http://127.0.0.1:8790
 import json
+import math
+import os
 import re
+import subprocess
 import urllib.request
 
 API = "http://127.0.0.1:8788"
 MOCK = "http://127.0.0.1:8790"
+HERE = os.path.dirname(os.path.abspath(__file__))
 PC_FAVS = "/home/claude/dayroute/src/favorites.json"   # PC판에서 가져온 실제 즐겨찾기 파일(가져오기 시험용, 공개하지 않음)
+if not os.path.exists(PC_FAVS):   # 없으면 같은 모양으로 만든 시험용 파일(시험용 가짜 API로 짠 일정 2개)
+    PC_FAVS = os.path.join(HERE, "test", "pc_favorites_sample.json")
 
 
 def mock_stats(reset=False):
@@ -556,3 +562,277 @@ def flow_last_stop_cannot_be_removed(page, shot):
     more(page, 0, "빼기")
     assert "마지막 한 곳" in status(page), f"마지막 곳을 빼려 할 때 안내가 없음: {status(page)}"
     assert stop_count(page) == 1
+
+
+# ---------- 즐겨찾기 장소 (10/17): 집·도서관·자주 가는 카페 ----------
+HOME = {"name": "집", "x": "126.9562", "y": "37.5469", "address": "서울 마포구 마포대로 195", "category": "", "url": ""}
+LIB = {"name": "마포중앙도서관", "x": "126.9087", "y": "37.5636", "address": "서울 마포구 성미산로 128",
+       "category": "사회,공공기관 > 도서관 > 공공도서관", "url": "http://place.map.kakao.com/771"}
+CAFE = {"name": "스타벅스 공덕역점", "x": "126.952", "y": "37.5431", "address": "서울 마포구 마포대로 92",
+        "category": "음식점 > 카페 > 커피전문점 > 스타벅스", "url": "http://place.map.kakao.com/772"}
+STUB = open(os.path.join(HERE, "test", "kakao_stub.js"), encoding="utf-8").read()
+WORKER = os.path.join(HERE, "worker", "worker.js")
+
+
+def places(page, *items):
+    """즐겨찾기 장소를 폰 저장소에 바로 넣기 — items: (부를 이름, 장소). 다음 connect()의 새로고침부터 보임"""
+    pl = [{"id": f"p{i}", "alias": a, "place": p, "savedAt": "2026-10-17T00:00:00Z"} for i, (a, p) in enumerate(items)]
+    page.evaluate("(pl) => { const d = JSON.parse(localStorage.getItem('dayroute:v1') || '{}'); d.places = pl; localStorage.setItem('dayroute:v1', JSON.stringify(d)); }", pl)
+
+
+def kakao_stub(page):
+    """카카오 지도 SDK를 검수용 흉내(test/kakao_stub.js)로 — 서버 상태의 지도 키를 'test'로 바꿔 앱이 SDK를 부르게 함"""
+    def status(route):
+        r = route.fetch()
+        d = r.json()
+        d["jsKey"] = "test"
+        route.fulfill(response=r, body=json.dumps(d))
+    page.route("**/api/status", status)
+    page.route("https://dapi.kakao.com/**", lambda r: r.fulfill(status=200, content_type="text/javascript; charset=utf-8", body=STUB))
+
+
+def plan_bodies(page):
+    """폰이 /api/plan으로 보낸 요청 내용을 모음"""
+    got = []
+    page.on("request", lambda r: got.append(json.loads(r.post_data)) if r.method == "POST" and r.url.endswith("/api/plan") else None)
+    return got
+
+
+def km(a, b):
+    r = math.pi / 180
+    ay, by, ax, bx = float(a["y"]), float(b["y"]), float(a["x"]), float(b["x"])
+    s = math.sin((by - ay) * r / 2) ** 2 + math.cos(ay * r) * math.cos(by * r) * math.sin((bx - ax) * r / 2) ** 2
+    return 2 * 6371 * math.asin(math.sqrt(s))
+
+
+def server_parse(samples):
+    """서버(worker.js)의 ruleParse를 node로 돌린 결과"""
+    src = open(WORKER, encoding="utf-8").read()
+    code = src[src.index("const CAT = {"):src.index("/* ---------- 식사 가격대")]
+    js = code + "\nconst isMeal = c => c === 'lunch' || c === 'dinner';\nprocess.stdout.write(JSON.stringify(JSON.parse(process.env.SAMPLES).map(ruleParse)));"
+    out = subprocess.run(["node", "-e", js], env={**os.environ, "SAMPLES": json.dumps(samples, ensure_ascii=False)}, capture_output=True, text=True, check=True)
+    return json.loads(out.stdout)
+
+
+def flow_place_add_by_search_then_start_there(page, shot):
+    """'＋ 집·자주 가는 곳 저장' → 이름 '집' + '공덕래미안' 찾기 → 저장 → 출발지 칩 '집' → 저장한 좌표에서 출발(이름으로 다시 찾지 않음)"""
+    kakao_stub(page)
+    connect(page)
+    page.wait_for_function("!!(window.kakao && kakao.maps && kakao.maps.services)", timeout=10000)
+    bodies = plan_bodies(page)
+    page.click("#placeChips .addchip")
+    assert page.is_visible("#plAdd"), "장소 추가 칸이 안 열림"
+    page.fill("#plAlias", "집")
+    page.fill("#plQ", "공덕래미안")
+    page.click("#plGo")
+    page.wait_for_selector("#plResults li .use", timeout=8000)
+    assert "공덕래미안5차아파트" in page.inner_text("#plResults"), f"찾은 곳이 안 보임: {page.inner_text('#plResults')}"
+    shot("place-search")
+    page.locator("#plResults li .use").first.click()
+    assert page.locator("#plList .place", has_text="집").count() == 1, "저장한 장소가 목록에 없음"
+    assert "저장했어요" in page.inner_text("#plMsg"), f"저장 안내가 없음: {page.inner_text('#plMsg')}"
+    assert not page.is_visible("#plAdd"), "저장했는데 추가 칸이 그대로 열려 있음"
+    chip = page.locator("#placeChips button", has_text="집")
+    chip.click()
+    assert page.input_value("#from") == "집", "칩을 눌렀는데 출발지가 집이 아님"
+    assert chip.get_attribute("aria-pressed") == "true", "고른 출발지 칩이 표시되지 않음"
+    mock_stats(reset=True)
+    assert not plan_now(page, "카페, 공원")
+    start = page.locator("#timeline .stop.start .card").inner_text()
+    assert "집" in start, f"집에서 출발하지 않음: {start}"
+    o = bodies[-1].get("originLL") or {}
+    assert abs(o.get("x", 0) - 126.9562) < 1e-6 and abs(o.get("y", 0) - 37.5469) < 1e-6, f"저장한 좌표로 보내지 않음: {o}"
+    assert "집" not in mock_stats()["queries"], "출발지 '집'을 이름으로 다시 찾음(엉뚱한 '집'이라는 가게가 나올 수 있음)"
+    page.evaluate("document.getElementById('placesPanel').scrollIntoView({block: 'start'})")
+    shot("places-panel")
+    page.reload()
+    page.wait_for_function("document.getElementById('keys').textContent.includes('서버 연결됨')", timeout=10000)
+    assert page.locator("#plList .place", has_text="집").count() == 1, "새로고침하자 즐겨찾기 장소가 사라짐"
+
+
+def flow_place_names_in_request(page, shot):
+    """요청에 저장한 이름을 적으면 그곳으로: '도서관 2시간, 점심, 단골카페 1시간, 집' → 마포중앙도서관 → 식당 → 스타벅스 공덕역점 → 집(도착)"""
+    places(page, ("집", HOME), ("도서관", LIB), ("단골카페", CAFE))
+    connect(page)
+    bodies = plan_bodies(page)
+    assert "도서관 2시간, 집" in page.inner_text("#reqNote"), f"요청 칸 아래 안내가 없음: {page.inner_text('#reqNote')}"
+    page.fill("#req", "도서관 2시간, 점심, 단골카페 1시간, 집")
+    shot("places-form")
+    mock_stats(reset=True)
+    assert not plan_now(page, "도서관 2시간, 점심, 단골카페 1시간, 집")
+    names = stop_names(page)
+    assert len(names) == 4 and names[0] == "마포중앙도서관" and names[2] == "스타벅스 공덕역점" and names[3] == "집", f"저장한 곳으로 짜지 않음: {names}"
+    assert "도착" in card(page, 3).locator("h3").inner_text(), "맨 끝 '집'이 도착(집으로 돌아오기)이 아님"
+    pills = page.evaluate("[...document.querySelectorAll('#timeline .stop:not(.start) .pill.star')].map(x => x.textContent)")
+    assert pills == ["★ 도서관", "★ 단골카페", "★ 집 복귀"], f"★ 표시가 다름: {pills}"
+    assert card(page, 0).locator(".hrs input").input_value() == "2", "‘도서관 2시간’이 2시간이 아님"
+    qs = mock_stats()["queries"]
+    assert not [q for q in qs if "도서관" in q or "단골" in q or q == "집"], f"저장한 곳을 이름으로 다시 찾음: {qs}"
+    assert "키워드로 해석한 요청" in page.inner_text("#parsed"), "해석한 요청 표시가 바뀜"
+    b = bodies[-1]
+    assert len(b.get("acts", [])) == 4 and b["picks"]["0"]["name"] == "마포중앙도서관", "활동 목록과 저장한 곳을 함께 보내지 않음"
+    assert "주차 확인" not in card(page, 0).inner_text(), "늘 가는 곳에도 '주차 확인'이 붙음"
+    page.evaluate("document.getElementById('planArea').scrollIntoView({block: 'start'})")
+    shot("places-plan")
+    card(page, 1).locator("button[aria-label='30분 늘리기']").click()
+    idle(page)
+    assert stop_names(page) == names, f"머무는 시간을 고쳤더니 저장한 곳이 바뀜: {stop_names(page)}"
+
+
+def flow_place_home_words(page, shot):
+    """'귀가'·'집으로 복귀'·'집에 가기'는 저장한 집으로 · '집에서 출발'·맨 앞 '집'은 출발지를 집으로 · 출발지에 '도서관'만 적어도 그 좌표"""
+    places(page, ("집", HOME), ("도서관", LIB))
+    connect(page)
+    bodies = plan_bodies(page)
+    for text in ("카페, 귀가", "카페, 집으로 복귀", "카페 1시간, 집에 가기"):
+        err = plan_now(page, text)
+        assert not err, f"'{text}' 실패: {err}"
+        names = stop_names(page)
+        assert names[-1] == "집" and len(names) == 2, f"'{text}' → 집으로 끝나지 않음: {names}"
+    page.fill("#from", "서울역")
+    assert not plan_now(page, "집에서 출발, 도서관 3시간, 집")
+    assert page.input_value("#from") == "집", "‘집에서 출발’인데 출발지 칸이 집으로 안 바뀜"
+    assert "집" in page.locator("#timeline .stop.start .card").inner_text(), "집에서 출발하지 않음"
+    assert stop_names(page) == ["마포중앙도서관", "집"], f"집 → 도서관 → 집이 아님: {stop_names(page)}"
+    page.fill("#from", "서울역")
+    assert not plan_now(page, "집, 도서관, 집")
+    assert page.input_value("#from") == "집" and stop_names(page) == ["마포중앙도서관", "집"], f"맨 앞 '집'을 출발로 보지 않음: {stop_names(page)}"
+    page.fill("#from", "도서관")
+    assert not plan_now(page, "카페")
+    assert "도서관" in page.locator("#timeline .stop.start .card").inner_text()
+    o = bodies[-1].get("originLL") or {}
+    assert abs(o.get("x", 0) - 126.9087) < 1e-6, f"출발지 '도서관'을 저장한 좌표로 보내지 않음: {o}"
+
+
+def flow_place_near_saved(page, shot):
+    """'집 근처 카페 1시간' → 저장한 집 1.2km 안의 카페 (서버가 '집'이라는 이름의 가게를 찾아 그 근처로 가지 않게)"""
+    places(page, ("집", HOME))
+    connect(page)
+    page.fill("#from", "서울역")
+    assert not plan_now(page, "집 근처 카페 1시간, 공원")
+    pl = page.evaluate("plan.items.filter(i => i.type === 'stop').map(i => i.place)")
+    d = km(pl[0], HOME)
+    assert d < 1.3, f"집 근처가 아닌 카페: {pl[0]['name']} ({d:.2f}km)"
+    assert "카페" in card(page, 0).inner_text(), "카페가 아님"
+    assert card(page, 0).locator(".hrs input").input_value() == "1"
+
+
+def flow_place_save_from_card_and_use_in_edit(page, shot):
+    """시간표 '⋯ → ☆ 장소 저장'으로 이름 붙여 저장 → ★ 표시 · 바꾸기·여기에 추가 검색의 칩으로 저장한 곳을 넣기"""
+    places(page, ("도서관", LIB))
+    connect(page)
+    assert not plan_now(page, "카페, 공원")
+    name0 = stop_names(page)[0]
+    c = card(page, 0)
+    c.locator("button.more").click()
+    c.locator("button", has_text="☆ 장소 저장").click()
+    inp = c.locator(".ren input")
+    assert inp.input_value() == name0, f"기본 이름이 장소 이름이 아님: {inp.input_value()}"
+    inp.fill("단골카페")
+    c.locator(".ren button", has_text="저장").click()
+    assert card(page, 0).locator(".pill.star", has_text="단골카페").count() == 1, "저장한 뒤 ★ 표시가 없음"
+    assert page.locator("#plList .place", has_text="단골카페").count() == 1, "즐겨찾기 장소 목록에 없음"
+    card(page, 1).locator("button", has_text="바꾸기").click()
+    page.wait_for_selector("#tchips button", timeout=5000)
+    shot("target-chips")
+    page.locator("#tchips button", has_text="도서관").click()
+    idle(page)
+    assert stop_names(page)[1] == "마포중앙도서관", f"칩으로 바꾸지 못함: {stop_names(page)}"
+    assert card(page, 1).locator(".pill.star").count() == 1, "바꾼 곳에 ★ 표시가 없음"
+    n = stop_count(page)
+    page.locator("#timeline .addbtn").first.click()
+    page.locator("#tchips button", has_text="단골카페").click()
+    page.wait_for_function(f"!document.getElementById('go').disabled && document.querySelectorAll('#timeline .stop:not(.start):not(.end)').length === {n + 1}", timeout=30000)
+    assert stop_names(page)[0] == name0, f"칩으로 더한 곳이 맨 앞이 아님: {stop_names(page)}"
+
+
+def flow_place_rename_delete_backup(page, shot):
+    """이름 바꾸기(겹치면 안내, 요청에서도 새 이름으로) · 삭제는 '한 번 더'를 보고 다시 · 백업 파일에 장소도 들어가고 되살아남"""
+    places(page, ("집", HOME), ("단골카페", CAFE))
+    connect(page)
+    r1 = page.locator("#plList .place").nth(1)
+    r1.locator("button", has_text="이름").click()
+    r1.locator(".ren input").fill("집")
+    r1.locator(".ren button", has_text="저장").click()
+    assert "이미 있어요" in page.inner_text("#plMsg"), "같은 이름으로 바꾸려 할 때 안내가 없음"
+    r1.locator(".ren input").fill("카페")
+    r1.locator(".ren button", has_text="저장").click()
+    assert page.locator("#plList .place b").all_inner_texts() == ["집", "카페"], "이름이 바뀌지 않음"
+    assert not plan_now(page, "카페 1시간, 집")
+    assert stop_names(page) == ["스타벅스 공덕역점", "집"], f"새 이름 '카페'가 저장한 곳으로 가지 않음: {stop_names(page)}"
+    with page.expect_download() as dl:
+        page.click("#exportBtn")
+    path = dl.value.path()
+    data = json.load(open(path, encoding="utf-8"))
+    assert [p["alias"] for p in data["data"].get("places", [])] == ["집", "카페"], "백업 파일에 즐겨찾기 장소가 없음"
+    d = page.locator("#plList .place").nth(1).locator("button.x")
+    d.click()
+    assert d.inner_text() == "한 번 더", "삭제 확인 단계가 없음"
+    page.wait_for_timeout(700)
+    d.click()
+    assert page.locator("#plList .place").count() == 1, "두 번 눌렀는데 지워지지 않음"
+    page.set_input_files("#importFile", path)
+    page.wait_for_function("document.querySelectorAll('#plList .place').length === 2", timeout=5000)
+    assert "장소 2개" in page.inner_text("#status"), f"가져오기 안내가 없음: {page.inner_text('#status')}"
+
+
+def flow_place_save_current_location(page, shot):
+    """'📍 지금 있는 곳으로 저장': 이름이 없으면 먼저 묻고, 지금 좌표와 주소(카카오)로 저장"""
+    kakao_stub(page)
+    connect(page)
+    page.context.grant_permissions(["geolocation"])
+    page.context.set_geolocation({"latitude": 37.5512, "longitude": 126.9882})
+    page.click("#plAddBtn")
+    page.click("#plHere")
+    assert "부를 이름" in page.inner_text("#plStat"), "이름 없이 저장하려 할 때 안내가 없음"
+    page.fill("#plAlias", "회사")
+    page.click("#plHere")
+    page.wait_for_selector("#plList .place", timeout=10000)
+    row = page.locator("#plList .place").first.inner_text()
+    assert "회사" in row and "시험로 12" in row, f"지금 위치·주소로 저장되지 않음: {row}"
+    p = saved(page)["places"][0]["place"]
+    assert abs(float(p["x"]) - 126.9882) < 1e-6 and abs(float(p["y"]) - 37.5512) < 1e-6, f"좌표가 다름: {p}"
+
+
+def flow_client_parser_matches_server(page, shot):
+    """폰에 옮긴 요청 해석(ruleParse)이 서버(worker.js)와 똑같이 해석하는지 — 한쪽만 고치면 여기서 걸림"""
+    samples = ["주차되는 헬스장 1시간, 점심, 오후엔 전시, 카페", "헬스 1시간, 점심, 한강공원 산책", "박물관 2시간, 점심, 카페, 저녁", "사우나, 영화, 저녁",
+               "광화문 교보문고 2시간, 근처 국밥집 점심, 정독도서관, 이태원 복귀", "필라테스 1시간, 브런치, 기념관", "전시 1시간 30분, 카페",
+               "서점 1시간, 카페", "책 사러 교보문고 가고 점심 먹고 카페", "헬스장 근처 점심", "집 근처 카페 1시간", "귀가", "집으로 복귀",
+               "사우나 그리고 영화 → 저녁", "도서관에서 공부 3시간", "카페 2시간\n공원 산책", "PT 1시간, 갈비 저녁", "한강 산책 40분",
+               "숲길, 영화관", "없는가게이름 1시간, 카페", "1시간", "점심 먹고  카페 가고 공원", "주차 가능한 갤러리 90분, 근처 칼국수"]
+    want = server_parse(samples)
+    got = page.evaluate("(S) => S.map(s => ruleParse(s))", samples)
+    for s, a, b in zip(samples, want, got):
+        assert a == b, f"'{s}' 해석이 다름\n서버: {a}\n폰: {b}"
+
+
+def flow_places_small_screen(page, shot):
+    """320px 화면: 출발지 칩·장소 목록·이름 바꾸기 칸·추가 칸이 가로로 넘치지 않음"""
+    page.set_viewport_size({"width": 320, "height": 640})
+    places(page, ("집", HOME), ("도서관", LIB), ("단골카페", CAFE), ("주말에가는큰도서관분관", {**LIB, "name": "서울특별시교육청 마포평생학습관 아현분관"}))
+    connect(page)
+    page.locator("#plList .place").nth(3).locator("button", has_text="이름").click()
+    page.click("#plAddBtn")
+    ok = page.evaluate("document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1")
+    assert ok, "작은 화면에서 가로 스크롤이 생김"
+    page.evaluate("document.querySelector('.placebar').scrollIntoView({block: 'start'})")
+    shot("places-320")
+
+
+def flow_no_places_server_parses(page, shot):
+    """즐겨찾기 장소가 없거나 요청에 안 나오면 예전처럼 서버가 해석(활동 목록을 보내지 않음) · '집 복귀'를 못 찾으면 집 저장 안내"""
+    connect(page)
+    bodies = plan_bodies(page)
+    assert not plan_now(page, "카페, 공원")
+    assert "acts" not in bodies[-1], "즐겨찾기 장소가 없는데 폰에서 해석해 보냄"
+    assert not plan_now(page, "카페, 집 복귀")
+    miss = page.locator("#timeline .card", has_text="찾지 못함")
+    assert miss.count() == 1 and miss.locator("button", has_text="집 저장").count() == 1, "집을 못 찾았을 때 저장 안내가 없음"
+    miss.locator("button", has_text="집 저장").click()
+    assert page.is_visible("#plAdd") and page.input_value("#plAlias") == "집", "집 저장 칸이 안 열림"
+    places(page, ("도서관", LIB))
+    page.reload()
+    page.wait_for_function("document.getElementById('keys').textContent.includes('서버 연결됨')", timeout=10000)
+    assert not plan_now(page, "카페, 공원")
+    assert "acts" not in bodies[-1], "요청에 저장한 이름이 없는데 폰에서 해석해 보냄"
