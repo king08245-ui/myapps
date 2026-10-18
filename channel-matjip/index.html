@@ -23,7 +23,7 @@
 :root{
   --bg:#F3F4F1; --paper:#FFFFFF; --ink:#1C1F1D; --muted:#5F6661; --line:#DADDD7;
   --accent:#C8361C; --accent-ink:#FFFFFF; --soft:#F8E6E1;
-  --c1:#C8361C; --c2:#2F6F9F; --c3:#2E7D4F; --c4:#B07A00; --c5:#6B4FC8; --c6:#B8327A; --c7:#008A8A; --water:#A9CFEA; --waterink:#3F77A1;
+  --c1:#C8361C; --c2:#2F6F9F; --c3:#2E7D4F; --c4:#B07A00; --c5:#6B4FC8; --c6:#B8327A; --c7:#008A8A; --c8:#738500; --water:#A9CFEA; --waterink:#3F77A1;
   --gu0:#F1F2EE; --gu1:#E8EDE5; --gu2:#F3EEE4; --gu3:#E6EBEF; --gu-line:#9EA59F; --gu-ink:#454C47; --seen:#A4AAA5;
   --f-display:"Black Han Sans","IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
   --f-body:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
@@ -34,12 +34,12 @@
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#151716; --paper:#1E2120; --ink:#ECEEEA; --muted:#A3AAA5; --line:#323633;
   --accent:#F0644A; --accent-ink:#1A0D09; --soft:#3A1F19;
-  --c1:#F0644A; --c2:#6FA8D6; --c3:#6FCB94; --c4:#E8B04A; --c5:#A592F2; --c6:#EE7BB5; --c7:#4CC9C9; --water:#24496A; --waterink:#7FB2DA;
+  --c1:#F0644A; --c2:#6FA8D6; --c3:#6FCB94; --c4:#E8B04A; --c5:#A592F2; --c6:#EE7BB5; --c7:#4CC9C9; --c8:#BFD24E; --water:#24496A; --waterink:#7FB2DA;
   --gu0:#181B19; --gu1:#1C221E; --gu2:#221F19; --gu3:#1A1F23; --gu-line:#59615B; --gu-ink:#BEC5C0; --seen:#646B66; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#151716; --paper:#1E2120; --ink:#ECEEEA; --muted:#A3AAA5; --line:#323633;
   --accent:#F0644A; --accent-ink:#1A0D09; --soft:#3A1F19;
-  --c1:#F0644A; --c2:#6FA8D6; --c3:#6FCB94; --c4:#E8B04A; --c5:#A592F2; --c6:#EE7BB5; --c7:#4CC9C9; --water:#24496A; --waterink:#7FB2DA;
+  --c1:#F0644A; --c2:#6FA8D6; --c3:#6FCB94; --c4:#E8B04A; --c5:#A592F2; --c6:#EE7BB5; --c7:#4CC9C9; --c8:#BFD24E; --water:#24496A; --waterink:#7FB2DA;
   --gu0:#181B19; --gu1:#1C221E; --gu2:#221F19; --gu3:#1A1F23; --gu-line:#59615B; --gu-ink:#BEC5C0; --seen:#646B66; color-scheme:dark}
 *{box-sizing:border-box}
 html,body{margin:0}
@@ -209,7 +209,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
   const $ = id => document.getElementById(id);
   const AREA_Q = ["종로3가","을지로","광화문","은평구","성수동","망원동","신당동"];
   const MENU_Q = ["순대국","국밥","냉면","족발","칼국수","짬뽕","돈까스"];
-  const COLORS = ["--c1","--c2","--c3","--c4","--c5","--c6","--c7"];   // 채널 순서대로 고정(채널을 꺼도 색이 바뀌지 않게)
+  const COLORS = ["--c1","--c2","--c3","--c4","--c5","--c6","--c7","--c8"];   // 채널 순서대로 고정(채널을 꺼도 색이 바뀌지 않게)
   const RADIUS = 1.0; // km: 동네 검색 때 이 반경 안의 가게도 포함
   const state = { mode: "area", off: new Set(), db: null, shown: 40, origin: null };
   const PRESETS = [

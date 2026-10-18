@@ -699,16 +699,18 @@ def chip_counts(page):
     return out
 
 
-def flow_seven_channels_with_own_colors(page, shot):
-    """채널 7개가 버튼으로 나오고, 새 채널마다 가게가 있고, 채널 색이 모두 다르다"""
+def flow_eight_channels_with_own_colors(page, shot):
+    """채널 8개(10/18 셰프이원일 추가)가 버튼으로 나오고, 채널마다 가게가 있고, 채널 색이 모두 다르다"""
     ready(page)
     c = chip_counts(page)
-    assert len(c) == 7, f"채널이 7개가 아님: {list(c)}"
-    for ch in ["백년해방", "술맛여행놈", "쇼리뷰"] + NEW_CH:
+    assert len(c) == 8, f"채널이 8개가 아님: {list(c)}"
+    for ch in ["백년해방", "술맛여행놈", "쇼리뷰"] + NEW_CH + ["셰프이원일"]:
         assert c.get(ch, 0) > 0, f"{ch} 채널 가게가 없음: {c}"
     assert c["하이갱스"] >= 1000 and c["쏘울맛집"] >= 300 and c["맛삼인"] >= 200, f"새 채널 가게 수가 너무 적음: {c}"
+    assert c["셰프이원일"] >= 90, f"셰프이원일 가게 수가 너무 적음: {c}"
+    assert list(c)[-1] == "셰프이원일", f"새 채널은 끝에 붙어야 기존 채널 색이 그대로: {list(c)}"
     cols = page.evaluate("[...document.querySelectorAll('#channels .sw')].map(s => getComputedStyle(s).backgroundColor)")
-    assert len(cols) == 7 and len(set(cols)) == 7, f"채널 색이 겹침: {cols}"
+    assert len(cols) == 8 and len(set(cols)) == 8, f"채널 색이 겹침: {cols}"
     stat = page.inner_text("#dbStat")
     assert re.search(r"가게 [\d,]+곳", stat), f"전체 가게 수 표시가 없음: {stat}"
 
@@ -765,8 +767,8 @@ def flow_new_channel_toggle(page, shot):
     assert "수지막국수" in all_names(page), "하이갱스를 다시 켰는데 수지막국수가 안 돌아옴"
 
 
-def flow_map_legend_fits_seven(page, shot):
-    """지도 범례에 채널 7개가 들어가도 지도 폭을 넘지 않고, 지도 높이의 절반을 가리지 않는다"""
+def flow_map_legend_fits_eight(page, shot):
+    """지도 범례에 채널 8개가 들어가도 지도 폭을 넘지 않고, 지도를 너무 가리지 않는다"""
     ready(page)
     page.locator("#herePresets button", has_text="공덕역").click()
     page.click("#nearBtn")
@@ -775,7 +777,48 @@ def flow_map_legend_fits_seven(page, shot):
     r = page.evaluate("""() => { const w = document.querySelector('.mapwrap').getBoundingClientRect(), l = document.querySelector('.maplegend').getBoundingClientRect();
         return {mw: w.width, mh: w.height, lw: l.width, lh: l.height, ll: l.left - w.left, lr: w.right - l.right,
                 n: document.querySelectorAll('.maplegend span:not([hidden])').length}; }""")
-    assert r["n"] >= 7, f"범례에 채널이 다 안 나옴: {r}"
+    assert r["n"] >= 8, f"범례에 채널이 다 안 나옴: {r}"
     assert r["ll"] >= 0 and r["lr"] >= 0, f"범례가 지도 밖으로 나감: {r}"
     assert r["lh"] <= r["mh"] * 0.35, f"범례가 지도를 너무 가림: {r}"
-    shot("map-7ch", store=False)
+    shot("map-8ch", store=False)
+
+
+def chef_card(page, name):
+    return page.locator("#results article.slip", has=page.locator("h3", has_text=name)).filter(has_text="셰프이원일").first
+
+
+def flow_chef_channel_shops(page, shot):
+    """셰프이원일(10/18) 가게가 동네·메뉴 검색에 나오고, 카드에 채널 이름·영상 그 장면 링크가 붙는다"""
+    ready(page)
+    area(page, "연희동")
+    ns = all_names(page)
+    for n in ("목란", "라이라이", "이화원"):
+        assert n in ns, f"연희동 검색에 셰프이원일 '{n}'이 없음: {ns[:15]}"
+    card = chef_card(page, "라이라이")
+    assert card.count() == 1, "라이라이 카드에 채널 이름 '셰프이원일'이 없음"
+    href = card.locator("a", has_text="영상").get_attribute("href")
+    assert "d0222GEUmao" in href and "t=583" in href, f"라이라이 영상 장면 링크가 다름: {href}"
+    assert "🍴" in card.inner_text(), "카드에 가게 종류가 없음"
+    to_results(page)
+    shot("chef-channel")
+    menu(page, "평양냉면")
+    ns = all_names(page)
+    assert "서북면옥" in ns and "을밀대" in ns, f"평양냉면 검색에 셰프이원일 서북면옥·을밀대가 없음: {ns[:15]}"
+    area(page, "원주")
+    ns = all_names(page)
+    assert "동승루" in ns, f"원주 검색에 셰프이원일 '동승루'(군만두)가 없음: {ns[:15]}"
+    # 셰프이원일을 끄면 그 채널 가게만 빠진다
+    page.locator("#channels button", has_text="셰프이원일").click()
+    area(page, "연희동")
+    ns = all_names(page)
+    assert "라이라이" not in ns, "셰프이원일을 껐는데 라이라이가 남음"
+    assert "목란" not in ns or page.locator("#results article.slip", has=page.locator("h3", has_text="목란")).filter(has_text="셰프이원일").count() == 0, "셰프이원일을 껐는데 셰프이원일 목란 카드가 남음"
+    page.locator("#channels button", has_text="셰프이원일").click()
+
+
+def flow_chef_shops_inside_korea_and_exact(page, shot):
+    """셰프이원일 가게는 모두 카카오에서 확인한 정확한 좌표(정밀도 1)이고 한국 안에 있다"""
+    ready(page)
+    bad = page.evaluate("""() => fetch('places.json').then(r => r.json()).then(d => d.places.filter(p => d.videos[p[4]][3] === '셰프이원일')
+        .filter(p => !p[6] || p[6][2] !== 1 || p[6][0] < 33 || p[6][0] > 38.7 || p[6][1] < 124.5 || p[6][1] > 131).map(p => p[0]))""")
+    assert not bad, f"좌표가 없거나 이상한 셰프이원일 가게: {bad}"
