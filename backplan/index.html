@@ -126,8 +126,8 @@ h2.view-title{font:800 22px/1.25 var(--f-display);margin:4px 0 12px;text-wrap:ba
 .mrow .due{display:inline-block;font-size:12px;font-weight:800;line-height:1.5;border:1.5px solid var(--sun);background:var(--card);color:var(--sun-ink);border-radius:999px;padding:0 8px;margin-right:2px;vertical-align:1px}
 .mrow .t2{font-size:13px;margin-top:2px}
 .mrow .acts{grid-column:2;display:flex;gap:6px;flex-wrap:wrap}
-.notask{margin-top:12px}
-.notask b{font:800 15px/1.35 var(--f-display)}
+.dfoot{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;margin:8px 2px 0;font-size:13.5px;color:var(--muted)}
+.dfoot p{margin:0 0 2px;flex-basis:100%}
 .syncline{display:flex;flex-wrap:wrap;gap:0 8px;align-items:center;margin:18px 2px 0;font-size:13px;color:var(--muted)}
 .syncline.err{color:var(--warn)}
 .linkbtn{border:0;background:transparent;color:var(--accent);font-weight:700;padding:8px 4px;min-height:40px;text-decoration:underline;text-underline-offset:3px;font-size:13.5px}
@@ -426,7 +426,7 @@ function normGoal(g) {
   const out = {id: String(g.id || uid()).slice(0, 40), title, why: String(g.why ?? '').slice(0, 400), deadline,
     createdAt: isDate(g.createdAt) ? g.createdAt : today(),
     avail: Array.isArray(g.avail) && g.avail.length === 7 ? g.avail.map(m => clamp(Math.round((+m || 0) / 15) * 15, 0, 720)) : (g.src ? LINK_AVAIL : DEF_AVAIL).slice(),
-    steps: [], log: [], ilog: [], ed: +g.ed || 0};
+    steps: [], log: [], ilog: [], dlog: [], ed: +g.ed || 0};
   if (g.sample) { out.sample = true; if (typeof g.sampleSig === 'string') out.sampleSig = g.sampleSig; }
   if (typeof g.src === 'string' && g.src) out.src = g.src.slice(0, 40);
   if (typeof g.status === 'string' && g.status) out.status = g.status.slice(0, 10);
@@ -461,6 +461,14 @@ function normGoal(g) {
     out.ilog.push({id: typeof e.id === 'string' && e.id ? e.id.slice(0, 40) : uid(), d: e.d, i: e.i.slice(0, 90), k, n: clamp(e.n | 0 || 1, 1, 16),
       m: String(e.m || e.i.split('|')[1] || '').slice(0, 40), a: Number.isFinite(+e.a) ? +e.a : 0, s: e.s ? 1 : 0});
   }
+  // 매일 15분(할 일 칸이 없는 날의 15분): 날짜·그날 몇 번째 칸(k)·그때 단계 id(s)
+  const dseen = new Set();
+  for (const e of Array.isArray(g.dlog) ? g.dlog : []) {
+    if (!e || !isDate(e.d)) continue;
+    const k = clamp(e.k | 0 || 1, 1, 16), key = e.d + '#' + k; if (dseen.has(key)) continue; dseen.add(key);
+    out.dlog.push({id: typeof e.id === 'string' && e.id ? e.id.slice(0, 40) : uid(), d: e.d, k, s: typeof e.s === 'string' ? e.s.slice(0, 40) : ''});
+  }
+  if (g.dx && typeof g.dx === 'object' && isDate(g.dx.d)) out.dx = {d: g.dx.d, n: clamp(g.dx.n | 0 || 1, 1, 16)};
   return out;
 }
 function normDraft(g) {   // 마법사로 만들던 목표: 이름이 아직 비어 있어도 된다
@@ -520,7 +528,7 @@ const touch = g => { if (g) g.ed = Date.now(); };
 
 function newGoal(title, deadline, why = '') {
   return {id: uid(), title, why, deadline, createdAt: today(), avail: DEF_AVAIL.slice(),
-    steps: [{id: uid(), title, due: deadline, final: true, tasks: []}], log: [], ilog: [], ed: Date.now()};
+    steps: [{id: uid(), title, due: deadline, final: true, tasks: []}], log: [], ilog: [], dlog: [], ed: Date.now()};
 }
 const mkTask = (title, blocks) => ({id: uid(), title, blocks});
 const mkStep = (title, due, tasks = []) => ({id: uid(), title, due, tasks: tasks.map(([t, b]) => mkTask(t, b))});
@@ -685,6 +693,38 @@ const dueToday = (g, t = today()) => activeGoal(g) ? openSteps(g).filter(s => !s
 // 목표까지 하루 분량이 앞으로 있는 목표는 15분 할 일이 없어도 비어 있지 않다
 const hasItems = (g, t = today()) => !!(g.src && state.mk && state.mk.days.some(it => it.g === g.src && it.d >= t));
 const needsTasks = (g, s) => !!s && !s.tasks.length && !closed(s) && !s.gone && !hasItems(g);
+/* ---------- 매일 15분: 오늘 15분 칸이 하나도 없는 목표도 매일 15분씩 체크하게(10/20 LEE 요청) ----------
+   다음 할 일 칸이 있으면 그 칸을 오늘로 당겨 보여 주고(체크하면 진도에 그대로 들어감),
+   할 일이 없으면 지금 단계 이름으로 '매일 15분' 칸을 만든다(dlog에 기록, '＋ 15분 더'로 그날 칸을 늘림). */
+const finished = g => !openSteps(g).length;
+const dailyOn = g => activeGoal(g) && !finished(g);
+const dailyStep = (g, t = today()) => curStep(g, t) || openSteps(g)[0] || g.steps.find(s => s.final);
+const dailyTitle = (g, s) => s && !s.final ? s.title : g.title;
+function dlogOn(g, t) { const s = new Set(); for (const e of g.dlog || []) if (e.d === t) s.add(e.k); return s; }
+const dmonth = (g, m = today().slice(0, 7)) => (g.dlog || []).filter(e => e.d.startsWith(m)).length;
+function dailyRows(g, sch, rows, t = today()) {
+  if (rows.length || !dailyOn(g)) return [];
+  const done = dlogOn(g, t), step = dailyStep(g, t);
+  if (!done.size && !needsTasks(g, step)) {   // 지금 단계에 할 일이 없으면 뒤 단계 칸을 당기지 않고 지금 단계로 매일 15분
+    const nx = nextUp(g, sch, t);
+    if (nx) return [{...nx, done: false, daily: true, note: `매일 15분 · 원래 ${mdw(nx.day)}`}];
+  }
+  const n = Math.max(1, g.dx && g.dx.d === t ? g.dx.n : 1, ...done), out = [];
+  for (let k = 1; k <= n; k++) out.push({type: 'd', g, step, k, n, done: done.has(k)});
+  return out;
+}
+// 매일 15분 칸 아래: 다 하면 '＋ 15분 더', 할 일이 없는 단계면(목표 하나 볼 때) 단계별로 나누는 길
+function dailyFoot(g, daily, t, verbose) {
+  const gen = daily.filter(r => r.type === 'd'); if (!gen.length) return null;
+  const s = gen[0].step, bare = needsTasks(g, s), nd = linked(g) ? nextItemDay(g, t) : null;
+  const box = h('div', {class: 'dfoot'});
+  if (verbose) box.append(h('p', null, nd ? `목표까지 하루 분량은 ${mdw(nd)}에 다시 나와요. ` : '',
+    bare ? '할 일을 적으면 단계별 15분 칸으로 나뉘고 진행률이 보여요.' : '오늘 놓인 할 일이 없어 매일 15분 칸을 만들었어요.'));
+  if (gen.every(r => r.done)) box.append(h('button', {class: 'btn small', type: 'button', 'aria-label': `${g.title} 15분 더`,
+    onclick: () => { g.dx = {d: t, n: Math.min(16, gen.length + 1)}; commit(g); }}, '＋ 15분 더'));
+  if (verbose && bare) box.append(h('button', {class: 'linkbtn', type: 'button', onclick: () => writeTasks(g, s)}, '15분 할 일 적기'));
+  return box.children.length ? box : null;
+}
 // '15분 할 일 적기': 그 목표의 역산 목록을 열고 그 단계의 할 일 칸에 바로 적게
 function writeTasks(g, s) {
   state.current = g.id; state.planView = 'list'; save(); go('plan');
@@ -712,7 +752,7 @@ function mileRow(g, s, sch) {
   return li;
 }
 const mileList = (g, ms, sch) => { const ul = h('ul', {class: 'blocks mlist'}); ms.forEach(s => ul.append(mileRow(g, s, sch))); return ul; };
-const monthMinutes = (g, m = today().slice(0, 7)) => (g.log.filter(e => e.d.startsWith(m)).length + g.ilog.filter(e => e.d.startsWith(m)).length) * 15;
+const monthMinutes = (g, m = today().slice(0, 7)) => (g.log.filter(e => e.d.startsWith(m)).length + g.ilog.filter(e => e.d.startsWith(m)).length + dmonth(g, m)) * 15;
 
 /* ---------- 알림 문구 ---------- */
 let toastTimer = 0;
@@ -775,7 +815,7 @@ function renderToday() {
   }
   const t = today();
   if (isAll()) return renderTodayAll(v, t);
-  const g = curGoal(), sch = schedule(g, t), rows = todayRows(g, sch, t);
+  const g = curGoal(), sch = schedule(g, t), rows0 = todayRows(g, sch, t), daily = dailyRows(g, sch, rows0, t), rows = rows0.concat(daily);
   if (g.sample) v.append(h('div', {class: 'banner'}, h('span', null, h('b', null, '예시 목표예요.'), ' 체크·타이머를 눌러 둘러보세요. 내 목표를 세우면 이 예시는 사라져요.'),
     h('div', {class: 'row'}, h('button', {class: 'btn primary small', type: 'button', onclick: () => wizard()}, '내 목표 세우기'),
       syncReady() ? null : h('button', {class: 'btn small', type: 'button', onclick: () => go('goals', 'syncCard')}, '목표까지와 연동'))));
@@ -786,7 +826,8 @@ function renderToday() {
   const hero = h('div', {class: 'card hero', style: 'margin-top:12px'},
     h('span', {class: 'dday'}, h('b', null, dday(shownDue(g))), `${mdw(shownDue(g))} 마감`, linked(g) ? h('span', {class: 'tag mk'}, '목표까지') : null),
     h('h1', null, g.title),
-    linked(g) ? h('div', {class: 'muted small-text'}, `단계 ${stepsDone}/${stepsAll.length} 끝냄 · 이번 달 15분 × ${monthMinutes(g) / 15} (${dur(monthMinutes(g))})`) : null,
+    linked(g) ? h('div', {class: 'muted small-text'}, `단계 ${stepsDone}/${stepsAll.length} 끝냄 · 이번 달 15분 × ${monthMinutes(g) / 15} (${dur(monthMinutes(g))})`)
+      : !sch.total || dmonth(g) ? h('div', {class: 'muted small-text'}, `매일 15분 · 이번 달 ${dmonth(g)}번${dmonth(g) ? ` (${dur(dmonth(g) * 15)})` : ''}`) : null,
     sch.total ? [h('div', {class: 'prog'}, h('span', null, '끝낸 시간 ', h('b', {class: 'num'}, dur(sch.done * 15)), ` / ${dur(sch.total * 15)}`), h('b', {class: 'num'}, pct + '%')), mosaic(g, sch, rows), legend(g)] : null);
   v.append(hero);
   for (const a of alerts(g, sch)) v.append(alertBox(a));
@@ -796,7 +837,12 @@ function renderToday() {
   if (ms.length) v.append(mileList(g, ms, sch));
   if (rows.length) { const list = h('ul', {class: 'blocks', id: 'todayList'}); rows.forEach(r => list.append(blockRow(r))); v.append(list); }
   const pending = rows.filter(r => !r.done).length, nx = nextUp(g, sch, t);
-  if (!sch.total && !rows.length) {
+  if (daily.length) {   // 오늘 놓인 칸이 없어 매일 15분 칸을 보여 줌
+    const df = dailyFoot(g, daily, t, true); if (df) v.append(df);
+    if (sch.total && sch.done >= sch.total) v.append(h('div', {class: 'card empty', style: 'margin-top:8px'}, h('b', null, '모든 할 일을 끝냈어요'), h('p', null, `${g.title}만 남았어요. 응원해요!`)));
+  } else if (activeGoal(g) && finished(g)) {
+    v.append(h('div', {class: 'card empty', style: 'margin-top:8px'}, h('b', null, '단계를 모두 끝냈어요'), h('p', null, linked(g) ? '목표까지에서 이 목표를 ‘완료’로 바꾸면 오늘 화면에서 빠져요.' : `${g.title} — 수고했어요!`)));
+  } else if (!sch.total && !rows.length) {
     if (linked(g)) {
       const nd = nextItemDay(g, t);
       v.append(h('div', {class: 'card empty'}, h('b', null, '오늘은 할 일이 없어요'),
@@ -824,7 +870,7 @@ function renderToday() {
   const sl = syncLine(); if (sl) v.append(sl);
 }
 function renderTodayAll(v, t) {
-  const secs = state.goals.filter(activeGoal).map(g => { const sch = schedule(g, t); return {g, sch, rows: todayRows(g, sch, t), ms: dueToday(g, t)}; });
+  const secs = state.goals.filter(activeGoal).map(g => { const sch = schedule(g, t), r0 = todayRows(g, sch, t), daily = dailyRows(g, sch, r0, t); return {g, sch, rows: r0.concat(daily), daily, ms: dueToday(g, t)}; });
   const all = secs.flatMap(s => s.rows), doneN = all.filter(r => r.done).length;
   v.append(h('div', {class: 'today-head', style: 'margin-top:4px'}, h('h2', null, '오늘의 15분'),
     h('span', {class: 'muted small-text num'}, all.length ? `${doneN}/${all.length} · ${dur(all.length * 15)}` : '')));
@@ -841,18 +887,15 @@ function renderTodayAll(v, t) {
       h('b', null, s.g.title), h('span', {class: 'num'}, s.rows.length ? `${dn_}/${s.rows.length} · ${dday(shownDue(s.g))}` : dday(shownDue(s.g)))));
     if (s.ms.length) sec.append(mileList(s.g, s.ms, s.sch));
     if (s.rows.length) { const ul = h('ul', {class: 'blocks', id: listN++ ? null : 'todayList'}); s.rows.forEach(r => ul.append(blockRow(r))); sec.append(ul); }
+    const df = dailyFoot(s.g, s.daily, t, false); if (df) sec.append(df);
     v.append(sec);
   }
-  // 오늘 칸이 없는 목표: 15분 할 일이 없어서 비는 목표는 따로 — 눌러서 바로 적게
-  const idle = secs.filter(s => !s.rows.length && !s.ms.length);
-  const bare = idle.filter(s => needsTasks(s.g, curStep(s.g, t))), rest = idle.filter(s => !bare.includes(s)).map(s => shortOf(s.g));
+  // 모든 진행 중 목표는 매일 15분 칸이 생긴다 — 칸이 없는 건 단계를 다 끝낸 목표뿐
+  const idle = secs.filter(s => !s.rows.length && !s.ms.length).map(s => shortOf(s.g));
   const nothing = !all.length && !secs.some(s => s.ms.length);
   if (nothing) v.append(h('div', {class: 'card empty', style: 'margin-top:10px'}, h('b', null, '오늘은 할 일이 없어요'),
-    h('p', null, bare.length ? '아래 목표에 15분 할 일을 적으면 날짜별로 놓여요.' : '쉬는 날이에요. 목표를 하나 골라 미리 할 수도 있어요.')));
-  if (bare.length) v.append(h('div', {class: 'card notask'}, h('b', null, '15분 할 일이 없어 오늘 화면에 안 나오는 목표'),
-    h('p', {class: 'muted small-text', style: 'margin:2px 0 8px'}, '중간 목표만 있으면 15분 칸이 생기지 않아요. 눌러서 할 일을 적어 주세요.'),
-    h('div', {class: 'row'}, ...bare.map(s => h('button', {class: 'btn small', type: 'button', onclick: () => writeTasks(s.g, curStep(s.g, t))}, `${shortOf(s.g)} · 할 일 적기`)))));
-  if (rest.length && !(nothing && !bare.length)) v.append(h('p', {class: 'rest'}, `오늘 할 일이 없는 목표: ${rest.join(' · ')}`));
+    h('p', null, secs.length ? '진행 중인 목표의 단계를 모두 끝냈어요. 새 목표를 세워 보세요.' : '진행 중인 목표가 없어요.')));
+  if (idle.length && !nothing) v.append(h('p', {class: 'rest'}, `단계를 다 끝낸 목표: ${idle.join(' · ')}`));
   const off = state.goals.filter(g => !activeGoal(g)).length;
   if (off) v.append(h('p', {class: 'rest'}, `완료·보류·빠진 목표 ${off}개는 숨겼어요.`));
   const sl = syncLine(); if (sl) v.append(sl);
@@ -894,20 +937,30 @@ function alerts(g, sch) {
   return out;
 }
 function blockRow(r, note) {
-  const isItem = r.type === 'i', li = h('li', {class: 'blk' + (r.done ? ' done' : '')});
+  note = note || r.note;
+  const isItem = r.type === 'i', isDay = r.type === 'd', li = h('li', {class: 'blk' + (r.done ? ' done' : '') + (isDay || r.daily ? ' daily' : '')});
   li.style.setProperty('--hue', isItem ? itemHue(r.it) : hueOf(r.g, r.step));
-  const title = isItem ? r.it.text : r.task.title;
+  const title = isItem ? r.it.text : isDay ? dailyTitle(r.g, r.step) : r.task.title;
   const chk = h('button', {class: 'chk', type: 'button', 'aria-pressed': String(!!r.done), 'aria-label': `${title} 15분${r.n > 1 ? ` ${r.k}/${r.n}` : ''} ${r.done ? '끝냄 취소' : '끝냄'}`, onclick: () => toggleRow(r)}, svgCheck());
   const sub = isItem ? ['목표까지 하루 분량', r.n > 1 ? h('span', {class: 'num'}, ` · ${r.k}/${r.n}`) : '']
+    : isDay ? ['매일 15분', r.n > 1 ? h('span', {class: 'num'}, ` · ${r.k}/${r.n}`) : '']
     : [`${r.step.final ? '최종 목표' : r.step.title} · `, h('span', {class: 'num'}, `${r.k}/${r.n}`)];
   const mid = h('div', {style: 'min-width:0'}, h('div', {class: 't1'}, title), h('div', {class: 't2'}, ...sub, note ? ` · ${note}` : ''));
-  const play = r.done ? h('span') : h('button', {class: 'btn small play', type: 'button', 'aria-label': `${title} 15분 타이머 시작`, onclick: () => startTimer(r.g, isItem ? 'i:' + r.key : r.task.id)}, '▶ 15분');
+  const play = r.done ? h('span') : h('button', {class: 'btn small play', type: 'button', 'aria-label': `${title} 15분 타이머 시작`, onclick: () => startTimer(r.g, isItem ? 'i:' + r.key : isDay ? 'd:' + r.step.id : r.task.id)}, '▶ 15분');
   li.append(chk, mid, play);
   return li;
 }
 function toggleRow(r) {
   const t = today(), g = r.g;
-  if (r.type === 'i') {
+  if (r.type === 'd') {
+    const dl = g.dlog = g.dlog || [];
+    if (r.done) { const i = dl.findIndex(e => e.d === t && e.k === r.k); if (i >= 0) dl.splice(i, 1); }
+    else {
+      if (dl.some(e => e.d === t && e.k === r.k)) return;
+      dl.push({id: uid(), d: t, k: r.k, s: r.step.id});
+      if (state.timer && state.timer.goalId === g.id && state.timer.key.startsWith('d:')) state.timer = null;
+    }
+  } else if (r.type === 'i') {
     if (r.done) { const i = g.ilog.findIndex(e => e.i === r.key && e.k === r.k); if (i >= 0) g.ilog.splice(i, 1); }
     else {
       if (g.ilog.some(e => e.i === r.key && e.k === r.k)) return;
@@ -943,6 +996,11 @@ function startTimer(g, key) {
 function timerTarget() {
   const tm = state.timer; if (!tm) return null;
   const g = state.goals.find(x => x.id === tm.goalId); if (!g) return null;
+  if (tm.key.startsWith('d:')) {
+    if (!dailyOn(g)) return null;
+    const s = g.steps.find(x => x.id === tm.key.slice(2) && !closed(x) && !x.gone) || dailyStep(g);
+    return {g, daily: true, step: s, label: dailyTitle(g, s)};
+  }
   if (tm.key.startsWith('i:')) {
     const key = tm.key.slice(2), [day, mid] = key.split('|');
     const it = (state.mk?.days || []).find(x => x.g === g.src && x.d === day && x.m === mid);
@@ -979,7 +1037,10 @@ function finishTimer(done) {
   const tg = timerTarget(); state.timer = null; lockScreen(false);
   if (done && tg) {
     const t = today();
-    if (tg.it) {
+    if (tg.daily) {
+      const dk = dlogOn(tg.g, t); let k = 1; while (dk.has(k)) k++;
+      if (k <= 16) { (tg.g.dlog = tg.g.dlog || []).push({id: uid(), d: t, k, s: tg.step.id}); toast(`‘${tg.label}’ 15분 끝냄`); }
+    } else if (tg.it) {
       const n = itemBlocks(tg.it), dk = itemDone(tg.g, tg.key); let k = 1; while (k <= n && dk.has(k)) k++;
       if (k <= n) { tg.g.ilog.push({id: uid(), d: t, i: tg.key, k, n, m: tg.it.m, a: tg.it.kind === 'amt' ? tg.it.amt / n : 0, s: tg.it.kind === 'session' ? 1 : 0}); toast(`‘${tg.label}’ 15분 끝냄`); }
     } else {
@@ -1410,7 +1471,7 @@ function renderGoals() {
     list.append(h('div', {class: 'card goal-item'},
       h('div', {style: 'min-width:0'}, h('h3', null, (g.sample ? '[예시] ' : '') + g.title, ' ', linked(g) ? h('span', {class: 'tag mk'}, '목표까지') : null,
           g.gone ? h('span', {class: 'tag off'}, '빠짐') : !activeGoal(g) ? h('span', {class: 'tag off'}, g.status) : null),
-        h('div', {class: 'muted small-text num'}, `${dday(shownDue(g))} · ${mdw(shownDue(g))} · ${linked(g) ? `단계 ${md_}/${mids.length}` : lpct + '%'}`)),
+        h('div', {class: 'muted small-text num'}, `${dday(shownDue(g))} · ${mdw(shownDue(g))} · ${linked(g) ? `단계 ${md_}/${mids.length}` : lpct + '%'}${(g.dlog || []).length ? ` · 매일 15분 ${g.dlog.length}번` : ''}`)),
       h('span', {class: 'chip' + (g.id === curGoal()?.id ? ' ok' : '')}, g.id === curGoal()?.id ? '보는 중' : `${mids.length}단계`),
       bar,
       !linked(g) && !g.sample && syncReady() ? h('div', {class: 'muted small-text'}, g.toMk
@@ -1611,8 +1672,8 @@ function wzPage(p, w, draw) {
   const good = sch.total && !sch.late;
   const bare = sortSteps(g).filter(s => !s.final && !s.tasks.length);
   const bareNote = sch.total && bare.length ? h('p', {class: 'small-text', style: 'margin:0;color:var(--warn)'},
-    `할 일이 없는 중간 목표 ${bare.length}개(${bare.slice(0, 2).map(s => `‘${s.title}’`).join(', ')}${bare.length > 2 ? ' 등' : ''})에는 15분 칸이 생기지 않아요. ‘이전’에서 적어 두세요.`) : null;
-  const sum = !sch.total ? h('div', {class: 'sum bad'}, '할 일이 아직 없어요. 할 일이 없으면 오늘 화면에 15분 칸이 생기지 않아요 — ‘이전’에서 적거나, 만든 뒤 역산 → 목록에서 적어 주세요.')
+    `할 일이 없는 중간 목표 ${bare.length}개(${bare.slice(0, 2).map(s => `‘${s.title}’`).join(', ')}${bare.length > 2 ? ' 등' : ''})는 오늘 화면에 ‘매일 15분’ 칸으로만 나와요. 단계별로 나누려면 ‘이전’에서 적어 두세요.`) : null;
+  const sum = !sch.total ? h('div', {class: 'sum bad'}, '할 일이 아직 없어요. 오늘 화면에는 ‘매일 15분’ 칸으로 나와요 — 단계별로 나누려면 ‘이전’에서 적거나, 만든 뒤 역산 → 목록에서 적어 주세요.')
     : sch.unplaced ? h('div', {class: 'sum bad'}, '쓸 수 있는 시간이 0분이에요. 요일별 시간을 정해 주세요.')
     : h('div', {class: 'sum' + (good ? '' : ' bad')}, `할 일 모두 ${dur(sch.total * 15)} · 한 주 ${dur(weekMin)}씩 하면 `, h('b', null, mdw(sch.finish)),
         good ? `에 끝나요(마감 ${diff(sch.finish, g.deadline)}일 전).` : `에 끝나요 — 마감보다 ${diff(g.deadline, sch.finish)}일 늦어요.${sch.needPerDay ? ` 하루 평균 ${dur(sch.needPerDay)} 더 필요해요.` : ''} 시간을 늘리거나 할 일을 줄이세요.`);
@@ -1899,7 +1960,7 @@ function applyMk(raw) {
     const active = m.status !== '완료' && m.status !== '보류';
     if (!g) {
       if (!active || !m.due) continue;
-      g = {id: uid(), src: m.id, title: m.title, why: '', deadline: m.due, createdAt: today(), avail: LINK_AVAIL.slice(), steps: [{id: uid(), title: m.title, due: m.due, final: true, tasks: []}], log: [], ilog: [], ed: Date.now()};
+      g = {id: uid(), src: m.id, title: m.title, why: '', deadline: m.due, createdAt: today(), avail: LINK_AVAIL.slice(), steps: [{id: uid(), title: m.title, due: m.due, final: true, tasks: []}], log: [], ilog: [], dlog: [], ed: Date.now()};
       state.goals.push(g);
     }
     const e = g.mkEdit;
@@ -1954,6 +2015,8 @@ function mergeRemote(rd, dirty) {
     const seenK = new Set(); win.log = [...logs.values()].filter(e => { const key = e.t + '#' + e.k; if (seenK.has(key)) return false; seenK.add(key); return true; });
     const il = new Map(); for (const e of [...win.ilog, ...lose.ilog]) if (!il.has(e.id)) il.set(e.id, e);
     const seenI = new Set(); win.ilog = [...il.values()].filter(e => { const key = e.i + '#' + e.k; if (seenI.has(key)) return false; seenI.add(key); return true; });
+    const dl = new Map(); for (const e of [...(win.dlog || []), ...(lose.dlog || [])]) if (!dl.has(e.id)) dl.set(e.id, e);
+    const seenD = new Set(); win.dlog = [...dl.values()].filter(e => { const key = e.d + '#' + e.k; if (seenD.has(key)) return false; seenD.add(key); return true; });
     out.push(win);
   }
   for (const l of local.values()) if (!del[l.id]) out.push(l);
@@ -1970,6 +2033,7 @@ function computeProgress() {
     for (const s of g.steps) if (s.src && s.done) p.steps.push(s.src);
     const addMin = d => { const ym = d.slice(0, 7); p.minutes[ym] = (p.minutes[ym] || 0) + 15; if (!p.last || d > p.last) p.last = d; };
     for (const e of g.log) addMin(e.d);
+    for (const e of g.dlog || []) addMin(e.d);
     const perItem = new Map();
     for (const e of g.ilog) {
       addMin(e.d);
