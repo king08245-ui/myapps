@@ -15,6 +15,18 @@ def kst(days=0):
     return (datetime.now(ZoneInfo("Asia/Seoul")) + timedelta(days=days)).strftime("%Y-%m-%d")
 
 
+def wd_today():
+    """오늘(KST) 요일: 0=일 … 6=토, 이름"""
+    i = (datetime.now(ZoneInfo("Asia/Seoul")).weekday() + 1) % 7
+    return i, "일월화수목금토"[i]
+
+
+def pick_time(sel, minutes):
+    """시간 드롭다운(15분 단위)에서 고르기 — 초점을 먼저 옮겨 실제로 누르는 것처럼"""
+    sel.focus()
+    sel.select_option(str(minutes))
+
+
 def ready(page):
     page.wait_for_selector("#view-today .hero, #view-today .empty, #view-today .goalsec, #view-today .today-head", timeout=10000)
 
@@ -72,7 +84,7 @@ def make_goal(page, title="자격증 필기 합격", days=40, mids=(("기출 3�
             box = page.locator(".sheet .addtask").nth(i)
             box.locator("input").fill(f"할 일 {i + 1}-{j + 1}")
             if j == 0:
-                box.locator("button[aria-label='15분 늘리기']").click()   # 45분
+                pick_time(box.locator("select"), 45)
             box.locator("button", has_text="할 일 추가").click()
     page.click(".sheet-actions .btn.primary")
     if cat:
@@ -191,8 +203,9 @@ def flow_wizard_backward_planning(page, shot):
     for i, (name, plus) in enumerate((("인터벌 400m×6", 2), ("장거리 8km", 4), ("대회 코스 답사", 0))):
         b = page.locator(".sheet .addtask").nth(i)
         b.locator("input").fill(name)
-        for _ in range(plus):
-            b.locator("button[aria-label='15분 늘리기']").click()
+        assert b.locator("select").input_value() == "30", "할 일 시간 드롭다운 기본이 30분이 아님"
+        if plus:
+            pick_time(b.locator("select"), 30 + 15 * plus)
         b.locator("button", has_text="할 일 추가").click()
     li = page.locator(".sheet .card").nth(0).locator(".wz-list li").first.inner_text()
     assert "인터벌" in li and "1시간" in li, f"30분+15분×2 = 1시간이 표시되지 않음: {li}"
@@ -251,9 +264,13 @@ def flow_check_keeps_order_and_tapped_block(page, shot):
 
 
 def flow_today_quota_then_next_up(page, shot):
+    """오늘 몫(그 요일에 고른 시간)을 다 하면 '＋ 15분 더'로 다음 할 일을 오늘로 당겨 더 함(10/21: 미리 하기 → 15분 더)"""
     ready(page)
     n = rows(page).count()
-    for _ in range(10):
+    wi, _ = wd_today()
+    quota = saved(page)["goals"][0]["avail"][wi] // 15
+    assert n == quota, f"오늘 칸 수가 오늘 요일에 고른 시간({quota}칸)과 다름: {n}"
+    for _ in range(20):
         loc = rows(page).locator(".chk[aria-pressed='false']")
         if not loc.count():
             break
@@ -261,12 +278,21 @@ def flow_today_quota_then_next_up(page, shot):
     assert rows(page).count() == n, f"오늘 몫을 다 하는 동안 목록 길이가 바뀜: {n} → {rows(page).count()}"
     text = page.inner_text("#view-today")
     assert "오늘 몫을 다 했어요" in text, "오늘 몫을 끝냈는데 안내가 없음"
-    nxt = page.locator(".blk", has_text="미리 하기")
-    assert nxt.count() == 1, "다음 칸 미리 하기가 없음"
+    assert page.locator(".blk", has_text="미리 하기").count() == 0, "없앤 '미리 하기' 칸이 남음"
+    more = page.locator("#view-today button", has_text="15분 더")
+    assert more.count() == 1, "오늘 몫을 다 했는데 '＋ 15분 더'가 없음"
     before = done_minutes(page)
-    nxt.locator(".chk").click()
-    assert done_minutes(page) == before + 15, "미리 한 칸이 끝낸 시간에 들어가지 않음"
-    assert page.locator(".blk", has_text="미리 하기").count() == 1, "미리 한 뒤 그다음 칸이 안 나옴"
+    more.click()
+    assert rows(page).count() == n + 1, f"'＋ 15분 더'를 눌러도 칸이 안 늘어남: {rows(page).count()}"
+    new = rows(page).locator(".chk[aria-pressed='false']")
+    assert new.count() == 1 and "원래" in rows(page).filter(has=page.locator(".chk[aria-pressed='false']")).inner_text(), "다음 할 일을 당겨 오지 않음"
+    new.click()
+    assert done_minutes(page) == before + 15, "더 한 15분이 끝낸 시간에 들어가지 않음"
+    assert rows(page).count() == n + 1, "더 한 칸을 체크했더니 목록 길이가 바뀜"
+    assert page.locator("#view-today button", has_text="15분 더").count() == 1, "더 한 뒤 다시 '＋ 15분 더'가 없음"
+    page.reload()
+    ready(page)
+    assert rows(page).count() == n + 1 and rows(page).locator(".chk[aria-pressed='false']").count() == 0, "새로고침했더니 더 한 칸이 사라짐"
     shot("done-today", store=False)   # 스토어 화면은 8장까지
 
 
@@ -340,14 +366,16 @@ def flow_plan_reverse_chain_edit(page, shot):
     assert any(s["title"] == "마지막 점검 주간" for s in saved(page)["goals"][0]["steps"]), "새 중간 목표 이름이 저장되지 않음"
     inp = node.locator(".addtask input")
     inp.fill("모의고사 오답만 다시")
-    node.locator(".addtask button[aria-label='15분 늘리기']").click()
+    pick_time(node.locator(".addtask select"), 45)
     node.locator(".addtask button", has_text="할 일 추가").click()
     node = page.locator("#" + node_id)
     task = node.locator(".task").first
-    assert task.locator("output").inner_text() == "45분", f"할 일 시간이 45분이 아님: {task.locator('output').inner_text()}"
-    task.locator("button[aria-label$='15분 늘리기']").click()
+    assert task.locator("select").input_value() == "45", f"할 일 시간이 45분이 아님: {task.locator('select').input_value()}"
+    assert task.locator("button[aria-label$='15분 늘리기']").count() == 0, "시간 고르기가 아직 −/+ 버튼임"
+    pick_time(task.locator("select"), 60)
     node = page.locator("#" + node_id)
-    assert node.locator(".task output").first.inner_text() == "1시간", "15분 늘리기가 안 됨"
+    sel = node.locator(".task select").first
+    assert sel.input_value() == "60" and sel.evaluate("el => el.selectedOptions[0].textContent") == "1시간", "드롭다운으로 1시간을 골라도 안 바뀜"
     assert node.locator(".task .sq i").count() == 4, "15분 칸 그림이 4칸이 아님"
     shot("plan", store=False)   # 스토어에는 순서도 화면을 넣음
     node.locator(".step-titlerow .icon-btn").click()
@@ -416,25 +444,25 @@ def flow_goal_card_change_deadline(page, shot):
 
 
 def flow_rename_then_tap_stepper(page, shot):
-    """이름을 고친 직후 누른 −/+가 씹히지 않음(보류 5)"""
+    """이름을 고친 직후 고른 시간(드롭다운)이 씹히지 않음(보류 5)"""
     ready(page)
     tab(page, "plan")
     task = page.locator(".task").first
     tid = task.evaluate("el => el.closest('.node').id")
-    before = task.locator("output").inner_text()
+    before = int(task.locator("select").input_value())
     name = task.locator("input.tt")
     name.click()
     name.fill("이름 바꾼 할 일")
-    task.locator("button[aria-label$='15분 늘리기']").click()   # 입력칸이 포커스를 잃으며 change → 바로 + 클릭
+    pick_time(task.locator("select"), before + 15)   # 입력칸이 포커스를 잃으며 change → 바로 시간 고르기
     node = page.locator("#" + tid)
     t2 = node.locator(".task").first
     assert t2.locator("input.tt").input_value() == "이름 바꾼 할 일", "고친 이름이 사라짐"
-    assert t2.locator("output").inner_text() != before, f"이름을 고친 직후 누른 +가 무시됨: {before}"
+    assert t2.locator("select").input_value() == str(before + 15), f"이름을 고친 직후 고른 시간이 무시됨: {before}"
     step = page.locator(".chain .node[id^='step-'] textarea.step-title").nth(1)
     sid = step.evaluate("el => el.closest('.node').id")
     step.fill("단계 이름도 바꿈")
-    page.locator(f"#{sid} .addtask button[aria-label='15분 늘리기']").click()
-    assert page.locator(f"#{sid} .addtask output").inner_text() == "45분", "단계 이름을 고친 직후 누른 +가 무시됨"
+    pick_time(page.locator(f"#{sid} .addtask select"), 45)
+    assert page.locator(f"#{sid} .addtask select").input_value() == "45", "단계 이름을 고친 직후 고른 시간이 무시됨"
 
 
 def flow_dates_resort_and_even_split(page, shot):
@@ -513,16 +541,13 @@ def flow_shortage_and_no_time_alerts(page, shot):
     make_goal(page, days=10, mids=(("빠듯한 단계", 3),), tasks=3)
     tab(page, "sched")
     for wd in "월화수목금토일":
-        for _ in range(12):
-            b = page.locator(f".avail .a:has(.wdn:text-is('{wd}')) button[aria-label='{wd}요일 15분 줄이기']")
-            if "쉼" in page.locator(f".avail .a:has(.wdn:text-is('{wd}')) output").inner_text():
-                break
-            b.click()
+        pick_time(page.locator(f"select[aria-label='{wd}요일 시간']"), 0)
+    assert page.locator(".avail select").evaluate_all("els => els.every(e => e.selectedOptions[0].textContent === '쉼')"), "0분을 골랐는데 '쉼'으로 안 보임"
     assert "쓸 수 있는 시간을 정하면" in page.inner_text("#view-sched"), "쓸 수 있는 시간이 0인데 안내가 없음"
     tab(page, "today")
     assert "쓸 수 있는 시간이 없어요" in page.inner_text("#view-today"), "오늘 화면에 시간이 없다는 경고가 없음"
     tab(page, "sched")
-    page.locator(".avail .a:has(.wdn:text-is('월')) button[aria-label='월요일 15분 늘리기']").click()
+    pick_time(page.locator("select[aria-label='월요일 시간']"), 15)
     tab(page, "today")
     text = page.inner_text("#view-today")
     assert "모자라요" in text or "늦어요" in text, f"시간이 모자란데 경고가 없음: {text[:200]}"
@@ -539,7 +564,11 @@ def flow_schedule_view(page, shot):
     text = page.inner_text("#view-sched")
     assert "에 다 끝나요" in text, "언제 다 끝나는지 안내가 없음"
     before = text
-    page.locator(".avail .a:has(.wdn:text-is('월')) button[aria-label='월요일 15분 늘리기']").click()
+    mon = page.locator("select[aria-label='월요일 시간']")
+    vals = mon.evaluate("el => [...el.options].map(o => +o.value)")
+    cur = int(mon.input_value())
+    assert vals[0] == 0 and 720 in vals and all(v % 15 == 0 for v in vals), f"요일 시간 드롭다운 값이 이상함: {vals[:6]}…"
+    pick_time(mon, vals[vals.index(cur) + 1])
     assert page.inner_text("#view-sched") != before, "요일별 시간을 바꿔도 일정이 그대로"
     shot("schedule")
 
@@ -679,9 +708,12 @@ def flow_empty_states(page, shot):
     assert page.locator("#view-sched button", has_text="목표 세우기").count() == 1
     tab(page, "today")
     make_goal(page, title="할 일 없는 목표", mids=(), tasks=0)
-    # 10/20부터: 할 일이 없어도 '매일 15분' 칸이 생기고, 나누는 길을 알려 줌
-    assert rows(page).filter(has_text="매일 15분").count() == 1, f"할 일이 없는 목표에 매일 15분 칸이 없음: {page.inner_text('#view-today')[:300]}"
-    assert "할 일을 적으면 단계별 15분 칸으로 나뉘고" in page.inner_text("#view-today"), "할 일이 없을 때 나누는 안내가 없음"
+    # 10/21부터: 할 일이 없어도 그 요일에 고른 시간만큼 15분 칸이 생기고, 나누는 길을 알려 줌
+    wi, _ = wd_today()
+    quota = saved(page)["goals"][0]["avail"][wi] // 15
+    r = rows(page)
+    assert r.count() == quota and r.filter(has_text="할 일 없는 목표").count() == quota, f"할 일이 없는 목표에 요일 시간만큼 15분 칸이 없음({quota}칸): {page.inner_text('#view-today')[:300]}"
+    assert "할 일을 적으면 15분 칸이 그 할 일로 채워지고" in page.inner_text("#view-today"), "할 일이 없을 때 나누는 안내가 없음"
     assert page.locator("#view-today .dfoot button", has_text="15분 할 일 적기").count() == 1, "할 일 적기 버튼이 없음"
 
 
@@ -708,6 +740,8 @@ def flow_long_text_and_big_numbers(page, shot):
     assert box["title"], "320px에서 단계 이름이 잘림(줄바꿈 안 됨)"
     tab(page, "today")
     assert "30분" in page.get_attribute(".mosaic", "aria-label"), "칸이 아주 많을 때 모자이크를 30분 단위로 줄이지 않음"
+    hs = rows(page).evaluate_all("els => els.map(e => Math.round(e.getBoundingClientRect().height))")
+    assert hs and max(hs) <= 50, f"320px·긴 이름에서 15분 칸이 높아짐: {hs[:6]}"
 
 
 def flow_new_day_keeps_progress(page, shot):
@@ -797,85 +831,95 @@ def flow_step_without_tasks_still_shows_today(page, shot):
 
 
 def flow_goals_without_tasks_get_daily_15(page, shot):
-    """15분 할 일이 없는 목표도 오늘 화면에 매일 15분 칸이 생겨 체크·타이머·'15분 더'가 되고, 새로고침해도 남음(10/20 LEE 요청)"""
+    """15분 할 일이 없는 목표도 오늘 화면에 단계 이름 15분 칸이 생겨 체크·타이머·'15분 더'가 되고, 새로고침해도 남음(10/20·10/21 LEE 요청)"""
     page.clock.install()
     fresh(page)
     make_goal(page, title="한식요리자격증", days=30, mids=(("필기 공부", 10),), tasks=0)
     tab(page, "goals")
     make_goal(page, title="토익 시험", days=30, mids=(("단어장 1회독", 8),), tasks=1)
+    tab(page, "goals")   # 목표 카드에서 요일별 시간 → '매일 15분'
+    page.click("button[aria-label='한식요리자격증 요일별 시간']")
+    page.locator("#sheet button", has_text="매일 15분").click()
+    assert [g for g in saved(page)["goals"] if g["title"] == "한식요리자격증"][0]["avail"] == [15] * 7, "요일별 시간 '매일 15분'이 저장되지 않음"
+    page.locator("#sheet button", has_text="닫기").click()
+    tab(page, "today")
     pick(page, "모든 목표")
     assert page.locator("#view-today .notask").count() == 0, "할 일 없는 목표를 '오늘 화면에 안 나오는 목표'로 따로 빼 둠"
     sec = page.locator(".goalsec", has_text="한식요리자격증")
     assert sec.count() == 1, f"할 일 없는 목표가 모든 목표 오늘 화면에 없음: {page.inner_text('#view-today')[:400]}"
     d = sec.locator(".blk.daily")
-    assert d.count() == 1 and "필기 공부" in d.inner_text() and "매일 15분" in d.inner_text(), f"지금 단계 이름으로 매일 15분 칸이 안 생김: {sec.inner_text()}"
+    assert d.count() == 1 and "필기 공부" in d.inner_text() and "지금 단계 · 15분" in d.inner_text(), f"지금 단계 이름으로 15분 칸이 안 생김: {sec.inner_text()}"
     assert "0/1" in sec.locator(".gh").inner_text(), f"목표 묶음 머리에 0/1이 아님: {sec.locator('.gh').inner_text()}"
     head = page.inner_text("#view-today .today-head")
     d.locator(".chk").click()
-    assert d.locator(".chk").get_attribute("aria-pressed") == "true", "매일 15분 칸을 눌러도 체크가 안 됨"
-    assert page.inner_text("#view-today .today-head") != head, "매일 15분을 체크해도 오늘 합계가 그대로"
+    assert d.locator(".chk").get_attribute("aria-pressed") == "true", "단계 이름 15분 칸을 눌러도 체크가 안 됨"
+    assert page.inner_text("#view-today .today-head") != head, "단계 이름 15분을 체크해도 오늘 합계가 그대로"
     g0 = [g for g in saved(page)["goals"] if g["title"] == "한식요리자격증"][0]
-    assert len(g0.get("dlog", [])) == 1 and g0["dlog"][0]["d"] == kst(0), f"매일 15분 체크가 저장되지 않음: {g0.get('dlog')}"
+    assert len(g0.get("dlog", [])) == 1 and g0["dlog"][0]["d"] == kst(0), f"단계 이름 15분 체크가 저장되지 않음: {g0.get('dlog')}"
     quiet(page, top=True)
     shot("daily-15")
     more = sec.locator(".dfoot button", has_text="15분 더")
-    assert more.count() == 1, "매일 15분을 다 했는데 '＋ 15분 더'가 없음"
+    assert more.count() == 1, "단계 이름 15분을 다 했는데 '＋ 15분 더'가 없음"
     more.click()
     d = page.locator(".goalsec", has_text="한식요리자격증").locator(".blk.daily")
     assert d.count() == 2 and d.nth(1).locator(".chk").get_attribute("aria-pressed") == "false", "'＋ 15분 더'로 칸이 하나 더 생기지 않음"
     page.reload()
     ready(page)
     d = page.locator(".goalsec", has_text="한식요리자격증").locator(".blk.daily")
-    assert d.count() == 2 and d.first.locator(".chk").get_attribute("aria-pressed") == "true", "새로고침했더니 매일 15분 칸·체크가 사라짐"
+    assert d.count() == 2 and d.first.locator(".chk").get_attribute("aria-pressed") == "true", "새로고침했더니 단계 이름 15분 칸·체크가 사라짐"
     # 타이머로 둘째 칸 끝내기
     d.nth(1).locator(".play").click()
-    assert "필기 공부" in page.inner_text("#timerCard"), "매일 15분 타이머 카드에 단계 이름이 없음"
+    assert "필기 공부" in page.inner_text("#timerCard"), "단계 이름 15분 타이머 카드에 단계 이름이 없음"
     page.clock.fast_forward("15:05")
     page.wait_for_function("document.getElementById('timerCard')?.classList.contains('end')", timeout=5000)
     page.click("#timerCard button:has-text('끝냄')")
     g0 = [g for g in saved(page)["goals"] if g["title"] == "한식요리자격증"][0]
-    assert sorted(e["k"] for e in g0["dlog"]) == [1, 2], f"타이머로 끝낸 매일 15분이 기록되지 않음: {g0['dlog']}"
+    assert sorted(e["k"] for e in g0["dlog"]) == [1, 2], f"타이머로 끝낸 단계 이름 15분이 기록되지 않음: {g0['dlog']}"
     # 다시 누르면 체크 취소
     d = page.locator(".goalsec", has_text="한식요리자격증").locator(".blk.daily")
     d.nth(1).locator(".chk").click()
     g0 = [g for g in saved(page)["goals"] if g["title"] == "한식요리자격증"][0]
-    assert len(g0["dlog"]) == 1, f"매일 15분 체크 취소가 안 됨: {g0['dlog']}"
+    assert len(g0["dlog"]) == 1, f"단계 이름 15분 체크 취소가 안 됨: {g0['dlog']}"
     # 목표 하나 볼 때: 이번 달 횟수 + 단계별로 나누는 길
     page.locator(".goalsec .gh", has_text="한식요리자격증").click()
-    assert "매일 15분 · 이번 달 1번" in page.inner_text(".hero"), f"목표 화면에 매일 15분 횟수가 없음: {page.inner_text('.hero')}"
+    assert "이번 달 15분 칸 1번" in page.inner_text(".hero"), f"목표 화면에 15분 칸 횟수가 없음: {page.inner_text('.hero')}"
     s1 = [s for s in g0["steps"] if s["title"] == "필기 공부"][0]
     page.locator("#view-today .dfoot button", has_text="15분 할 일 적기").click()
     assert page.evaluate("document.activeElement && document.activeElement.id") == "add-" + s1["id"], "할 일 적기가 지금 단계 칸으로 안 감"
-    # 지금 단계 할 일을 비운 목표도 단계 이름으로 매일 15분
+    # 지금 단계 할 일을 비운 목표도 단계 이름으로 단계 이름 15분
     page.evaluate(f"""() => {{ const s = JSON.parse(localStorage.getItem('{KEY}')); const g = s.goals[1];
         g.steps.find(x => x.title === '단어장 1회독').tasks = []; localStorage.setItem('{KEY}', JSON.stringify(s)); }}""")
     page.reload()
     ready(page)
     pick(page, "토익 시험")
-    dd = rows(page).filter(has_text="매일 15분")
-    assert dd.count() == 1 and "단어장 1회독" in dd.inner_text(), f"할 일을 비운 단계에 매일 15분 칸이 없음: {page.inner_text('#view-today')[:300]}"
+    wi, _ = wd_today()
+    quota = [g for g in saved(page)["goals"] if g["title"] == "토익 시험"][0]["avail"][wi] // 15
+    dd = rows(page).filter(has_text="지금 단계 · 15분")
+    assert dd.count() == quota and dd.filter(has_text="단어장 1회독").count() == quota, f"할 일을 비운 단계에 요일 시간만큼({quota}칸) 단계 이름 칸이 없음: {page.inner_text('#view-today')[:300]}"
     tab(page, "goals")
-    assert "매일 15분 1번" in page.locator(".goal-item", has_text="한식요리자격증").inner_text(), "목표 목록에 매일 15분 횟수가 없음"
+    assert "15분 칸 1번" in page.locator(".goal-item", has_text="한식요리자격증").inner_text(), "목표 목록에 15분 칸 횟수가 없음"
 
 
 def flow_no_block_today_pulls_next_block(page, shot):
-    """할 일이 있어도 오늘 놓인 칸이 없는 날(0분 요일 등)은 다음 칸을 오늘로 당겨 매일 15분으로 보여 주고, 체크하면 진도에 들어감"""
+    """오늘 요일을 '쉼'으로 고르면 그 목표는 오늘 쉬고, '＋ 15분 하기'를 누르면 다음 칸을 오늘로 당겨 와 체크하면 진도에 들어감"""
     fresh(page)
     make_goal(page, title="자격증 필기 합격", days=40, mids=(("핵심 요약 1회독", 20),), tasks=2)
-    wd = int(page.evaluate("new Date(new Date().toLocaleString('en-US', {timeZone: 'Asia/Seoul'})).getDay()"))
-    page.evaluate(f"""() => {{ const s = JSON.parse(localStorage.getItem('{KEY}')); s.goals[0].avail[{wd}] = 0; localStorage.setItem('{KEY}', JSON.stringify(s)); }}""")
-    page.reload()
-    ready(page)
+    _, wn = wd_today()
+    tab(page, "sched")
+    pick_time(page.locator(f"select[aria-label='{wn}요일 시간']"), 0)
+    tab(page, "today")
+    text = page.inner_text("#view-today")
+    assert rows(page).count() == 0 and f"오늘({wn}요일)은 이 목표를 쉬는 날이에요" in text, f"쉼으로 고른 요일인데 칸이 나오거나 안내가 없음: {text[:300]}"
+    page.locator("#view-today button", has_text="15분 하기").click()
     r = rows(page)
-    assert r.count() == 1 and "매일 15분 · 원래" in r.inner_text(), f"0분 요일에 다음 칸이 매일 15분으로 안 나옴: {page.inner_text('#view-today')[:300]}"
-    assert "오늘은 배정된 15분이 없어요" not in page.inner_text("#view-today"), "매일 15분 칸이 있는데 '배정된 15분이 없어요'가 남음"
+    assert r.count() == 1 and "원래" in r.inner_text(), f"'＋ 15분 하기'로 다음 칸이 안 당겨짐: {page.inner_text('#view-today')[:300]}"
     before = done_minutes(page)
     r.locator(".chk").click()
     assert done_minutes(page) == before + 15, "당겨 온 칸을 체크했는데 끝낸 시간에 안 들어감"
     st = saved(page)["goals"][0]
     assert len(st["log"]) == 1 and not st.get("dlog"), f"당겨 온 칸은 할 일 기록(log)으로 남아야 함: log={st['log']} dlog={st.get('dlog')}"
     text = page.inner_text("#view-today")
-    assert "오늘 몫을 다 했어요" in text and page.locator(".blk", has_text="미리 하기").count() == 1, f"당겨 온 칸을 끝낸 뒤 다음 칸 안내가 없음: {text[:300]}"
+    assert "오늘 몫을 다 했어요" in text and page.locator("#view-today button", has_text="15분 더").count() == 1, f"당겨 온 칸을 끝낸 뒤 '＋ 15분 더'가 없음: {text[:300]}"
 
 
 def flow_wizard_typed_task_not_lost(page, shot):
@@ -893,11 +937,11 @@ def flow_wizard_typed_task_not_lost(page, shot):
     page.locator(".sheet .addtask").first.locator("input").fill("무 채썰기")
     page.click(".sheet-actions .btn.primary")
     assert "끝나요" in page.inner_text(".sum"), f"적어 둔 할 일이 4단계 요약에 안 들어감: {page.inner_text('.sum')}"
-    assert "‘매일 15분’ 칸으로만" not in page.inner_text("#panel"), "할 일이 있는데 할 일 없음 안내가 나옴"
+    assert "단계 이름으로만" not in page.inner_text("#panel"), "할 일이 있는데 할 일 없음 안내가 나옴"
     page.click(".sheet-actions .btn:not(.primary)")   # 이전
     page.locator(".sheet .card", has_text="무 채썰기").locator("button[aria-label$='빼기']").click()
     page.click(".sheet-actions .btn.primary")
-    assert "할 일이 아직 없어요" in page.inner_text(".sum") and "매일 15분" in page.inner_text(".sum"), "할 일이 없을 때 4단계 안내가 없음"
+    assert "할 일이 아직 없어요" in page.inner_text(".sum") and "요일별 시간만큼" in page.inner_text(".sum"), "할 일이 없을 때 4단계 안내가 없음"
     page.click(".sheet-actions .btn:not(.primary)")
     page.locator(".sheet .addtask").last.locator("input").fill("시험장 확인")
     page.click(".sheet-actions .btn.primary")
@@ -1090,7 +1134,7 @@ def flow_linked_plan_is_readonly_with_tasks(page, shot):
     n2 = page.locator(".chain .node", has_text="기본서 1회독").first
     n2.locator(".addtask input").fill("1단원 정리")
     n2.locator(".addtask button", has_text="할 일 추가").click()
-    page.locator(".daily li", has_text="기본서 읽기").locator("button[aria-label$='15분 늘리기']").click()
+    pick_time(page.locator(".daily li", has_text="기본서 읽기").locator("select"), 30)
     tab(page, "today")
     assert page.locator(".blk", has_text="기본서 2쪽").count() == 2, "하루 분량을 30분으로 늘렸는데 15분 칸이 2개가 아님"
     wait_synced(page)
@@ -1291,3 +1335,173 @@ def flow_sync_merges_other_device(page, shot):
     assert len(g3l["ilog"]) == 1, "이 기기의 앞선 체크가 사라짐"
     tab(page, "today")
     assert page.locator(".blk", has_text="연습 시간 20분").locator(".chk[aria-pressed='true']").count() == 2, "합친 체크가 화면에 안 보임"
+
+
+# ---------- 10/21: 요일별 시간 드롭다운 · 마감 순 · 낮은 칸 ----------
+def flow_weekday_time_dropdown_shows_or_rests(page, shot):
+    """목표마다 월~일 시간을 드롭다운으로 고르면 그 요일 오늘 화면에 그만큼 15분 칸, '쉼'이면 그 목표는 오늘 쉼(10/21 LEE 요청)"""
+    fresh(page)
+    make_goal(page, title="한식요리자격증", days=30, mids=(("필기 공부", 10),), tasks=2)
+    tab(page, "goals")
+    make_goal(page, title="토익 시험", days=60, mids=(("단어장 1회독", 20),), tasks=2)
+    wi, wn = wd_today()
+    pick(page, "모든 목표")
+    tab(page, "sched")
+    wk = page.locator(".weekall .wkline")
+    assert wk.count() == 2, "모든 목표 일정에 목표마다 요일별 시간 줄이 없음"
+    assert "한식" in wk.first.inner_text(), f"요일별 시간 줄이 마감 가까운 순이 아님: {wk.first.inner_text()}"
+    wk.first.click()
+    assert page.locator("#sheet select.tsel").count() == 7, "요일별 시간 창에 월~일 드롭다운 7개가 없음"
+    assert page.locator("#sheet button[aria-label*='15분 늘리기']").count() == 0, "요일별 시간이 아직 −/+ 버튼임"
+    pick_time(page.locator(f"#sheet select[aria-label='{wn}요일 시간']"), 30)
+    page.locator("#sheet button", has_text="닫기").click()
+    page.click("button[aria-label='토익 시험 요일별 시간 바꾸기']")
+    pick_time(page.locator(f"#sheet select[aria-label='{wn}요일 시간']"), 0)
+    assert page.locator(f"#sheet select[aria-label='{wn}요일 시간']").evaluate("e => e.selectedOptions[0].textContent") == "쉼", "0분이 '쉼'으로 안 보임"
+    page.locator("#sheet button", has_text="닫기").click()
+    st = {g["title"]: g for g in saved(page)["goals"]}
+    assert st["한식요리자격증"]["avail"][wi] == 30 and st["토익 시험"]["avail"][wi] == 0, "드롭다운으로 고른 요일 시간이 저장되지 않음"
+    assert f"{wn} 쉼" in page.locator(".wkline", has_text="토익").locator(".wk").get_attribute("aria-label"), "요일별 시간 줄에 쉼이 안 보임"
+    tab(page, "today")
+    sec = page.locator(".goalsec", has_text="한식요리자격증")
+    assert sec.locator(".blk").count() == 2, f"오늘 30분을 골랐는데 15분 칸이 2개가 아님: {sec.inner_text()}"
+    assert page.locator(".goalsec", has_text="토익 시험").count() == 0, "오늘 쉼으로 고른 목표가 오늘 화면에 나옴"
+    rest = page.locator("#view-today .rest", has_text="오늘 쉬는 목표")
+    assert rest.count() == 1 and "토익" in rest.inner_text(), f"쉬는 목표 안내가 없음: {page.inner_text('#view-today')[-300:]}"
+    # 목표 하나 볼 때: 위에 요일별 시간 한 줄, 쉬는 날 안내, 거기서 바로 바꾸기
+    pick(page, "토익 시험")
+    assert f"오늘({wn}요일)은 이 목표를 쉬는 날이에요" in page.inner_text("#view-today"), "목표 하나 볼 때 쉬는 날 안내가 없음"
+    strip = page.locator(".hero .wk")
+    assert strip.count() == 1 and f"{wn} 쉼" in strip.get_attribute("aria-label"), "오늘 화면 위에 요일별 시간 한 줄이 없음"
+    page.locator(".hero button", has_text="요일별 시간").click()
+    assert "토익 시험" in page.inner_text("#sheetTitle"), "오늘 화면에서 요일별 시간 창이 안 열림"
+    pick_time(page.locator(f"#sheet select[aria-label='{wn}요일 시간']"), 15)
+    page.locator("#sheet button", has_text="닫기").click()
+    assert rows(page).count() == 1, f"오늘 15분으로 바꿨는데 칸이 1개가 아님: {rows(page).count()}"
+    page.reload()
+    ready(page)
+    assert rows(page).count() == 1 and saved(page)["goals"][1]["avail"][wi] == 15, "새로고침했더니 고른 요일 시간이 사라짐"
+
+
+def flow_today_sorted_by_dday(page, shot):
+    """모든 목표 오늘 화면·목표 목록·목표 고르기가 마감 지난(D+) 목표 → D-day 적은 목표 순, D-day 배지는 크고 색으로 구분(10/21 LEE 요청)"""
+    fresh(page)
+    make_goal(page, title="느긋한 목표", days=90, mids=(), tasks=1)
+    tab(page, "goals")
+    make_goal(page, title="코앞 목표", days=5, mids=(), tasks=1)
+    tab(page, "goals")
+    make_goal(page, title="지난 목표", days=20, mids=(), tasks=1)
+    # 마감이 이틀 지난 목표로(마감 바꾸기는 지난 날을 안 받으므로 저장소에서)
+    page.evaluate(f"""() => {{ const s = JSON.parse(localStorage.getItem('{KEY}')); const g = s.goals.find(x => x.title === '지난 목표');
+        const d = new Date(Date.now() - 2 * 864e5).toLocaleDateString('sv-SE', {{timeZone: 'Asia/Seoul'}}); g.deadline = d; g.steps.forEach(x => x.due = d);
+        s.goals.forEach(x => x.avail = [30, 30, 30, 30, 30, 30, 30]); s.current = '*'; localStorage.setItem('{KEY}', JSON.stringify(s)); }}""")
+    page.reload()
+    ready(page)
+    heads = page.locator(".goalsec .gh b").all_inner_texts()
+    assert heads == ["지난 목표", "코앞 목표", "느긋한 목표"], f"오늘 화면 순서가 마감 지난 → 가까운 순이 아님: {heads}"
+    badges = page.locator(".goalsec .gh .dd")
+    assert "over" in badges.nth(0).get_attribute("class") and badges.nth(0).inner_text().startswith("D+"), f"마감 지난 목표 배지가 D+·빨강이 아님: {badges.nth(0).inner_text()}"
+    assert "soon" in badges.nth(1).get_attribute("class"), "7일 안 목표 배지가 주황이 아님"
+    bg = [badges.nth(i).evaluate("e => getComputedStyle(e).backgroundColor") for i in range(3)]
+    assert len(set(bg)) == 3, f"D-day 배지 색이 마감 정도에 따라 다르지 않음: {bg}"
+    fs = badges.nth(0).evaluate("e => parseFloat(getComputedStyle(e).fontSize)")
+    assert fs >= 15, f"D-day 배지 글자가 작음: {fs}px"
+    assert "마감 가까운 순" in page.inner_text("#view-today"), "오늘 화면에 정렬 기준 안내가 없음"
+    quiet(page, top=True)
+    shot("today-sorted", store=False)
+    opts = page.locator("#goalPick option").all_inner_texts()
+    assert opts[1].startswith("지난 목표") and opts[2].startswith("코앞 목표"), f"목표 고르기 순서가 마감 순이 아님: {opts}"
+    tab(page, "goals")
+    names = [t.strip() for t in page.locator(".goal-item h3").all_inner_texts()]
+    assert names == ["지난 목표", "코앞 목표", "느긋한 목표"], f"목표 목록 순서가 마감 순이 아님: {names}"
+    assert page.locator(".goal-item .gsub .dd.over").count() == 1, "목표 목록에 마감 지난 배지가 없음"
+    pick(page, "코앞 목표")
+    tab(page, "today")
+    big = page.locator(".hero .dd.big")
+    assert big.count() == 1 and big.evaluate("e => parseFloat(getComputedStyle(e).fontSize)") >= 20, "목표 화면 D-day가 크게 안 보임"
+    assert big.inner_text() == "D-5", f"목표 화면 D-day가 틀림: {big.inner_text()}"
+
+
+def flow_compact_tiles_fit_phone(page, shot):
+    """오늘 화면 15분 칸 높이를 낮춰 폰 한 화면에 많이 보임 — 누르는 곳은 그대로 넉넉(10/21 LEE 요청)"""
+    page.set_viewport_size({"width": 360, "height": 780})
+    ready(page)
+    page.evaluate(f"""() => {{ const s = JSON.parse(localStorage.getItem('{KEY}')); s.goals[0].avail = [180, 180, 180, 180, 180, 180, 180]; localStorage.setItem('{KEY}', JSON.stringify(s)); }}""")
+    page.reload()
+    ready(page)
+    r = rows(page)
+    assert r.count() == 12, f"오늘 3시간인데 칸이 12개가 아님: {r.count()}"
+    hs = r.evaluate_all("els => els.map(e => Math.round(e.getBoundingClientRect().height))")
+    assert max(hs) <= 50, f"15분 칸이 너무 높음: {hs}"
+    gap = page.evaluate("(() => { const a = document.querySelectorAll('#todayList .blk'); return a[1].getBoundingClientRect().top - a[0].getBoundingClientRect().bottom; })()")
+    assert gap <= 6, f"칸 사이 간격이 큼: {gap}"
+    todo = r.filter(has=page.locator(".chk[aria-pressed='false']")).first
+    chk, play = todo.locator(".chk").bounding_box(), todo.locator(".play").bounding_box()
+    assert chk["width"] >= 40 and chk["height"] >= 40, f"체크 버튼이 너무 작아짐: {chk}"
+    assert play["width"] >= 44 and play["height"] >= 40, f"타이머 버튼이 너무 작아짐: {play}"
+    span = page.evaluate("(() => { const a = document.querySelectorAll('#todayList .blk'); return a[a.length - 1].getBoundingClientRect().bottom - a[0].getBoundingClientRect().top; })()")
+    assert span <= 12 * 50 + 11 * 6, f"12칸이 차지하는 높이가 큼: {span}"
+
+
+def flow_pulled_rows_fill_time_and_stay_put(page, shot):
+    """그 요일 시간보다 놓인 칸이 적으면 뒤 칸을 당겨 채우고(원래 날짜 표시), 당겨 온 칸을 체크해도 줄 순서가 그대로 · 일정 오늘 상자도 같은 양"""
+    fresh(page)
+    make_goal(page, title="긴 호흡 목표", days=60, mids=(), tasks=2)   # 45분+30분 = 5칸을 60일에 고르게 → 오늘 놓인 칸은 1개
+    _, wn = wd_today()
+    tab(page, "sched")
+    pick_time(page.locator(f"select[aria-label='{wn}요일 시간']"), 60)
+    tab(page, "today")
+    r = rows(page)
+    assert r.count() == 4, f"오늘 1시간을 골랐는데 칸이 4개가 아님: {r.count()}"
+    xs = r.locator(".chk").evaluate_all("els => els.map(e => Math.round(e.getBoundingClientRect().left))")
+    tops = r.evaluate_all("els => els.map(e => e.getBoundingClientRect().top)")
+    assert len(set(xs)) == 1 and len({round(tops[i + 1] - tops[i]) for i in range(3)}) == 1, f"당겨 온 칸만 모양·간격이 다름: {xs} {tops}"
+    notes = r.locator(".t2").all_inner_texts()
+    assert sum("원래" in n for n in notes) == 3, f"뒤 칸을 당겨 온 표시가 없음: {notes}"
+    titles = [t.split("\n")[0] for t in r.all_inner_texts()]
+    r.nth(3).locator(".chk").click()
+    r = rows(page)
+    assert [t.split("\n")[0] for t in r.all_inner_texts()] == titles, f"당겨 온 칸을 체크했더니 줄 순서가 바뀜: {titles} → {r.all_inner_texts()}"
+    assert r.nth(3).locator(".chk").get_attribute("aria-pressed") == "true", "누른 칸이 체크되지 않음"
+    assert r.locator(".chk[aria-pressed='true']").count() == 1, "다른 칸까지 체크됨"
+    tab(page, "sched")
+    box = page.locator(".day.is-today")
+    assert "15분 × 3" in box.inner_text(), f"일정 오늘 상자가 오늘 화면(남은 3칸)과 다름: {box.inner_text()}"
+    tab(page, "plan", flow=True)
+    chips = page.locator(".flow .frow", has=page.locator(".fbox.today")).locator(".fchip")
+    assert chips.count() >= 1 and "할 일 1-1" in chips.first.inner_text(), "순서도 오늘 가지에 당겨 온 칸이 없음"
+
+
+def flow_old_bare_goals_keep_daily_15(page, shot):
+    """10/20까지의 저장본: 할 일 없이 요일 시간을 기본값 그대로 둔 목표는 어제처럼 매일 15분으로 한 번만 옮기고, 직접 고친 시간·할 일 있는 목표는 그대로"""
+    D, L = [120, 60, 60, 60, 60, 60, 120], [0, 15, 15, 15, 15, 15, 0]
+
+    def goal(i, title, avail, tasks=(), src=None):
+        g = {"id": f"o{i}", "title": title, "deadline": kst(40 + i), "createdAt": kst(-9), "avail": avail, "ed": 1, "log": [], "ilog": [],
+             "steps": [{"id": f"s{i}", "title": title, "due": kst(40 + i), "final": True, "tasks": [{"id": f"t{i}{j}", "title": t, "blocks": 4} for j, t in enumerate(tasks)]}]}
+        if src:
+            g["src"] = src
+        return g
+    old = {"v": 2, "seen": True, "current": "*", "goals": [goal(1, "할 일 없는 옛 목표", D), goal(2, "시간 고친 옛 목표", [30] * 7),
+           goal(3, "할 일 있는 옛 목표", D, ("기출 1회",)), goal(4, "목표까지 옛 목표", L, src="g9")], "del": {}, "imin": {}}
+    page.evaluate(f"localStorage.setItem('{KEY}', JSON.stringify({json.dumps(old, ensure_ascii=False)}))")
+    page.reload()
+    ready(page)
+    av = page.evaluate("Object.fromEntries(state.goals.map(g => [g.title, g.avail]))")
+    assert av["할 일 없는 옛 목표"] == [15] * 7 and av["목표까지 옛 목표"] == [15] * 7, f"할 일 없는 옛 목표가 매일 15분으로 안 옮겨짐: {av}"
+    assert av["시간 고친 옛 목표"] == [30] * 7 and av["할 일 있는 옛 목표"] == D, f"직접 고친 시간·할 일 있는 목표의 요일 시간이 바뀜: {av}"
+    sec = page.locator(".goalsec", has_text="할 일 없는 옛 목표")
+    assert sec.locator(".blk").count() == 1, f"옛 목표가 오늘 1칸(매일 15분)이 아님: {sec.inner_text()}"
+    assert page.locator(".goalsec", has_text="시간 고친 옛 목표").locator(".blk").count() == 2, "직접 고친 30분이 2칸이 아님"
+    # 옮긴 뒤 기본값과 같은 시간을 직접 골라도 다시 옮기지 않음(한 번만)
+    page.locator(".goalsec .gh", has_text="할 일 없는 옛 목표").click()
+    page.locator(".hero button", has_text="요일별 시간").click()
+    wi, _ = wd_today()
+    for i, wdn in enumerate("일월화수목금토"):
+        pick_time(page.locator(f"#sheet select[aria-label='{wdn}요일 시간']"), D[i])
+    page.locator("#sheet button", has_text="닫기").click()
+    page.reload()
+    ready(page)
+    g1 = [g for g in saved(page)["goals"] if g["title"] == "할 일 없는 옛 목표"][0]
+    assert g1["avail"] == D and g1.get("av") == 1, f"직접 고른 시간이 새로고침 뒤 매일 15분으로 되돌아감: {g1['avail']}"
+    assert rows(page).count() == D[wi] // 15, f"직접 고른 시간만큼 칸이 안 나옴: {rows(page).count()}"

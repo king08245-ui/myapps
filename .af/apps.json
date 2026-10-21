@@ -20,9 +20,9 @@
     "slug": "backplan",
     "name": "역산 15분 플래너",
     "url": "https://king08245-ui.github.io/myapps/backplan/",
-    "updated": "2026-10-20",
+    "updated": "2026-10-21",
     "package_id": "io.github.king08245ui.backplan",
-    "store_status": "배포됨(10/11) · 목표까지 자동 연동(동기화 서버 Cloudflare Worker backplan + KV, claude.ai 연결 '역산플래너') · 스토어 키트 준비됨(미제출) · 10/20 할 일 없는 목표도 매일 15분 칸",
+    "store_status": "배포됨(10/11) · 목표까지 자동 연동(동기화 서버 Cloudflare Worker backplan + KV, claude.ai 연결 '역산플래너') · 스토어 키트 준비됨(미제출) · 10/21 목표마다 요일별 시간(드롭다운)만큼 오늘 칸·마감 순·D-day 배지·낮은 칸",
     "server": "https://backplan.king08245.workers.dev"
   }
 ]
