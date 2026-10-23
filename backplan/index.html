@@ -158,6 +158,7 @@ h2.view-title{font:800 22px/1.25 var(--f-display);margin:4px 0 12px;text-wrap:ba
 .ring .bg{stroke:var(--line)}
 .ring .fg{stroke:var(--accent);transition:stroke-dashoffset .25s linear}
 .ring .left{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:600 26px/1 var(--f-num);color:var(--ink)}
+.ring .left.long{font-size:20px}
 .timer .what{font-weight:700;line-height:1.35}
 .timer .who{font-size:13px;color:var(--muted)}
 .timer .row{margin-top:8px}
@@ -367,10 +368,17 @@ ul.daily li{display:flex;justify-content:space-between;align-items:center;gap:8p
 .kindc b{font:800 17px/1.3 var(--f-display)}
 .kindc span{font-size:13.5px;color:var(--muted);line-height:1.45}
 .kindc[aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 1.5px var(--accent);background:var(--accent-soft)}
-.wdt{display:flex;flex-wrap:wrap;gap:6px}
-.wdt button{min-width:44px;min-height:44px;border:1px solid var(--line);border-radius:12px;background:var(--card);font-weight:700;color:var(--ink)}
-.wdt button.we{color:var(--warn)}
-.wdt button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.dtm{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}
+@media (max-width:359px){.dtm{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.dtm .dc{position:relative;display:grid;justify-items:center;align-content:center;gap:1px;min-height:62px;padding:4px 0;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--muted);cursor:pointer}
+.dtm .dc .d{font-weight:800;font-size:15px;line-height:1.2;color:var(--ink)}
+.dtm .dc.we .d{color:var(--warn)}
+.dtm .dc .v{font-size:12.5px;font-weight:700;line-height:1.2;white-space:nowrap}
+.dtm .dc .c{font-size:10px;line-height:1}
+.dtm .dc.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.dtm .dc.now{box-shadow:inset 0 0 0 1.5px var(--sun)}
+.dtm .dc:focus-within{outline:3px solid var(--sun);outline-offset:1px}
+.dtm .dc select{position:absolute;inset:0;width:100%;height:100%;opacity:0;font-size:16px;cursor:pointer;border:0;margin:0}
 .flabel{font-size:14px;font-weight:700}
 .two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
 .field .row input{flex:1 1 auto;min-width:0;width:auto}
@@ -564,6 +572,7 @@ function normGoal(g) {
     const k = e.k | 0; if (k < 1 || k > 999 || sseen.has(k)) continue; sseen.add(k);
     const x = {id: typeof e.id === 'string' && e.id ? e.id.slice(0, 40) : uid(), k, d: e.d}, tt = String(e.t ?? '').trim().slice(0, 80);
     if (tt) x.t = tt;
+    if (+e.m > 0) x.m = clamp(Math.round(+e.m), 1, 240);   // 그 회차 시간(분) — 목표까지로 보내는 시간 기록
     out.slog.push(x);
   }
   if (isDate(g.doneAt)) { out.doneAt = g.doneAt; if (g.doneBy === 'auto' || g.doneBy === 'check' || g.doneBy === 'hand') out.doneBy = g.doneBy; }
@@ -576,7 +585,9 @@ function normPlan(p, g) {
   const out = {kind: p.kind, at: isDate(p.at) ? p.at : g.createdAt};
   if (p.kind === 'steps') return out;
   out.n = clamp(Math.round(+p.n) || 1, 1, 999);
-  out.days = Array.isArray(p.days) && p.days.length === 7 && p.days.some(Boolean) ? p.days.map(Boolean) : DEF_DAYS.slice();
+  out.mins = normMins(p.mins, p.days);   // 요일별 회차 시간(분, 0 = 쉼) — 10/23 오후: 요일 밑 드롭다운
+  if (!hasMins(p.mins)) MINS_GUESS.add(out);
+  out.days = out.mins.map(m => m > 0);
   out.buf = p.buf !== false;   // 여유 20%를 더했는지(10/23 오후: 고를 수 있게)
   out.from = isDate(p.from) ? p.from : out.at;
   const ds = Array.isArray(p.dates) ? p.dates.filter(isDate) : [];
@@ -606,11 +617,23 @@ function planDates(n, from, deadline, days) {
   slots.forEach((d, i) => { for (let j = 0; j < q + (i < r ? 1 : 0); j++) out.push(d); });
   return out;
 }
+// 요일별 회차 시간: 15분 단위 0~4시간, 하루는 있어야 함. 새로 만들면 월~금 30분, 시간이 없던 예전 설정은 하는 요일마다 15분(지금까지 ▶가 15분)
+const DEF_MINS = [0, 30, 30, 30, 30, 30, 0];
+const hasMins = m => Array.isArray(m) && m.length === 7 && m.some(x => +x >= 7.5);
+function normMins(mins, days) {
+  if (hasMins(mins)) return mins.map(x => clamp(Math.round((+x || 0) / 15) * 15, 0, 240));
+  if (Array.isArray(days) && days.length === 7 && days.some(Boolean)) return days.map(d => d ? 15 : 0);
+  return DEF_MINS.slice();
+}
+const MINS_GUESS = new WeakSet();   // 시간 없이 들어온 설정(예전 버전 기기) — 동기화로 합칠 때 이 기기의 시간을 지킨다
+const minNZ = m => { const nz = (m || []).filter(Boolean); return nz.length ? Math.min(...nz) : 15; };
+const sesMin = (g, d) => (g.plan.mins && g.plan.mins[wd(d)]) || minNZ(g.plan.mins);   // 그 회차를 하는 날의 시간(지금은 쉬는 요일에 남은 회차면 가장 짧은 시간)
+const kMin = (g, k) => sesMin(g, (g.plan.dates && g.plan.dates[k - 1]) || today());   // k회차 시간
 function normOpt(o) {   // 만들던 목표의 세부 설정(마법사)
   o = o && typeof o === 'object' ? o : {};
   const num = v => Number.isFinite(+v) && +v > 0 ? Math.round(+v * 100) / 100 : 0;
-  return {kind: ['steps', 'daily', 'ramp'].includes(o.kind) ? o.kind : null, n: clamp(Math.round(+o.n) || 0, 0, 999),
-    days: Array.isArray(o.days) && o.days.length === 7 && o.days.some(Boolean) ? o.days.map(Boolean) : DEF_DAYS.slice(),
+  const mins = normMins(o.mins, o.days);
+  return {kind: ['steps', 'daily', 'ramp'].includes(o.kind) ? o.kind : null, n: clamp(Math.round(+o.n) || 0, 0, 999), mins, days: mins.map(m => m > 0),
     a: num(o.a), b: num(o.b), unit: String(o.unit ?? '').slice(0, 8), what: String(o.what ?? '').slice(0, 40), curve: o.curve === 'line' ? 'line' : 's', due: isDate(o.due) ? o.due : null, buf: o.buf !== false};
 }
 function normDraft(g) {   // 마법사로 만들던 목표: 이름이 아직 비어 있어도 된다
@@ -653,7 +676,7 @@ function normalizeState(raw) {
   if (s.imin && typeof s.imin === 'object') for (const [k, v] of Object.entries(s.imin)) if (Number.isFinite(+v) && +v > 0) out.imin[String(k).slice(0, 90)] = clamp(Math.round(+v / 15) * 15, 15, 240);
   const tm = s.timer;
   if (tm && typeof tm === 'object' && typeof tm.goalId === 'string' && Number.isFinite(+tm.endsAt))
-    out.timer = {goalId: tm.goalId, key: String(tm.key || tm.taskId || ''), endsAt: +tm.endsAt, paused: tm.paused == null ? null : Math.max(0, +tm.paused || 0), rang: !!tm.rang};
+    out.timer = {goalId: tm.goalId, key: String(tm.key || tm.taskId || ''), len: Number.isFinite(+tm.len) && +tm.len > 0 ? +tm.len : 15 * 60e3, endsAt: +tm.endsAt, paused: tm.paused == null ? null : Math.max(0, +tm.paused || 0), rang: !!tm.rang};
   if (s.draft && s.draft.g && typeof s.draft.g === 'object') { const dg = normDraft(s.draft.g); if (dg) out.draft = {g: dg, page: clamp(s.draft.page | 0 || 1, 1, 4), opt: normOpt(s.draft.opt), setup: typeof s.draft.setup === 'string' ? s.draft.setup.slice(0, 40) : null}; }
   const sy = s.sync && typeof s.sync === 'object' ? s.sync : {};
   out.sync = {server: typeof sy.server === 'string' ? sy.server.slice(0, 200) : '', code: typeof sy.code === 'string' ? sy.code.slice(0, 200) : '',
@@ -1000,11 +1023,11 @@ function buildPlan(g, o) {
   const t = today();
   if (o.kind === 'steps') return {kind: 'steps', at: t};
   const st = startFor(o.n, g.deadline, o.days, o.buf), from = st.from0 > t ? st.from0 : t;
-  const p = {kind: o.kind, at: t, n: o.n, days: o.days.slice(), buf: o.buf !== false, from, dates: planDates(o.n, from, g.deadline, o.days)};
+  const p = {kind: o.kind, at: t, n: o.n, mins: o.mins.slice(), days: o.mins.map(m => m > 0), buf: o.buf !== false, from, dates: planDates(o.n, from, g.deadline, o.days)};
   if (o.kind === 'ramp') Object.assign(p, {a: o.a, b: o.b, unit: (o.unit || '회').trim().slice(0, 8), what: (o.what || g.title).trim().slice(0, 40), curve: o.curve === 'line' ? 'line' : 's'});
   return p;
 }
-const optFromPlan = (p, g) => p ? normOpt({kind: p.kind, n: p.n, days: p.days, a: p.a, b: p.b, unit: p.unit, what: p.what, curve: p.curve, buf: p.buf}) : normOpt({what: g.title, unit: '회'});
+const optFromPlan = (p, g) => p ? normOpt({kind: p.kind, n: p.n, mins: p.mins, days: p.days, a: p.a, b: p.b, unit: p.unit, what: p.what, curve: p.curve, buf: p.buf}) : normOpt({what: g.title, unit: '회'});
 /* 시간 고르기: 드롭다운(15분 단위, 4시간 넘으면 30분·1시간 단위). 0은 '쉼' */
 function timeOpts(min, max, cur) {
   const vs = [];
@@ -1025,41 +1048,48 @@ function timeSelect(value, {min = 15, max = 480, label, onChange, id = null, cls
 const wkShort = m => !m ? '–' : m < 60 ? String(m) : (m % 60 ? (m / 60).toFixed(1).replace(/\.0$/, '') : String(m / 60)) + 'h';
 function weekStrip(g) {
   if (isSes(g)) {
-    const ds = g.plan.days;
-    return h('span', {class: 'wk', role: 'img', 'aria-label': '하는 요일 ' + daysText(ds)},
-      ...[1, 2, 3, 4, 5, 6, 0].map(i => h('i', {class: (ds[i] ? 'on' : '') + (i === wd(today()) ? ' now' : '')}, h('span', null, WD[i]), h('small', null, ds[i] ? '✓' : '–'))));
+    const ms = g.plan.mins;
+    return h('span', {class: 'wk', role: 'img', 'aria-label': '요일별 시간 ' + [1, 2, 3, 4, 5, 6, 0].map(i => `${WD[i]} ${ms[i] ? dur(ms[i]) : '쉼'}`).join(', ')},
+      ...[1, 2, 3, 4, 5, 6, 0].map(i => h('i', {class: (ms[i] ? 'on' : '') + (i === wd(today()) ? ' now' : '')}, h('span', null, WD[i]), h('small', null, wkShort(ms[i])))));
   }
   return h('span', {class: 'wk', role: 'img', 'aria-label': '요일별 시간 ' + [1, 2, 3, 4, 5, 6, 0].map(i => `${WD[i]} ${g.avail[i] ? dur(g.avail[i]) : '쉼'}`).join(', ')},
     ...[1, 2, 3, 4, 5, 6, 0].map(i => h('i', {class: (g.avail[i] ? 'on' : '') + (i === wd(today()) ? ' now' : '')}, h('span', null, WD[i]), h('small', null, wkShort(g.avail[i])))));
 }
 // 프로젝트마다 월~일 시간 고르기(드롭다운) — 고른 시간만큼 그 요일 오늘 화면에 15분 칸이 나온다
 const WEEK_PRESETS = [['매일 15분', [15, 15, 15, 15, 15, 15, 15]], ['평일만 15분', [0, 15, 15, 15, 15, 15, 0]], ['매일 30분', [30, 30, 30, 30, 30, 30, 30]], ['모두 쉼', [0, 0, 0, 0, 0, 0, 0]]];
-const daysText = ds => { const on = [1, 2, 3, 4, 5, 6, 0].filter(i => ds[i]); return on.length === 7 ? '매일' : on.join() === '1,2,3,4,5' ? '월~금' : on.map(i => WD[i]).join('·'); };
-const DAY_PRESETS = [['월~금', [false, true, true, true, true, true, false]], ['매일', [true, true, true, true, true, true, true]], ['월·수·금', [false, true, false, true, false, true, false]], ['주말', [true, false, false, false, false, false, true]]];
-// 하는 요일 고르기(누르면 켜고 끄기) — 하루는 남긴다
-function dayToggles(days, onChange, label = '하는 요일') {
-  let cur = days.slice();
-  const box = h('div', {class: 'wdt', role: 'group', 'aria-label': label});
+const TIME_PRESETS = [['월~금 30분', [0, 30, 30, 30, 30, 30, 0]], ['매일 15분', [15, 15, 15, 15, 15, 15, 15]], ['매일 30분', [30, 30, 30, 30, 30, 30, 30]], ['월·수·금 1시간', [0, 60, 0, 60, 0, 60, 0]]];
+const shortDur = m => !m ? '쉼' : m < 60 ? `${m}분` : m % 60 ? `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}` : `${m / 60}시간`;
+// 요일별 시간: 월~일 한 줄, 요일 밑에 드롭다운(쉼·15분 단위 ~2시간). '쉼'인 요일엔 회차가 없다. 하루는 남긴다
+function dayTimes(mins, onChange, {max = 120, label = '요일별 시간'} = {}) {
+  let cur = mins.slice();
+  const box = h('div', {class: 'dtm', role: 'group', 'aria-label': label});
   [1, 2, 3, 4, 5, 6, 0].forEach(i => {
-    const b = h('button', {type: 'button', class: i === 0 || i === 6 ? 'we' : null, 'aria-pressed': String(!!cur[i]), 'aria-label': `${WD[i]}요일`, onclick: () => {
-      const nd = cur.slice(); nd[i] = !nd[i];
-      if (!nd.some(Boolean)) return toast('하루는 골라 주세요');
-      cur = nd; b.setAttribute('aria-pressed', String(!!nd[i])); onChange(nd);
-    }}, WD[i]);
-    box.append(b);
+    const val = h('span', {class: 'v', 'aria-hidden': 'true'}, shortDur(cur[i]));
+    const cell = h('label', {class: 'dc' + (cur[i] ? ' on' : '') + (i === 0 || i === 6 ? ' we' : '') + (i === wd(today()) ? ' now' : '')},
+      h('span', {class: 'd', 'aria-hidden': 'true'}, WD[i]), val, h('span', {class: 'c', 'aria-hidden': 'true'}, '▾'));
+    const sel = h('select', {'aria-label': `${WD[i]}요일 시간`});
+    for (const m of timeOpts(0, max, cur[i])) sel.append(h('option', {value: String(m)}, m ? dur(m) : '쉼'));
+    sel.value = String(cur[i]);
+    sel.addEventListener('change', () => {
+      const nm = cur.slice(); nm[i] = +sel.value;
+      if (!nm.some(Boolean)) { sel.value = String(cur[i]); return toast('하루는 시간을 골라 주세요'); }
+      cur = nm; val.textContent = shortDur(nm[i]); cell.classList.toggle('on', nm[i] > 0); onChange(nm);
+    });
+    cell.append(sel);
+    box.append(cell);
   });
   return box;
 }
-// 일별·운동: 하는 요일 바꾸기 → 앞으로 남은 회차를 다시 놓음
+// 일별·운동: 요일별 시간 바꾸기 → 앞으로 남은 회차를 다시 놓음
 function daysSheet(g) {
   const p = g.plan;
   const draw = pp => {
-    const set = days => { p.days = days.slice(); replan(g); commit(g); draw(pp); };
+    const set = mins => { p.mins = mins.slice(); p.days = mins.map(m => m > 0); replan(g); commit(g); draw(pp); };
     const m = sesMap(g); let left = 0; for (let k = 1; k <= p.n; k++) if (!m.has(k)) left++;
-    pp.replaceChildren(h('h2', {id: 'sheetTitle'}, `‘${g.title}’ 하는 요일`),
-      h('p', {class: 'muted small-text', style: 'margin:0'}, '고른 요일에 하루 한 회차씩 나와요. 바꾸면 앞으로 남은 회차 날짜를 다시 놓아요(지난날 못 한 회차는 밀린 것으로 남아요).'),
-      h('div', {class: 'row'}, ...DAY_PRESETS.map(([name, ds]) => h('button', {class: 'btn small', type: 'button', onclick: () => set(ds)}, name))),
-      dayToggles(p.days, set),
+    pp.replaceChildren(h('h2', {id: 'sheetTitle'}, `‘${g.title}’ 요일별 시간`),
+      h('p', {class: 'muted small-text', style: 'margin:0'}, '요일마다 한 회차에 쓸 시간을 골라요. ‘쉼’인 요일엔 회차가 없어요. 바꾸면 앞으로 남은 회차 날짜를 다시 놓아요(지난날 못 한 회차는 밀린 것으로 남아요).'),
+      h('div', {class: 'row'}, ...TIME_PRESETS.map(([name, ms]) => h('button', {class: 'btn small', type: 'button', onclick: () => set(ms)}, name))),
+      dayTimes(p.mins, set),
       h('p', {class: 'small-text num', style: 'margin:0', id: 'daysSum'}, `남은 회차 ${left}개 · 마지막 회차 ${mdw(p.dates[p.n - 1])} · 목표일 ${mdw(g.deadline)}`),
       h('div', {class: 'row', style: 'justify-content:flex-end'}, h('button', {class: 'btn primary', type: 'button', autofocus: true, onclick: closeSheet}, '닫기')));
   };
@@ -1200,13 +1230,13 @@ function renderToday() {
   const pending = rows.filter(r => !r.done).length, card = (b, p, ...kids) => v.append(h('div', {class: 'card empty', style: 'margin-top:8px'}, h('b', null, b), p ? h('p', null, p) : null, ...kids));
   const row = (...kids) => h('div', {class: 'row', style: 'justify-content:center'}, ...kids);
   if (activeGoal(g)) {
-    if (waiting(g, t)) card('아직 시작 전이에요', ses ? '시작일이 되면 하는 요일마다 한 회차씩 여기에 나와요. 미리 하고 싶으면 오늘부터 시작할 수 있어요.' : '시작일이 되면 고른 요일마다 여기에 나와요.',
+    if (waiting(g, t)) card('아직 시작 전이에요', ses ? '시작일이 되면 시간을 고른 요일마다 한 회차씩 여기에 나와요. 미리 하고 싶으면 오늘부터 시작할 수 있어요.' : '시작일이 되면 고른 요일마다 여기에 나와요.',
       ses ? row(h('button', {class: 'btn small', type: 'button', onclick: () => startNow(g)}, '오늘부터 시작')) : null);
     else if (over && !pending) card('목표일이 지났어요', '밀린 것이 없어요. 다 했으면 목표 완료로 보관하세요.', row(doneBtn(g)));
     else if (!ses && finished(g) && !pending) card('단계를 모두 끝냈어요', `${g.title} — 수고했어요! 목표 완료로 보관하세요.`, row(doneBtn(g)));
     else if (!rows.length) {   // 쉬는 요일(0분) · 하는 요일이 아님
-      card(`오늘(${WD[wd(t)]}요일)은 이 목표를 쉬는 날이에요`, ses ? '하는 요일에 한 회차씩 나와요. 오늘 하고 싶으면 한 회차 미리 하기를 눌러요.' : '요일별 시간에서 고르면 그 요일마다 15분 칸이 나와요. 오늘만 하고 싶으면 15분 하기를 눌러요.',
-        row(ses ? (sesFuture(g) ? moreBtn(g, '＋ 한 회차 미리 하기') : null) : moreBtn(g, '＋ 15분 하기'), h('button', {class: 'btn small', type: 'button', onclick: () => weekSheet(g)}, ses ? '하는 요일' : '요일별 시간')));
+      card(`오늘(${WD[wd(t)]}요일)은 이 목표를 쉬는 날이에요`, ses ? '시간을 고른 요일에 한 회차씩 나와요. 오늘 하고 싶으면 한 회차 미리 하기를 눌러요.' : '요일별 시간에서 고르면 그 요일마다 15분 칸이 나와요. 오늘만 하고 싶으면 15분 하기를 눌러요.',
+        row(ses ? (sesFuture(g) ? moreBtn(g, '＋ 한 회차 미리 하기') : null) : moreBtn(g, '＋ 15분 하기'), h('button', {class: 'btn small', type: 'button', onclick: () => weekSheet(g)}, '요일별 시간')));
     } else if (!pending && !over) {
       if (ses) card('오늘 회차를 다 했어요', sesFuture(g) ? '더 하고 싶으면 다음 회차를 미리 할 수 있어요.' : '모든 회차를 끝냈어요!', sesFuture(g) ? moreBtn(g, '＋ 다음 회차 미리 하기') : null);
       else { const all_ = sch.total && sch.done >= sch.total; card(all_ ? '모든 할 일을 끝냈어요' : '오늘 몫을 다 했어요', all_ ? `${g.title}만 남았어요. 응원해요!` : '더 하고 싶으면 15분 더를 눌러요. 다음 할 일이 오늘로 당겨져요.', moreBtn(g)); }
@@ -1221,11 +1251,9 @@ function renderToday() {
 const kindTag = g => processed(g) ? h('span', {class: 'tag'}, KIND_NAME[g.plan.kind]) : h('span', {class: 'tag pre'}, '설정 전');
 const doneBtn = g => h('button', {class: 'btn small primary', type: 'button', onclick: () => doneSheet(g)}, '목표 완료로 보관');
 const sesFuture = (g, t = today()) => { const m = sesMap(g); return g.plan.dates.some((d, i) => d > t && !m.has(i + 1)); };
-const todayHead = (rows, late) => {
-  const tiles = rows.filter(r => r.type !== 's').length;
-  return h('div', {class: 'today-head'}, h('h2', null, '오늘의 15분'),
-    h('span', {class: 'muted small-text num'}, rows.length ? [`${rows.filter(r => r.done).length}/${rows.length}`, tiles ? dur(tiles * 15) : '', late ? `밀린 ${late}` : ''].filter(Boolean).join(' · ') : ''));
-};
+const rowsMin = rows => rows.reduce((a, r) => a + (r.type === 's' ? sesMin(r.g, r.d) : 15), 0);
+const todayHead = (rows, late) => h('div', {class: 'today-head'}, h('h2', null, '오늘의 15분'),
+  h('span', {class: 'muted small-text num'}, rows.length ? [`${rows.filter(r => r.done).length}/${rows.length}`, dur(rowsMin(rows)), late ? `밀린 ${late}` : ''].filter(Boolean).join(' · ') : ''));
 // 밀린 것 독려: 어제 못 한 것 · 그전에 밀린 것
 function cheerLine(rows, t = today()) {
   const y = add(t, -1), isLate = r => r.type === 'b' ? !r.done : !!r.late, lateU = rows.filter(isLate);
@@ -1270,7 +1298,7 @@ function sesHero(g, L) {
     p.kind === 'ramp' ? h('div', {class: 'rampinfo'}, h('span', {class: 'muted small-text'}, nextK ? `다음 ${nextK}회차 ${fmtN(rampAmt(p, nextK))}${p.unit} → 최종 ${fmtN(p.b)}${p.unit}` : `최종 ${fmtN(p.b)}${p.unit} 달성!`), rampSpark(p, dn)) : null,
     h('div', {class: 'prog'}, h('span', null, '회차 ', h('b', {class: 'num'}, `${dn}/${p.n}`), ' 끝냄', L.late ? h('span', {class: 'lt'}, ` · 밀린 ${L.late}`) : ''), h('b', {class: 'num'}, pct + '%')),
     sesMosaic(g),
-    h('div', {class: 'wkrow'}, weekStrip(g), h('button', {class: 'linkbtn', type: 'button', onclick: () => weekSheet(g)}, '하는 요일')));
+    h('div', {class: 'wkrow'}, weekStrip(g), h('button', {class: 'linkbtn', type: 'button', onclick: () => weekSheet(g)}, '요일별 시간')));
 }
 const heroLite = g => h('div', {class: 'card hero', style: 'margin-top:12px'},
   h('span', {class: 'dday'}, ddBadge(g, true), `${mdw(shownDue(g))} 마감`, kindTag(g), linked(g) ? h('span', {class: 'tag mk'}, '목표까지') : null), h('h1', null, g.title));
@@ -1316,9 +1344,9 @@ function renderTodayAll(v, t) {
   // 설정한 목표만 · 마감이 지났거나 D-day가 적은 목표부터 · 밀린 것도 함께
   const lv = live().filter(activeGoal), proc = lv.filter(processed), pre = lv.filter(g => !processed(g)), wait = proc.filter(g => waiting(g, t));
   const secs = proc.filter(g => !waiting(g, t)).sort(byDue).map(g => ({g, ...todayList(g, t)}));
-  const all = secs.flatMap(s => s.rows), doneN = all.filter(r => r.done).length, lateN = secs.reduce((a, s) => a + s.late, 0), tiles = all.filter(r => r.type !== 's').length;
+  const all = secs.flatMap(s => s.rows), doneN = all.filter(r => r.done).length, lateN = secs.reduce((a, s) => a + s.late, 0);
   v.append(h('div', {class: 'today-head', style: 'margin-top:4px'}, h('h2', null, '오늘의 15분'),
-    h('span', {class: 'muted small-text num'}, all.length ? [`${doneN}/${all.length}`, tiles ? dur(tiles * 15) : '', lateN ? `밀린 ${lateN}` : ''].filter(Boolean).join(' · ') : '')));
+    h('span', {class: 'muted small-text num'}, all.length ? [`${doneN}/${all.length}`, dur(rowsMin(all)), lateN ? `밀린 ${lateN}` : ''].filter(Boolean).join(' · ') : '')));
   v.append(h('p', {class: 'muted small-text', style: 'margin:-4px 2px 4px'}, `${mdw(t)} · 모든 목표 · 마감 가까운 순`));
   const ch = cheerLine(all, t); if (ch) v.append(ch);
   const tc = timerCard(); if (tc) v.append(tc);
@@ -1423,11 +1451,12 @@ function sesRow(r) {
   li.style.setProperty('--hue', 'var(--accent-rgb)');
   const label = sesLabel(g, r.k), main = [p.kind === 'ramp' ? rampText(p, r.k) : '', r.e && r.e.t ? r.e.t : ''].filter(Boolean).join(' · ') || '회차';
   const chk = h('button', {class: 'chk', type: 'button', 'aria-pressed': String(!!r.done), 'aria-label': `${g.title} ${label} ${main} ${r.done ? '끝냄 취소' : '끝냄'}`, onclick: () => toggleSes(g, r.k)}, svgCheck());
+  const mm = sesMin(g, r.d);
   const sub = r.done ? (r.d < r.e.d ? `${mdw(r.d)} 몫 · 오늘 함` : r.d > r.e.d ? `미리 함 · 원래 ${mdw(r.d)}` : '오늘 끝냄') + ' · ✎로 제목 고치기'
-    : r.late ? [h('span', {class: 'lt'}, '밀림'), ` · ${mdw(r.d)} 못 함`] : r.early ? `미리 하기 · 원래 ${mdw(r.d)}` : '오늘 회차';
+    : r.late ? [h('span', {class: 'lt'}, '밀림'), ` · ${mdw(r.d)} 못 함 · ${dur(mm)}`] : r.early ? `미리 하기 · 원래 ${mdw(r.d)} · ${dur(mm)}` : `오늘 회차 · ${dur(mm)}`;
   const mid = h('div', {style: 'min-width:0'}, h('div', {class: 't1'}, h('span', {class: 'kn num'}, label), ' ', main), h('div', {class: 't2'}, sub));
   const right = r.done ? h('button', {class: 'btn small play', type: 'button', 'aria-label': `${label} 회차 제목 고치기`, onclick: () => sesTitleSheet(g, r.k)}, '✎')
-    : h('button', {class: 'btn small play', type: 'button', 'aria-label': `${label} 15분 타이머 시작`, onclick: () => startTimer(g, 's:' + r.k)}, '▶');
+    : h('button', {class: 'btn small play', type: 'button', 'aria-label': `${label} ${dur(mm)} 타이머 시작`, onclick: () => startTimer(g, 's:' + r.k, mm)}, '▶');
   li.append(chk, mid, right);
   return li;
 }
@@ -1447,7 +1476,7 @@ function toggleSes(g, k) {
   const i = g.slog.findIndex(e => e.k === k);
   if (i >= 0) g.slog.splice(i, 1);
   else {
-    g.slog.push({id: uid(), k, d: today()});
+    g.slog.push({id: uid(), k, d: today(), m: kMin(g, k)});
     if (state.timer && state.timer.goalId === g.id && state.timer.key === 's:' + k) state.timer = null;
     if (finishIfDone(g)) return;
   }
@@ -1521,9 +1550,10 @@ function stepNudge(g, s) {
 
 /* ---------- 15분 타이머 (끝 시각을 저장해 화면을 껐다 켜도 맞게) ---------- */
 let tick = 0, wake = null, audio = null;
-function startTimer(g, key) {
+function startTimer(g, key, mins = 15) {
   try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); audio.resume?.(); } catch {}
-  state.timer = {goalId: g.id, key, endsAt: Date.now() + 15 * 60e3, paused: null, rang: false};
+  const len = clamp(mins | 0 || 15, 1, 240) * 60e3;
+  state.timer = {goalId: g.id, key, len, endsAt: Date.now() + len, paused: null, rang: false};
   save(); lockScreen(true); render(); runTick();
   document.querySelector('.timer')?.scrollIntoView({block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'});
 }
@@ -1556,12 +1586,12 @@ function timerCard() {
   const tm = state.timer; if (!tm) return null;
   const tg = timerTarget(); if (!tg) { state.timer = null; save(); return null; }
   const left = timerLeft(), end = left <= 0;
-  const C = 2 * Math.PI * 52, frac = left / (15 * 60e3);
+  const C = 2 * Math.PI * 52, len = tm.len || 15 * 60e3, frac = Math.min(1, left / len), lm = Math.round(len / 60e3);
   const ring = h('div', {class: 'ring'}); ring.innerHTML = `<svg viewBox="0 0 120 120" aria-hidden="true"><circle class="bg" cx="60" cy="60" r="52" fill="none" stroke-width="10"/><circle class="fg" cx="60" cy="60" r="52" fill="none" stroke-width="10" stroke-linecap="round" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C * (1 - frac)).toFixed(1)}"/></svg>`;
-  ring.append(h('div', {class: 'left num', id: 'timerLeft', role: 'timer', 'aria-live': 'off'}, fmtLeft(left)));
+  ring.append(h('div', {class: 'left num' + (fmtLeft(left).length > 5 ? ' long' : ''), id: 'timerLeft', role: 'timer', 'aria-live': 'off'}, fmtLeft(left)));
   return h('div', {class: 'timer' + (end ? ' end' : ''), id: 'timerCard'}, ring,
-    h('div', {style: 'min-width:0'}, h('div', {class: 'label'}, end ? '15분 끝!' : tm.paused != null ? '잠시 멈춤' : '집중하는 중'),
-      h('div', {class: 'what'}, end ? `‘${tg.label}’ 15분을 끝냈나요?` : tg.label),
+    h('div', {style: 'min-width:0'}, h('div', {class: 'label'}, end ? `${dur(lm)} 끝!` : tm.paused != null ? '잠시 멈춤' : '집중하는 중'),
+      h('div', {class: 'what'}, end ? `‘${tg.label}’ ${dur(lm)}을 끝냈나요?` : tg.label),
       state.goals.length > 1 ? h('div', {class: 'who'}, tg.g.title) : null,
       h('div', {class: 'row'},
         end ? h('button', {class: 'btn primary small', type: 'button', onclick: () => finishTimer(true)}, '끝냄 ✓') : h('button', {class: 'btn small', type: 'button', onclick: pauseTimer}, tm.paused != null ? '계속' : '잠시 멈춤'),
@@ -1569,7 +1599,8 @@ function timerCard() {
             : h('button', {class: 'btn primary small', type: 'button', onclick: () => finishTimer(true)}, '끝냄 ✓'),
         h('button', {class: 'btn small', type: 'button', onclick: () => finishTimer(false)}, '그만'))));
 }
-const fmtLeft = ms => { const s = Math.ceil(ms / 1000); return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; };
+// 남은 시간: 1시간 이상이면 1:05:00(시:분:초), 아니면 05:00
+const fmtLeft = ms => { const s = Math.ceil(ms / 1000), m = Math.floor(s / 60), ss = String(s % 60).padStart(2, '0'); return m >= 60 ? `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}:${ss}` : `${String(m).padStart(2, '0')}:${ss}`; };
 function pauseTimer() {
   const tm = state.timer; if (!tm) return;
   if (tm.paused != null) { tm.endsAt = Date.now() + tm.paused; tm.paused = null; lockScreen(true); } else { tm.paused = Math.max(0, tm.endsAt - Date.now()); lockScreen(false); }
@@ -1580,7 +1611,7 @@ function finishTimer(done) {
   if (done && tg) {
     const t = today();
     if (tg.ses) {
-      if (!tg.g.slog.some(e => e.k === tg.ses)) { tg.g.slog.push({id: uid(), k: tg.ses, d: t}); toast(`‘${tg.label}’ 끝냄`); if (finishIfDone(tg.g)) return; }
+      if (!tg.g.slog.some(e => e.k === tg.ses)) { tg.g.slog.push({id: uid(), k: tg.ses, d: t, m: kMin(tg.g, tg.ses)}); toast(`‘${tg.label}’ 회차 끝냄`); if (finishIfDone(tg.g)) return; }
     } else if (tg.back) {
       const used = dlogOn(tg.g, tg.back); let k = 1; while (used.has(k)) k++;
       tg.g.dlog.push({id: uid(), d: tg.back, k, s: tg.step.id, at: t}); toast(`‘${tg.label}’ 15분 끝냄`); if (finishIfDone(tg.g)) return;
@@ -1606,8 +1637,8 @@ function runTick() {
     if (!timerTarget()) { state.timer = null; save(); clearInterval(tick); lockScreen(false); if (tab === 'today') render(); return; }   // 지운 할 일·목표의 타이머는 울리지 않고 끝
     const left = timerLeft(), el = $('timerLeft');
     if (el) {
-      el.textContent = fmtLeft(left);
-      const fg = document.querySelector('.ring .fg'); if (fg) { const C = 2 * Math.PI * 52; fg.setAttribute('stroke-dashoffset', (C * (1 - left / (15 * 60e3))).toFixed(1)); }
+      el.textContent = fmtLeft(left); el.classList.toggle('long', el.textContent.length > 5);
+      const fg = document.querySelector('.ring .fg'); if (fg) { const C = 2 * Math.PI * 52; fg.setAttribute('stroke-dashoffset', (C * (1 - Math.min(1, left / (tm.len || 15 * 60e3)))).toFixed(1)); }
     }
     if (left <= 0 && tm.paused == null && !tm.rang) { tm.rang = true; save(); ring(); lockScreen(false); if (tab === 'today') softRender(); clearInterval(tick); }
   }, 250);
@@ -1692,12 +1723,13 @@ function sesPlan(v, g) {
   let free = 0; for (let d = add(last, 1); d <= g.deadline; d = add(d, 1)) if (p.days[wd(d)]) free++;
   v.append(h('div', {class: 'view-head'}, h('h2', {class: 'view-title'}, p.kind === 'ramp' ? '운동 회차 계획' : '회차 계획'), kindTag(g)));
   v.append(h('div', {class: 'card plansum'},
-    h('div', {class: 'label'}, `${g.title} · 전체 ${p.n}회 · ${daysText(p.days)}`),
+    h('div', {class: 'label'}, `${g.title} · 전체 ${p.n}회 · 한 주 ${dur(p.mins.reduce((a, b) => a + b, 0))}`),
     h('p', {class: 'small-text', style: 'margin:6px 0 0'}, startCalc(p.n, st)),
     h('p', {class: 'small-text num', style: 'margin:4px 0 0'}, `${mdw(p.from)} 시작 → 마지막 ${p.n}/${p.n}회 ${mdw(last)} · 목표일 ${mdw(g.deadline)}(${dday(g.deadline)})${free ? ` · 여유 ${free}일` : ''}`),
     waiting(g, t) ? startNote(g) : null,
     p.kind === 'ramp' ? h('div', {class: 'rampinfo'}, h('span', {class: 'muted small-text'}, `${p.what} ${fmtN(p.a)}${p.unit} → ${fmtN(p.b)}${p.unit} · ${p.curve === 'line' ? '매번 같은 만큼(직선)' : '처음·끝은 천천히(S자)'}`), rampSpark(p, sesDoneN(g))) : null,
-    h('div', {class: 'row', style: 'margin-top:8px'}, h('button', {class: 'btn small', type: 'button', onclick: () => weekSheet(g)}, '하는 요일'),
+    h('div', {class: 'wkrow'}, weekStrip(g)),
+    h('div', {class: 'row', style: 'margin-top:8px'}, h('button', {class: 'btn small', type: 'button', onclick: () => weekSheet(g)}, '요일별 시간'),
       h('button', {class: 'btn small', type: 'button', onclick: () => setupGoal(g)}, '설정 바꾸기'))));
   const ul = h('ul', {class: 'sesl', 'aria-label': '회차 목록'});
   for (let k = 1; k <= p.n; k++) {
@@ -1970,9 +2002,9 @@ function renderSched() {
   let sch0 = null;
   if (!all && isSes(gs[0])) {
     const g = gs[0], p = g.plan;
-    v.append(h('div', {class: 'card'}, h('div', {class: 'label', style: 'margin-bottom:4px'}, '하는 요일'),
-      h('p', {class: 'muted small-text', style: 'margin:0 0 8px'}, '고른 요일에 하루 한 회차씩 나와요. 바꾸면 앞으로 남은 회차 날짜를 다시 놓아요.'),
-      dayToggles(p.days, days => { p.days = days.slice(); replan(g); commit(g); })));
+    v.append(h('div', {class: 'card'}, h('div', {class: 'label', style: 'margin-bottom:4px'}, '요일별 시간'),
+      h('p', {class: 'muted small-text', style: 'margin:0 0 8px'}, '고른 시간으로 그 요일에 한 회차씩 나와요(‘쉼’이면 안 해요). 바꾸면 앞으로 남은 회차 날짜를 다시 놓아요.'),
+      dayTimes(p.mins, mins => { p.mins = mins.slice(); p.days = mins.map(m => m > 0); replan(g); commit(g); })));
     v.append(h('p', {class: 'small-text num', style: 'margin:10px 2px 14px'}, waiting(g, t) ? startLine(g) + ' ' : '', `회차 ${sesDoneN(g)}/${p.n} 끝냄 · 마지막 회차 ${mdw(p.dates[p.n - 1])} · 목표일 ${mdw(g.deadline)}`));
   } else if (!all) {
     const g = gs[0]; sch0 = schedule(g, t);
@@ -1999,7 +2031,7 @@ function renderSched() {
     if (isSes(g)) {   // 일별·운동: 회차를 그 날짜에(밀린 회차는 오늘 상자에 개수로)
       const p = g.plan, m = sesMap(g), late = sesLate(g, t).length;
       if (late) at(t).push({g, hue: 'var(--accent-rgb)', text: `밀린 회차 ${late}개`, late: true});
-      for (let k = 1; k <= p.n; k++) { const d = p.dates[k - 1]; if (d < t || m.has(k)) continue; at(d).push({g, hue: 'var(--accent-rgb)', text: p.kind === 'ramp' ? `${k}/${p.n} · ${rampText(p, k)}` : `${k}/${p.n} 회차`, ses: true}); }
+      for (let k = 1; k <= p.n; k++) { const d = p.dates[k - 1]; if (d < t || m.has(k)) continue; at(d).push({g, hue: 'var(--accent-rgb)', text: p.kind === 'ramp' ? `${k}/${p.n} · ${rampText(p, k)}` : `${k}/${p.n} 회차`, ses: true, min: sesMin(g, d)}); }
       const fin = g.steps.find(s => s.final); if (fin && g.deadline >= t) { if (!miles.has(g.deadline)) miles.set(g.deadline, []); miles.get(g.deadline).push({g, s: fin, miss: false}); }
       continue;
     }
@@ -2039,10 +2071,10 @@ function renderSched() {
     const es = byDay.get(d) || [], ms = miles.get(d) || [];
     if (es.length || (d === t && ms.length)) {
       n++;
-      const ul = h('ul'), mins = es.reduce((a, e) => a + (e.late || e.ses ? 0 : e.min), 0), sesN = es.filter(e => e.ses).length;
+      const ul = h('ul'), mins = es.reduce((a, e) => a + (e.late || e.ses ? 0 : e.min), 0), sesE = es.filter(e => e.ses), sesN = sesE.length, sesM = sesE.reduce((a, e) => a + e.min, 0);
       for (const e of es) { const i = h('i'); i.style.setProperty('--hue', e.hue); ul.append(h('li', {class: e.late ? 'late' : e.pre ? 'pre' : null}, i, h('span', null, e.text), all ? h('span', {class: 'who'}, shortOf(e.g)) : null,
-        e.pre ? h('span', {class: 'tag pre'}, '설정 전') : null, h('span', {class: 'n'}, e.ses ? '1회' : e.late ? '밀림' : dur(e.min)))); }
-      list.append(h('li', {class: 'day' + (d === t ? ' is-today' : '')}, h('div', {class: 'dh'}, h('b', null, mdw(d) + (d === t ? ' 오늘' : '')), h('span', {class: 'muted num'}, [mins ? `15분 × ${mins / 15} = ${dur(mins)}` : '', sesN ? `회차 ${sesN}` : ''].filter(Boolean).join(' · ') || '놓인 15분 없음')),
+        e.pre ? h('span', {class: 'tag pre'}, '설정 전') : null, h('span', {class: 'n'}, e.late ? '밀림' : dur(e.min)))); }
+      list.append(h('li', {class: 'day' + (d === t ? ' is-today' : '')}, h('div', {class: 'dh'}, h('b', null, mdw(d) + (d === t ? ' 오늘' : '')), h('span', {class: 'muted num'}, [mins ? `15분 × ${mins / 15} = ${dur(mins)}` : '', sesN ? `회차 ${sesN} · ${dur(sesM)}` : ''].filter(Boolean).join(' · ') || '놓인 15분 없음')),
         es.length ? ul : null, ms.length ? h('div', {class: 'dmiles'}, ...ms.map(m => mileEl(m, d, true))) : null));
     } else for (const m of ms) list.append(mileEl(m, d, false));
   }
@@ -2108,7 +2140,7 @@ function goalCard(g) {
     !linked(g) && !g.sample && syncReady() ? h('div', {class: 'muted small-text'}, g.toMk
       ? h('span', null, '목표까지에서 ‘맞추기’를 누르면 들어가요 · ', h('button', {class: 'linkish', type: 'button', onclick: () => { g.toMk = false; commit(g); toast('목표까지로 보내지 않을게요'); }}, '보내지 않기'))
       : h('button', {class: 'linkish', type: 'button', onclick: () => toMkSheet(g)}, '＋ 목표까지에도 넣기')) : null,
-    h('div', {class: 'wkrow'}, weekStrip(g), g.gone ? null : h('button', {class: 'linkbtn', type: 'button', 'aria-label': `${g.title} ${ses ? '하는 요일' : '요일별 시간'}`, onclick: () => weekSheet(g)}, ses ? '하는 요일' : '요일별 시간')),
+    h('div', {class: 'wkrow'}, weekStrip(g), g.gone ? null : h('button', {class: 'linkbtn', type: 'button', 'aria-label': `${g.title} 요일별 시간`, onclick: () => weekSheet(g)}, '요일별 시간')),
     h('div', {class: 'acts'},
       h('button', {class: 'btn small', type: 'button', onclick: () => { state.current = g.id; save(); go('today'); }}, '열기'),
       g.gone ? null : h('button', {class: 'btn small' + (pre ? ' primary' : ''), type: 'button', 'aria-label': `${g.title} ${pre ? '설정하기' : '설정 바꾸기'}`, onclick: () => setupGoal(g)}, pre ? '설정하기' : '설정 바꾸기'),
@@ -2309,7 +2341,7 @@ function wzPage(p, w, draw) {
       nav(() => { w.page = 2; draw(); }, () => { w.page = 4; draw(); }, mids.length ? `다음 (중간 목표 ${mids.length}개)` : '중간 목표 없이 다음'));
     return;
   }
-  if (w.page === 3) {   // 3. 일별·운동: 전체 횟수 · 하는 요일 (운동은 무엇을·최종 목표·처음 가능치·곡선)
+  if (w.page === 3) {   // 3. 일별·운동: 전체 횟수 · 요일별 시간(요일 밑 드롭다운) (운동은 무엇을·최종 목표·처음 가능치·곡선)
     const ramp = o.kind === 'ramp', sum = h('div', {class: 'sum', id: 'wzPlanSum', 'aria-live': 'polite'});
     const paint = () => sum.replaceChildren(...planSummary(due(), o));
     const numF = (id, label, val, ph, on, dec) => h('div', {class: 'field'}, h('label', {for: id}, label),
@@ -2324,7 +2356,8 @@ function wzPage(p, w, draw) {
       fields.push(numF('wzStart', '지금 할 수 있는 양 (처음 실행 가능치)', o.a, '예: 10', v => { o.a = +v > 0 ? +v : 0; }, true));
     }
     fields.push(numF('wzCount', '전체 횟수', o.n, '예: 40', v => { o.n = clamp(Math.round(+v) || 0, 0, 999); }));
-    fields.push(h('div', {class: 'field'}, h('span', {class: 'flabel'}, '하는 요일'), dayToggles(o.days, d => { o.days = d; keepDraft(); paint(); })));
+    fields.push(h('div', {class: 'field'}, h('span', {class: 'flabel'}, '요일별 시간 (한 회차에 쓸 시간 · ‘쉼’인 요일은 안 해요)'),
+      dayTimes(o.mins, m => { o.mins = m; o.days = m.map(x => x > 0); keepDraft(); paint(); })));
     const bufB = (v, label) => h('button', {type: 'button', 'aria-pressed': String(o.buf === v), 'data-buf': v ? '1' : '0',
       onclick: e => { o.buf = v; keepDraft(); e.currentTarget.parentNode.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.buf === (v ? '1' : '0')))); paint(); }}, label);
     fields.push(h('div', {class: 'field'}, h('span', {class: 'flabel', id: 'wzBufQ'}, '여유 20%를 더할까요?'),
@@ -2344,7 +2377,7 @@ function wzPage(p, w, draw) {
     };
     p.append(...head(3, ramp ? '운동 목표를 알려 주세요' : '모두 몇 번 할까요?'),
       h('p', {class: 'muted small-text', style: 'margin:0'}, ramp ? '처음 할 수 있는 양에서 최종 목표까지 회차마다 조금씩 늘려요. 날짜는 일별처럼 한 달 20일 기준으로 잡아요(여유 20%는 더할지 골라요).'
-        : '전체 횟수를 한 달 20일(주 5일) 기준으로 나눠 목표일에서 거꾸로 시작일을 잡아요. 여유 20%를 더할지 골라요.'),
+        : '전체 횟수를 한 달 20일(주 5일) 기준으로 나눠 목표일에서 거꾸로 시작일을 잡아요. 요일마다 한 회차에 쓸 시간과 여유 20%를 더할지 골라요.'),
       ...fields, sum, nav(() => { w.page = 2; draw(); }, next));
     paint();
     return;
@@ -2392,7 +2425,8 @@ function planSummary(due, o) {
   if (st.from0 > t) out.push(h('p', {class: 'startline'}, h('span', {class: 'dd start'}, `시작 ${dday(st.from0)}`), ' ', h('b', null, `이 프로젝트의 실행은 ${mdKo(st.from0)}에 시작될 예정입니다.`)));
   else if (st.from0 < t) out.push(h('p', {class: 'warnline'}, `목표일까지 ${diff(t, due) + 1}일이라 필요한 ${st.back}일보다 짧아요. 오늘부터 시작${multi ? '하고, 하루 2회 이상인 날이 있어요' : '해요'}. 목표일을 늦추면 여유가 생겨요.`));
   else out.push(h('p', {class: 'startline'}, h('b', null, '오늘부터 시작해요.')));
-  out.push(h('div', {class: 'num small-text'}, `${mdw(from)} 시작 → 마지막 ${o.n}/${o.n}회 ${mdw(last)} · 목표일 ${mdw(due)}${free ? `까지 여유 ${free}일` : ''}`));
+  out.push(h('div', {class: 'num small-text'}, `${mdw(from)} 시작 → 마지막 ${o.n}/${o.n}회 ${mdw(last)} · 목표일 ${mdw(due)}${free ? `까지 여유 ${free}일` : ''}`),
+    h('div', {class: 'muted small-text'}, `한 주 ${dur(o.mins.reduce((a, b) => a + b, 0))} · ${[1, 2, 3, 4, 5, 6, 0].filter(i => o.mins[i]).map(i => `${WD[i]} ${shortDur(o.mins[i])}`).join(' · ')}`));
   if (o.kind === 'ramp' && o.a > 0 && o.b > 0) {
     const p = {n: o.n, a: o.a, b: o.b, unit: o.unit || '회', what: o.what || '', curve: o.curve};
     out.push(rampSpark(p, 0), h('div', {class: 'num small-text'}, [...new Set([1, Math.ceil(o.n / 4), Math.ceil(o.n / 2), Math.ceil(o.n * 3 / 4), o.n])].map(k => `${k}회 ${fmtN(rampAmt(p, k))}${p.unit}`).join(' → ')));
@@ -2717,6 +2751,11 @@ function keepNew(r, l) {
     const ks = new Set(r.slog.map(e => e.k)); for (const e of l.slog || []) if (!ks.has(e.k)) { r.slog.push(e); ks.add(e.k); }
   }
   if (!r.doneAt && l.doneAt && !r.reopen) { r.doneAt = l.doneAt; if (l.doneBy) r.doneBy = l.doneBy; }
+  // 예전 버전 기기가 보낸 설정엔 요일별 시간이 없다 → 이 기기의 시간을 지킨다(그쪽에서 끈 요일은 쉼, 켠 요일은 이 기기의 가장 짧은 시간)
+  if (r.plan && l.plan && r.plan.kind !== 'steps' && MINS_GUESS.has(r.plan) && !MINS_GUESS.has(l.plan) && hasMins(l.plan.mins)) {
+    const lm = l.plan.mins, base = minNZ(lm);
+    r.plan.mins = r.plan.days.map((on, i) => on ? (lm[i] || base) : 0);
+  }
   return r;
 }
 // 여러 기기: 서버가 앞서 있으면 합친다 — 목표별로 나중에 고친 쪽, 체크 기록은 합집합, 지운 목표는 다시 살리지 않음
@@ -2760,10 +2799,10 @@ function computeProgress() {
     if (!g.src) continue;
     const p = {steps: [], credits: {}, sessions: {}, minutes: {}, last: null};
     for (const s of g.steps) if (s.src && s.done) p.steps.push(s.src);
-    const addMin = d => { const ym = d.slice(0, 7); p.minutes[ym] = (p.minutes[ym] || 0) + 15; if (!p.last || d > p.last) p.last = d; };
+    const addMin = (d, m = 15) => { const ym = d.slice(0, 7); p.minutes[ym] = (p.minutes[ym] || 0) + m; if (!p.last || d > p.last) p.last = d; };
     for (const e of g.log) addMin(e.d);
     for (const e of g.dlog || []) addMin(e.d);
-    for (const e of g.slog || []) addMin(e.d);
+    for (const e of g.slog || []) addMin(e.d, e.m || 15);   // 회차는 그 회차 시간만큼
     const perItem = new Map();
     for (const e of g.ilog) {
       addMin(e.d);

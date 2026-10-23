@@ -126,9 +126,9 @@ def quick_goal(page, title, days, kind="steps", n=10, all_days=False):
     page.click(f".kindc[data-kind='{kind}']")
     if kind != "steps":
         page.fill("#wzCount", str(n))
-        if all_days:
+        if all_days:   # 주말도: 요일 밑 드롭다운에서 30분
             for wd in "토일":
-                page.click(f".wdt button[aria-label='{wd}요일']")
+                pick_time(page.locator(f"#sheet select[aria-label='{wd}요일 시간']"), 30)
     wz_next(page)   # → 4
     wz_next(page)   # 완료
     page.wait_for_selector("#sheet[hidden]", state="attached", timeout=5000)
@@ -1715,7 +1715,7 @@ def flow_ramp_exercise_curve(page, shot):
     page.fill("#wzStart", "10")
     page.fill("#wzCount", "20")
     for wd in "토일":
-        page.click(f".wdt button[aria-label='{wd}요일']")
+        pick_time(page.locator(f"#sheet select[aria-label='{wd}요일 시간']"), 30)
     sm = page.inner_text("#wzPlanSum")
     assert "1회 10개" in sm and "20회 50개" in sm, f"처음·마지막 회차 양이 안 맞음: {sm}"
     assert page.locator("#wzPlanSum svg.spark").count() == 1, "변화 곡선 그림이 없음"
@@ -1808,3 +1808,140 @@ def flow_daily_buffer_choice(page, shot):
     page.wait_for_selector("#sheet[hidden]", state="attached", timeout=5000)
     p = saved(page)["goals"][0]["plan"]
     assert p.get("buf") is True and p["from"] == kst(28), f"더하기로 바꿨는데 시작일이 앞당겨지지 않음: buf={p.get('buf')} from={p['from']}"
+
+
+# ---------- 10/23 오후: 일별·운동 요일 밑 시간 드롭다운(쉼 · 15분 단위 ~2시간) ----------
+def kdur(m):
+    return f"{m}분" if m < 60 else f"{m // 60}시간" + (f" {m % 60}분" if m % 60 else "")
+
+
+def kshort(m):
+    return "쉼" if not m else f"{m}분" if m < 60 else (f"{m // 60}:{m % 60:02d}" if m % 60 else f"{m // 60}시간")
+
+
+def flow_daily_weekday_time_dropdowns(page, shot):
+    """일별 설정 중 월~일 밑에 쉼·15분 단위 ~2시간 드롭다운 — 고른 시간이 그 요일 회차 시간(오늘 줄·일정·▶ 타이머), 쉼인 요일엔 회차 없음(10/23 오후 LEE 요청)"""
+    page.clock.install()
+    fresh(page)
+    page.locator("button:visible", has_text=re.compile("목표 세우기")).first.click()
+    page.fill("#wzTitle", "독서 30회")
+    page.fill("#wzDeadline", kst(60))
+    wz_next(page)
+    page.click(".kindc[data-kind='daily']")
+    page.fill("#wzCount", "30")
+    sels = page.locator("#sheet .dtm select")
+    assert sels.count() == 7, f"월~일 시간 드롭다운이 7개가 아님: {sels.count()}"
+    labels = [sels.nth(i).get_attribute("aria-label") for i in range(7)]
+    assert labels == [f"{d}요일 시간" for d in "월화수목금토일"], f"드롭다운이 월~일 순서가 아님: {labels}"
+    heads = page.locator("#sheet .dtm .dc .d").all_inner_texts()
+    assert heads == list("월화수목금토일"), f"요일 이름이 드롭다운 위에 없음: {heads}"
+    opts = sels.first.locator("option").all_inner_texts()
+    assert opts == ["쉼", "15분", "30분", "45분", "1시간", "1시간 15분", "1시간 30분", "1시간 45분", "2시간"], f"쉼·15분 단위 ~2시간이 아님: {opts}"
+    assert [sels.nth(i).input_value() for i in range(7)] == ["30"] * 5 + ["0"] * 2, "처음 값이 월~금 30분·주말 쉼이 아님"
+    # 모두 쉼은 안 됨(하루는 남김)
+    for d in "화수목금":
+        pick_time(page.locator(f"#sheet select[aria-label='{d}요일 시간']"), 0)
+    pick_time(page.locator("#sheet select[aria-label='월요일 시간']"), 0)
+    assert page.input_value("#sheet select[aria-label='월요일 시간']") == "30", "모든 요일을 쉼으로 둘 수 있음"
+    assert "하루는 시간을" in (page.text_content("#toast") or ""), "모두 쉼일 때 안내가 없음"
+    wi, wn = wd_today()
+    want = {"월": 60, "화": 30, "수": 0, "목": 30, "금": 30, "토": 45, "일": 0}
+    want[wn] = 45   # 오늘 요일은 45분(오늘 회차·타이머 확인용)
+    for d, m in want.items():
+        pick_time(page.locator(f"#sheet select[aria-label='{d}요일 시간']"), m)
+    vals = page.locator("#sheet .dtm .dc .v").all_inner_texts()
+    assert vals == [kshort(want[d]) for d in "월화수목금토일"], f"요일 밑에 고른 시간이 안 보임: {vals}"
+    assert page.locator("#sheet .dtm .dc.on").count() == sum(1 for m in want.values() if m), "시간을 고른 요일 표시가 안 맞음"
+    total = sum(want.values())
+    sm = page.inner_text("#wzPlanSum")
+    assert f"한 주 {kdur(total)}" in sm and f"{wn} 45분" in sm, f"설정 요약에 한 주 시간·요일별 시간이 없음: {sm}"
+    shot("wizard-times", store=False)
+    wz_next(page)
+    assert f"한 주 {kdur(total)}" in page.inner_text("#wzPlanSum"), "확인 단계에 요일별 시간이 안 이어짐"
+    wz_next(page)
+    page.wait_for_selector("#sheet[hidden]", state="attached", timeout=5000)
+    M = [want[d] for d in "일월화수목금토"]
+    p = saved(page)["goals"][0]["plan"]
+    assert p["mins"] == M and p["days"] == [m > 0 for m in M], f"요일별 시간이 저장되지 않음: {p.get('mins')} {p.get('days')}"
+    bad = [x for x in p["dates"] if not M[(datetime.strptime(x, "%Y-%m-%d").weekday() + 1) % 7]]
+    assert not bad, f"쉼인 요일에 회차가 놓임: {bad[:3]}"
+    page.locator("#view-today button", has_text="오늘부터 시작").first.click()
+    r = rows(page)
+    assert r.count() == 1 and r.first.inner_text().startswith("1/30") and "오늘 회차 · 45분" in r.first.inner_text(), f"오늘 회차에 고른 시간(45분)이 안 보임: {r.all_inner_texts()}"
+    assert r.first.locator(".play").get_attribute("aria-label") == "1/30 45분 타이머 시작", "▶ 이름에 회차 시간이 없음"
+    assert "45분" in page.inner_text("#view-today .today-head"), f"오늘 합계에 회차 시간이 안 들어감: {page.inner_text('#view-today .today-head')}"
+    assert f"{wn} 45분" in page.locator(".hero .wk").get_attribute("aria-label"), "목표 위 요일 줄에 요일별 시간이 없음"
+    quiet(page, top=True)
+    shot("daily-times-today", store=False)
+    tab(page, "sched")
+    assert page.locator("#view-sched .dtm select").count() == 7, "일정 화면에 요일별 시간 드롭다운이 없음"
+    tb = page.locator("#view-sched .day.is-today").inner_text()
+    assert "회차 1 · 45분" in tb, f"일정 오늘 상자에 회차 시간이 없음: {tb}"
+    tab(page, "today")
+    # 오늘 화면에서 요일별 시간 바꾸기 → 오늘 회차 시간·▶가 따라감(1시간 30분은 1:30:00으로)
+    page.locator(".hero button", has_text="요일별 시간").click()
+    assert "요일별 시간" in page.inner_text("#sheetTitle") and page.locator("#sheet .dtm select").count() == 7, "요일별 시간 창에 드롭다운이 없음"
+    pick_time(page.locator(f"#sheet select[aria-label='{wn}요일 시간']"), 90)
+    page.locator("#sheet button", has_text="닫기").click()
+    r = rows(page)
+    assert "오늘 회차 · 1시간 30분" in r.first.inner_text(), f"바꾼 시간이 오늘 회차에 안 보임: {r.first.inner_text()}"
+    r.first.locator(".play").click()
+    assert page.inner_text("#timerLeft") in ("1:30:00", "1:29:59"), f"▶가 고른 시간(1시간 30분)만큼이 아님: {page.inner_text('#timerLeft')}"
+    page.reload()
+    ready(page)
+    assert page.inner_text("#timerLeft").startswith("1:"), "다시 열었더니 타이머 길이가 바뀜"
+    page.clock.fast_forward("01:30:05")
+    page.wait_for_function("document.getElementById('timerCard')?.classList.contains('end')", timeout=5000)
+    t = page.inner_text("#timerCard")
+    assert "1시간 30분 끝!" in t and "1시간 30분을 끝냈나요?" in t, f"끝 안내에 고른 시간이 없음: {t}"
+    page.click("#timerCard button:has-text('끝냄')")
+    g = saved(page)["goals"][0]
+    M[wi] = 90
+    assert [e["k"] for e in g["slog"]] == [1] and g["plan"]["mins"] == M, f"타이머로 끝낸 회차·바꾼 시간이 저장되지 않음: {g['slog']} {g['plan']['mins']}"
+    assert g["slog"][0].get("m") == 90, f"끝낸 회차에 그 회차 시간(90분)이 기록되지 않음: {g['slog'][0]}"
+
+
+def flow_old_daily_plan_gets_15min(page, shot):
+    """요일별 시간이 없던 일별 설정(10/23 오전 판)은 하는 요일마다 15분 — ▶도 지금까지처럼 15분"""
+    page.clock.install()
+    fresh(page)
+    quick_goal(page, "옛 일별 10회", 3, kind="daily", n=10, all_days=True)
+    page.evaluate(f"""() => {{ const s = JSON.parse(localStorage.getItem('{KEY}')); delete s.goals[0].plan.mins; s.goals[0].plan.days[3] = false; localStorage.setItem('{KEY}', JSON.stringify(s)); }}""")
+    page.reload()
+    ready(page)
+    assert page.evaluate("state.goals[0].plan.mins") == [15, 15, 15, 0, 15, 15, 15], f"예전 설정이 하는 요일마다 15분이 아님: {page.evaluate('state.goals[0].plan.mins')}"
+    r = rows(page)
+    if r.count():
+        assert "15분" in r.first.inner_text(), f"예전 설정 회차에 15분이 안 보임: {r.first.inner_text()}"
+        r.first.locator(".play").click()
+        assert page.inner_text("#timerLeft") in ("15:00", "14:59"), f"예전 설정 ▶가 15분이 아님: {page.inner_text('#timerLeft')}"
+
+
+def flow_sync_v9_device_keeps_times(page, shot):
+    """요일별 시간을 모르는 전 판 기기가 올린 일별 설정을 받아도 이 기기의 요일별 시간을 지킴(그쪽에서 끈 요일만 쉼)"""
+    srv_reset()
+    fresh(page)
+    connect(page)
+    tab(page, "today")
+    quick_goal(page, "글쓰기 20회", 40, kind="daily", n=20)
+    page.locator(".hero button", has_text="요일별 시간").click()
+    pick_time(page.locator("#sheet select[aria-label='월요일 시간']"), 60)
+    pick_time(page.locator("#sheet select[aria-label='화요일 시간']"), 45)
+    page.locator("#sheet button", has_text="닫기").click()
+    wait_synced(page)
+    page.wait_for_timeout(300)
+    d = srv_dump()["data"]
+    old = json.loads(json.dumps(d["data"]))
+    g = old["goals"][0]
+    assert g["plan"].get("mins") == [0, 60, 45, 30, 30, 30, 0], f"요일별 시간이 서버로 안 올라감: {g['plan'].get('mins')}"
+    g["plan"].pop("mins", None)
+    g["plan"]["days"][3] = False   # 전 판 기기에서 수요일을 끔
+    g["ed"] = (g.get("ed") or 0) + 60000
+    srv("/__put", {"key": "data", "value": {"rev": d["rev"] + 1, "at": "2026-10-23T05:00:00Z", "device": "PC-전판", "data": old, "progress": d["progress"]}})
+    tab(page, "goals")
+    page.click("#syncNowBtn")
+    page.wait_for_function(f"JSON.parse(localStorage.getItem('{KEY}')).sync.rev >= {d['rev'] + 1}", timeout=8000)
+    page.wait_for_timeout(300)
+    p = saved(page)["goals"][0]["plan"]
+    assert p["mins"] == [0, 60, 45, 0, 30, 30, 0], f"전 판 기기 설정을 받으면서 요일별 시간이 사라짐: {p['mins']}"
+
