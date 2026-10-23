@@ -334,6 +334,63 @@ ul.daily li{display:flex;justify-content:space-between;align-items:center;gap:8p
 .fgap .ar{position:relative;width:2px;height:100%;background:var(--muted);opacity:.75}
 .fgap .ar::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);border-left:5px solid transparent;border-right:5px solid transparent;border-bottom:7px solid var(--muted)}
 .fgap .days{position:absolute;left:calc(50% + 10px);top:50%;transform:translateY(-50%);font-size:12px;color:var(--muted);white-space:nowrap}
+/* 10/23: 밀린 것 · 일별·운동 회차 · 설정 전 · 완료 보관함 · 마법사 방식 고르기 */
+.blk.late{background:color-mix(in srgb,var(--warn-soft) 60%,var(--card))}
+.blk .lt,.goalsec .gh .lt,.prog .lt{color:var(--warn);font-weight:700}
+.blk .kn{font-size:12.5px;font-weight:600;color:var(--muted)}
+.cheer{margin:0 0 8px;padding:8px 12px;border-radius:12px;background:var(--warn-soft);color:var(--warn);font-size:14px;font-weight:700;line-height:1.45}
+.cheer.ok{background:color-mix(in srgb,var(--done) 14%,var(--card));color:var(--done)}
+.morelate{list-style:none;text-align:center}
+.tag.pre{background:transparent;color:var(--warn);border:1px dashed var(--warn)}
+.goal-item.pre{border-style:dashed}
+.prewarn{grid-column:1/-1;margin:0;color:var(--warn)}
+.gfull{grid-column:1/-1}
+.prebox{margin-top:12px;border-style:dashed;display:grid;gap:4px}
+.prerow{display:flex;justify-content:space-between;align-items:center;gap:8px;border-top:1px solid var(--line);padding-top:6px}
+.prerow .nm{display:flex;align-items:center;gap:6px;min-width:0}
+.prerow .nm b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.prenote{background:var(--warn-soft);color:var(--warn);border:1px dashed var(--warn);border-radius:14px;padding:12px 14px;font-size:14px;display:grid;gap:8px;margin-bottom:12px}
+.prenote b{color:inherit}
+.prenote .btn{justify-self:start}
+.startnote{display:flex;flex-wrap:wrap;align-items:center;gap:2px 8px;margin:6px 0 2px;font-size:14px;font-weight:700;color:var(--sun-ink)}
+.dd.start{background:var(--sun-soft);color:var(--sun-ink);box-shadow:inset 0 0 0 1.5px var(--sun)}
+.startline{margin:6px 0 2px;display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.warnline{margin:6px 0 2px;color:var(--warn);font-weight:700}
+.mosaic i.l{background:var(--warn-soft);box-shadow:inset 0 0 0 1.5px var(--warn)}
+.rampinfo{display:grid;gap:4px;margin-top:6px}
+.spark{width:100%;max-width:320px;height:64px;display:block}
+.spark .sp-all{stroke:rgb(var(--accent-rgb) / .35);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.spark .sp-done{stroke:var(--accent);stroke-width:3.5;stroke-linecap:round;stroke-linejoin:round}
+.spark .sp-dot{fill:var(--accent)}
+.kinds{display:grid;gap:8px}
+.kindc{display:grid;gap:4px;text-align:left;background:var(--card);border:1.5px solid var(--line);border-radius:14px;padding:12px 14px;min-height:64px;color:var(--ink)}
+.kindc b{font:800 17px/1.3 var(--f-display)}
+.kindc span{font-size:13.5px;color:var(--muted);line-height:1.45}
+.kindc[aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 1.5px var(--accent);background:var(--accent-soft)}
+.wdt{display:flex;flex-wrap:wrap;gap:6px}
+.wdt button{min-width:44px;min-height:44px;border:1px solid var(--line);border-radius:12px;background:var(--card);font-weight:700;color:var(--ink)}
+.wdt button.we{color:var(--warn)}
+.wdt button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.flabel{font-size:14px;font-weight:700}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+.field .row input{flex:1 1 auto;min-width:0;width:auto}
+.sesl{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:4px}
+.sesl li{display:grid;grid-template-columns:auto auto minmax(0,1fr) auto 44px;gap:8px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:1px 1px 1px 10px;min-height:46px;font-size:14px}
+.sesl li .kn{font-weight:600;color:var(--muted)}
+.sesl li .dt{font-size:13px;color:var(--muted)}
+.sesl li .tx{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sesl li .st{font-size:12.5px;font-weight:700;white-space:nowrap}
+.sesl li.done{background:var(--paper)}
+.sesl li.done .st{color:var(--done)}
+.sesl li.late{background:color-mix(in srgb,var(--warn-soft) 60%,var(--card))}
+.sesl li.late .st{color:var(--warn)}
+.sesl li.now{border-color:var(--sun);box-shadow:inset 0 0 0 1px var(--sun)}
+.archive{margin-top:12px}
+.archive summary{cursor:pointer;font-weight:800;min-height:44px;display:flex;align-items:center}
+.archive .arow{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;border-top:1px solid var(--line);padding:8px 0}
+.day li.pre{opacity:.62}
+.day li.late{color:var(--warn);font-weight:700}
+.plansum{display:grid;gap:2px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -409,6 +466,8 @@ const fmtWhen = iso => { const d = new Date(iso); if (isNaN(d)) return ''; const
 /* ---------- 저장: 불러올 때 모양을 고쳐서 쓴다(깨진 백업·옛 저장본도 화면이 비지 않게) ---------- */
 // 요일별 시간(일~토, 분) = 그 요일 오늘 화면 15분 칸 수이자 할 일을 놓을 수 있는 시간. 목표까지 목표는 매일 15분(10/20 '매일 15분'을 그대로)
 const DEF_AVAIL = [120, 60, 60, 60, 60, 60, 120], LINK_AVAIL = [15, 15, 15, 15, 15, 15, 15], OLD_LINK_AVAIL = [0, 15, 15, 15, 15, 15, 0], DAILY15 = [15, 15, 15, 15, 15, 15, 15];
+// 일별·운동 회차를 하는 요일(일~토). 기본 월~금 = 한 달 20일
+const DEF_DAYS = [false, true, true, true, true, true, false];
 function normStep(s, deadline) {
   if (!s || typeof s !== 'object') return null;
   const title = String(s.title ?? '').trim().slice(0, 120);
@@ -446,7 +505,7 @@ function normGoal(g) {
   const out = {id: String(g.id || uid()).slice(0, 40), title, why: String(g.why ?? '').slice(0, 400), deadline,
     createdAt: isDate(g.createdAt) ? g.createdAt : today(),
     avail: Array.isArray(g.avail) && g.avail.length === 7 ? g.avail.map(m => clamp(Math.round((+m || 0) / 15) * 15, 0, 720)) : (g.src ? LINK_AVAIL : DEF_AVAIL).slice(),
-    steps: [], log: [], ilog: [], dlog: [], ed: +g.ed || 0};
+    steps: [], log: [], ilog: [], dlog: [], slog: [], ed: +g.ed || 0};
   if (g.sample) { out.sample = true; if (typeof g.sampleSig === 'string') out.sampleSig = g.sampleSig; }
   if (typeof g.src === 'string' && g.src) out.src = g.src.slice(0, 40);
   if (typeof g.status === 'string' && g.status) out.status = g.status.slice(0, 10);
@@ -486,7 +545,9 @@ function normGoal(g) {
   for (const e of Array.isArray(g.dlog) ? g.dlog : []) {
     if (!e || !isDate(e.d)) continue;
     const k = clamp(e.k | 0 || 1, 1, 64), key = e.d + '#' + k; if (dseen.has(key)) continue; dseen.add(key);
-    out.dlog.push({id: typeof e.id === 'string' && e.id ? e.id.slice(0, 40) : uid(), d: e.d, k, s: typeof e.s === 'string' ? e.s.slice(0, 40) : ''});
+    const x = {id: typeof e.id === 'string' && e.id ? e.id.slice(0, 40) : uid(), d: e.d, k, s: typeof e.s === 'string' ? e.s.slice(0, 40) : ''};
+    if (isDate(e.at)) x.at = e.at;   // 지난날 밀린 칸을 나중에 한 날
+    out.dlog.push(x);
   }
   if (g.dx && typeof g.dx === 'object' && isDate(g.dx.d)) out.dx = {d: g.dx.d, n: clamp(g.dx.n | 0 || 1, 1, 16)};
   // 10/21부터 요일별 시간이 그날 칸 수가 됨 — 할 일이 없고 요일 시간을 기본값 그대로 둔 옛 목표는 어제까지처럼 매일 15분으로(한 번만, av 표시)
@@ -495,7 +556,58 @@ function normGoal(g) {
     if (out.steps.every(st => !st.tasks.length) && (same(DEF_AVAIL) || same(OLD_LINK_AVAIL))) out.avail = DAILY15.slice();
   }
   out.av = 1;
+  // 10/23 새 순서: 설정(plan) · 일별·운동 회차 기록(slog: 회차 k, 한 날 d, 고친 제목 t) · 완료 보관(doneAt)
+  const pl = normPlan(g.plan, out); if (pl) out.plan = pl; else if (g.sample) out.plan = {kind: 'steps', at: today()};
+  const sseen = new Set();
+  for (const e of Array.isArray(g.slog) ? g.slog : []) {
+    if (!e || !isDate(e.d)) continue;
+    const k = e.k | 0; if (k < 1 || k > 999 || sseen.has(k)) continue; sseen.add(k);
+    const x = {id: typeof e.id === 'string' && e.id ? e.id.slice(0, 40) : uid(), k, d: e.d}, tt = String(e.t ?? '').trim().slice(0, 80);
+    if (tt) x.t = tt;
+    out.slog.push(x);
+  }
+  if (isDate(g.doneAt)) { out.doneAt = g.doneAt; if (g.doneBy === 'auto' || g.doneBy === 'check' || g.doneBy === 'hand') out.doneBy = g.doneBy; }
+  if (isDate(g.reopen)) out.reopen = g.reopen;
   return out;
+}
+// 설정(plan): 단계(steps) · 일별(daily: 전체 횟수 n, 하는 요일 days, 시작 from, 회차 날짜 dates) · 운동(ramp: + 처음 a → 목표 b, 단위, 곡선)
+function normPlan(p, g) {
+  if (!p || typeof p !== 'object' || !['steps', 'daily', 'ramp'].includes(p.kind)) return null;
+  const out = {kind: p.kind, at: isDate(p.at) ? p.at : g.createdAt};
+  if (p.kind === 'steps') return out;
+  out.n = clamp(Math.round(+p.n) || 1, 1, 999);
+  out.days = Array.isArray(p.days) && p.days.length === 7 && p.days.some(Boolean) ? p.days.map(Boolean) : DEF_DAYS.slice();
+  out.from = isDate(p.from) ? p.from : out.at;
+  const ds = Array.isArray(p.dates) ? p.dates.filter(isDate) : [];
+  out.dates = ds.length === out.n ? ds : planDates(out.n, out.from, g.deadline, out.days);
+  if (p.kind === 'ramp') {
+    const num = v => Number.isFinite(+v) && +v > 0 ? Math.round(+v * 100) / 100 : 1;
+    out.a = num(p.a); out.b = num(p.b); out.unit = String(p.unit ?? '').trim().slice(0, 8) || '회';
+    out.what = String(p.what ?? '').trim().slice(0, 40) || g.title; out.curve = p.curve === 'line' ? 'line' : 's';
+  }
+  return out;
+}
+// 한 달 20일(주 5일) 기준 + 여유 20%: 필요한 달 = 횟수 ÷ 한 달에 하는 날 × 1.2 → 목표일에서 그만큼(1달 = 30일) 거꾸로가 시작일
+function startFor(n, deadline, days) {
+  const perWeek = days.filter(Boolean).length || 5, perMonth = perWeek * 4, months = n / perMonth * 1.2, back = Math.max(1, Math.round(months * 30));
+  return {perWeek, perMonth, months, back, from0: add(deadline, -back)};
+}
+// 시작일부터 고른 요일에 하루 한 회차씩. 목표일까지 자리가 모자라면 앞날부터 하루 두 회차 이상으로
+function planDates(n, from, deadline, days) {
+  const end = deadline >= from ? deadline : from, slots = [];
+  for (let d = from; d <= end && slots.length < 4000; d = add(d, 1)) if (days[wd(d)]) slots.push(d);
+  if (!slots.length) for (let d = from; d <= end && slots.length < 4000; d = add(d, 1)) slots.push(d);
+  if (slots.length >= n) return slots.slice(0, n);
+  const out = [], q = Math.floor(n / slots.length), r = n % slots.length;
+  slots.forEach((d, i) => { for (let j = 0; j < q + (i < r ? 1 : 0); j++) out.push(d); });
+  return out;
+}
+function normOpt(o) {   // 만들던 목표의 세부 설정(마법사)
+  o = o && typeof o === 'object' ? o : {};
+  const num = v => Number.isFinite(+v) && +v > 0 ? Math.round(+v * 100) / 100 : 0;
+  return {kind: ['steps', 'daily', 'ramp'].includes(o.kind) ? o.kind : null, n: clamp(Math.round(+o.n) || 0, 0, 999),
+    days: Array.isArray(o.days) && o.days.length === 7 && o.days.some(Boolean) ? o.days.map(Boolean) : DEF_DAYS.slice(),
+    a: num(o.a), b: num(o.b), unit: String(o.unit ?? '').slice(0, 8), what: String(o.what ?? '').slice(0, 40), curve: o.curve === 'line' ? 'line' : 's', due: isDate(o.due) ? o.due : null};
 }
 function normDraft(g) {   // 마법사로 만들던 목표: 이름이 아직 비어 있어도 된다
   if (!g || typeof g !== 'object') return null;
@@ -538,7 +650,7 @@ function normalizeState(raw) {
   const tm = s.timer;
   if (tm && typeof tm === 'object' && typeof tm.goalId === 'string' && Number.isFinite(+tm.endsAt))
     out.timer = {goalId: tm.goalId, key: String(tm.key || tm.taskId || ''), endsAt: +tm.endsAt, paused: tm.paused == null ? null : Math.max(0, +tm.paused || 0), rang: !!tm.rang};
-  if (s.draft && s.draft.g && typeof s.draft.g === 'object') { const dg = normDraft(s.draft.g); if (dg) out.draft = {g: dg, page: clamp(s.draft.page | 0 || 1, 1, 4)}; }
+  if (s.draft && s.draft.g && typeof s.draft.g === 'object') { const dg = normDraft(s.draft.g); if (dg) out.draft = {g: dg, page: clamp(s.draft.page | 0 || 1, 1, 4), opt: normOpt(s.draft.opt), setup: typeof s.draft.setup === 'string' ? s.draft.setup.slice(0, 40) : null}; }
   const sy = s.sync && typeof s.sync === 'object' ? s.sync : {};
   out.sync = {server: typeof sy.server === 'string' ? sy.server.slice(0, 200) : '', code: typeof sy.code === 'string' ? sy.code.slice(0, 200) : '',
     rev: Math.max(0, sy.rev | 0), at: typeof sy.at === 'string' ? sy.at : null, err: null, sig: typeof sy.sig === 'string' ? sy.sig : null};
@@ -554,7 +666,7 @@ const touch = g => { if (g) g.ed = Date.now(); };
 
 function newGoal(title, deadline, why = '') {
   return {id: uid(), title, why, deadline, createdAt: today(), avail: DEF_AVAIL.slice(), av: 1,
-    steps: [{id: uid(), title, due: deadline, final: true, tasks: []}], log: [], ilog: [], dlog: [], ed: Date.now()};
+    steps: [{id: uid(), title, due: deadline, final: true, tasks: []}], log: [], ilog: [], dlog: [], slog: [], ed: Date.now()};
 }
 const mkTask = (title, blocks) => ({id: uid(), title, blocks});
 const mkStep = (title, due, tasks = []) => ({id: uid(), title, due, tasks: tasks.map(([t, b]) => mkTask(t, b))});
@@ -562,7 +674,7 @@ const sampleSigOf = g => sigOf([g.title, g.deadline, g.avail, g.steps.map(s => [
 // 처음 열면 둘러볼 수 있게 예시 목표 하나(날짜는 오늘 기준). 내 목표를 만들면 사라진다(고쳐 썼으면 물어봄)
 function sampleGoal() {
   const t = today(), g = newGoal('토익 850점 받기', add(t, 70), '하반기 지원 서류에 점수 넣기');
-  g.sample = true;
+  g.sample = true; g.plan = {kind: 'steps', at: t};
   const fin = g.steps[0];
   fin.tasks = [mkTask('시험장·준비물 확인', 1), mkTask('마지막 오답 노트 훑기', 4)];
   g.steps = [
@@ -580,11 +692,13 @@ if (!state.goals.length && !state.seen) { const s = sampleGoal(); state.goals.pu
 
 /* ---------- 고르기: '모든 목표'는 목표가 둘 이상일 때 ---------- */
 const linked = g => !!(g && g.src);
-const activeGoal = g => !g.gone && g.status !== '완료' && g.status !== '보류';
-const isAll = () => state.current === '*' && state.goals.length > 1;
+const activeGoal = g => !g.gone && g.status !== '완료' && g.status !== '보류' && !g.doneAt;
+const live = () => state.goals.filter(g => !g.doneAt);   // 완료 보관함에 넣지 않은 목표
+const isAll = () => state.current === '*' && live().length > 1;
 function curGoal() {
   if (isAll()) return null;
-  return state.goals.find(g => g.id === state.current) || state.goals.find(activeGoal) || state.goals[0] || null;
+  const lv = live();
+  return lv.find(g => g.id === state.current) || lv.find(activeGoal) || lv[0] || null;
 }
 const shownDue = g => g.mkDue || g.deadline;
 const mkGoal = g => (g && g.src && state.mk) ? state.mk.goals.find(m => m.id === g.src) || null : null;
@@ -769,6 +883,124 @@ function ddBadge(g, big) {
   return h('span', {class: 'dd' + (k < 0 ? ' over' : k === 0 ? ' today' : k <= 7 ? ' soon' : '') + (big ? ' big' : '')}, dday(shownDue(g)));
 }
 const byDue = (a, b) => (shownDue(a) < shownDue(b) ? -1 : shownDue(a) > shownDue(b) ? 1 : 0) || a.title.localeCompare(b.title, 'ko');
+
+/* ---------- 새 순서(10/23 LEE 요청) ----------
+   목표마다 '설정(plan)'을 거친 것만 오늘 화면에 나온다. 설정 전 목표는 역산·일정·목표에만, 구분해서 보여 준다.
+   · 단계(steps): 중간 목표 날짜로 구간을 나누고, 구간마다 그 단계가 요일별 시간만큼 15분 칸으로 나온다.
+   · 일별(daily): 전체 횟수를 한 달 20일(주 5일) 기준으로 나누고 여유 20%를 더해, 목표일에서 거꾸로 시작일을 잡는다.
+     고른 요일에 하루 한 회차씩 날짜(dates)를 정해 두고 1/40, 2/40 …로 나온다. 끝낸 회차는 제목을 고쳐 기록으로 남긴다.
+   · 운동(ramp): 일별과 같은 날짜에, 처음 할 수 있는 양(a) → 최종 목표(b)를 S자(또는 직선) 곡선으로 회차마다 나눈다.
+   오늘 화면에는 오늘 몫과 함께 지난날 못 한 것(밀린 것)을 같이 보여 준다. 다 하면(마감이 지난 목표는 밀린 것까지) 완료 보관함(doneAt)으로. */
+const processed = g => !!(g && g.plan);
+const isSes = g => !!(g && g.plan && g.plan.kind !== 'steps');
+const KIND_NAME = {steps: '단계', daily: '일별', ramp: '운동'};
+function sesMap(g) { const m = new Map(); for (const e of g.slog || []) if (!m.has(e.k)) m.set(e.k, e); return m; }
+const sesDoneN = g => { const m = sesMap(g); let c = 0; for (let k = 1; k <= g.plan.n; k++) if (m.has(k)) c++; return c; };
+const decOf = v => { const s = String(v), i = s.indexOf('.'); return i < 0 ? 0 : Math.min(2, s.length - i - 1); };
+const fmtN = v => String(+(+v).toFixed(2));
+// 운동: k회차에 할 양 — S자(처음·끝은 천천히, 가운데서 많이) 또는 직선
+function rampAmt(p, k) {
+  const x = p.n > 1 ? (k - 1) / (p.n - 1) : 1, f = p.curve === 'line' ? x : x * x * (3 - 2 * x);
+  return +(p.a + (p.b - p.a) * f).toFixed(Math.max(decOf(p.a), decOf(p.b)));
+}
+const rampText = (p, k) => `${p.what} ${fmtN(rampAmt(p, k))}${p.unit}`;
+const sesLabel = (g, k) => `${k}/${g.plan.n}`;
+const startOf = g => isSes(g) ? g.plan.from : (g.start && g.start > g.plan.at ? g.start : g.plan.at);
+const waiting = (g, t = today()) => processed(g) && startOf(g) > t && !(isSes(g) && (g.slog || []).length);
+const mdKo = d => `${+d.slice(5, 7)}월 ${+d.slice(8, 10)}일`;
+const startLine = g => `이 프로젝트의 실행은 ${mdKo(startOf(g))}에 시작될 예정입니다.`;
+// 단계 목표: 그날이 속한 구간의 단계(그날 이후 마감인 첫 중간 목표, 없으면 최종)
+const stepAt = (g, d) => sortSteps(g).find(s => !s.gone && s.due >= d) || g.steps.find(s => s.final);
+// 단계 목표의 밀린 칸: 설정한 날(또는 시작일)부터 어제(마감이 먼저면 마감)까지, 요일별 시간만큼 못 채운 15분 칸(끝낸 단계의 구간은 빼고)
+function missedDays(g, t = today()) {
+  const p = g.plan; if (!p || p.kind !== 'steps' || !activeGoal(g)) return [];
+  const cnt = new Map(), inc = d => cnt.set(d, (cnt.get(d) || 0) + 1);
+  for (const e of g.log) inc(e.d); for (const e of g.dlog) inc(e.d); for (const e of g.ilog) inc(e.d);
+  const from = startOf(g), y = add(t, -1), end = y < g.deadline ? y : g.deadline, out = [];
+  for (let d = from; d <= end && out.length < 500; d = add(d, 1)) {
+    const q = Math.floor((g.avail[wd(d)] || 0) / 15); if (!q) continue;
+    const s = stepAt(g, d); if (!s || closed(s)) continue;
+    const m = q - (cnt.get(d) || 0); if (m > 0) out.push({d, s, m});
+  }
+  return out;
+}
+const missedN = (g, t = today()) => isSes(g) ? sesLate(g, t).length : missedDays(g, t).reduce((a, x) => a + x.m, 0);
+function sesLate(g, t = today()) { const m = sesMap(g), out = []; for (let k = 1; k <= g.plan.n; k++) if (!m.has(k) && g.plan.dates[k - 1] < t) out.push(k); return out; }
+// 오늘 목록(설정한 목표): 밀린 것(오래된 것부터) + 오늘 몫. 오늘 체크한 것은 체크된 채로 남겨 줄이 흔들리지 않게
+function todayList(g, t = today()) {
+  const out = {rows: [], late: 0, sch: null, ms: []};
+  if (!processed(g) || !activeGoal(g)) return out;
+  const p = g.plan;
+  if (isSes(g)) {
+    if (waiting(g, t)) return out;
+    const m = sesMap(g);
+    let pull = dayExtra(g, t) - g.slog.filter(e => e.d === t && (p.dates[e.k - 1] || t) > t).length;   // '＋ 한 회차 더'로 당겨 온 만큼
+    for (let k = 1; k <= p.n; k++) {
+      const d = p.dates[k - 1], e = m.get(k);
+      if (e) { if (e.d === t) out.rows.push({type: 's', g, k, d, e, done: true}); continue; }
+      if (d <= t) out.rows.push({type: 's', g, k, d, done: false, late: d < t});
+      else if (pull > 0) { out.rows.push({type: 's', g, k, d, done: false, early: true}); pull--; }
+    }
+    out.late = out.rows.filter(r => r.late).length;
+    return out;
+  }
+  const sch = out.sch = schedule(g, t);
+  for (const {d, s, m} of missedDays(g, t)) for (let i = 1; i <= m; i++) out.rows.push({type: 'b', g, d, step: s, i, m, done: false});
+  for (const e of g.dlog) if (e.at === t && e.d < t) out.rows.push({type: 'b', g, d: e.d, step: g.steps.find(x => x.id === e.s) || stepAt(g, e.d), e, done: true});
+  out.rows.sort((a, b) => (a.d < b.d ? -1 : a.d > b.d ? 1 : 0) || (b.done - a.done));
+  out.late = out.rows.filter(r => !r.done).length;
+  if (!waiting(g, t) && t <= g.deadline) out.rows.push(...dayRows(g, sch, t));
+  out.ms = dueToday(g, t);
+  return out;
+}
+// 다 했으면 완료: 일별·운동은 모든 회차, 단계는 목표일이 지나고 밀린 칸이 없을 때(밀린 것을 다 하면)
+function completeNow(g, t = today()) {
+  if (!processed(g) || !activeGoal(g)) return false;
+  if (isSes(g)) return sesDoneN(g) >= g.plan.n;
+  return t > g.deadline && !missedDays(g, t).length;
+}
+function archiveGoal(g, by) {
+  g.doneAt = today(); g.doneBy = by; delete g.reopen; touch(g);
+  if (state.timer && state.timer.goalId === g.id) state.timer = null;
+}
+// 체크로 다 끝났으면 바로 보관함으로
+function finishIfDone(g) {
+  if (!completeNow(g)) return false;
+  archiveGoal(g, 'check'); commit(g);
+  toast(`‘${g.title}’ 목표를 다 했어요! 완료 보관함으로 옮겼어요.`);
+  return true;
+}
+// 화면을 그릴 때: 다른 기기에서 다 했거나, 마감이 지나고 밀린 것도 없는 목표는 보관함으로(되돌린 목표는 그대로)
+function sweepDone() {
+  const moved = state.goals.filter(g => !g.reopen && completeNow(g));
+  if (!moved.length) return;
+  for (const g of moved) archiveGoal(g, 'auto');
+  save(); scheduleSync();
+  setTimeout(() => toast(moved.length === 1 ? `‘${moved[0].title}’ 목표를 다 해서 완료 보관함으로 옮겼어요.` : `목표 ${moved.length}개를 다 해서 완료 보관함으로 옮겼어요.`), 0);
+}
+// 하는 요일이나 목표일을 바꾸면: 끝내지 않은 앞으로의 회차만 다시 놓는다(지난 회차는 밀린 것으로 남김)
+function replan(g) {
+  const p = g.plan; if (!isSes(g)) return;
+  const t = today(), m = sesMap(g);
+  if (p.from > t && !g.slog.length) {
+    const st = startFor(p.n, g.deadline, p.days); p.from = st.from0 > t ? st.from0 : t;
+    p.dates = planDates(p.n, p.from, g.deadline, p.days); return;
+  }
+  const ks = []; for (let k = 1; k <= p.n; k++) if (!m.has(k) && !(p.dates[k - 1] < t)) ks.push(k);
+  if (!ks.length) return;
+  const from0 = g.slog.some(e => e.d === t) ? add(t, 1) : t, ds = planDates(ks.length, from0 > p.from ? from0 : p.from, g.deadline, p.days);
+  ks.forEach((k, i) => { p.dates[k - 1] = ds[i]; });
+}
+// 마법사에서 고른 값으로 설정 만들기
+function buildPlan(g, o) {
+  const t = today();
+  if (o.kind === 'steps') return {kind: 'steps', at: t};
+  const st = startFor(o.n, g.deadline, o.days), from = st.from0 > t ? st.from0 : t;
+  const p = {kind: o.kind, at: t, n: o.n, days: o.days.slice(), from, dates: planDates(o.n, from, g.deadline, o.days)};
+  if (o.kind === 'ramp') Object.assign(p, {a: o.a, b: o.b, unit: (o.unit || '회').trim().slice(0, 8), what: (o.what || g.title).trim().slice(0, 40), curve: o.curve === 'line' ? 'line' : 's'});
+  return p;
+}
+const optFromPlan = (p, g) => p ? normOpt({kind: p.kind, n: p.n, days: p.days, a: p.a, b: p.b, unit: p.unit, what: p.what, curve: p.curve}) : normOpt({what: g.title, unit: '회'});
 /* 시간 고르기: 드롭다운(15분 단위, 4시간 넘으면 30분·1시간 단위). 0은 '쉼' */
 function timeOpts(min, max, cur) {
   const vs = [];
@@ -788,12 +1020,49 @@ function timeSelect(value, {min = 15, max = 480, label, onChange, id = null, cls
 // 요일별 시간 한 줄 요약(월~일): '–'는 쉼
 const wkShort = m => !m ? '–' : m < 60 ? String(m) : (m % 60 ? (m / 60).toFixed(1).replace(/\.0$/, '') : String(m / 60)) + 'h';
 function weekStrip(g) {
+  if (isSes(g)) {
+    const ds = g.plan.days;
+    return h('span', {class: 'wk', role: 'img', 'aria-label': '하는 요일 ' + daysText(ds)},
+      ...[1, 2, 3, 4, 5, 6, 0].map(i => h('i', {class: (ds[i] ? 'on' : '') + (i === wd(today()) ? ' now' : '')}, h('span', null, WD[i]), h('small', null, ds[i] ? '✓' : '–'))));
+  }
   return h('span', {class: 'wk', role: 'img', 'aria-label': '요일별 시간 ' + [1, 2, 3, 4, 5, 6, 0].map(i => `${WD[i]} ${g.avail[i] ? dur(g.avail[i]) : '쉼'}`).join(', ')},
     ...[1, 2, 3, 4, 5, 6, 0].map(i => h('i', {class: (g.avail[i] ? 'on' : '') + (i === wd(today()) ? ' now' : '')}, h('span', null, WD[i]), h('small', null, wkShort(g.avail[i])))));
 }
 // 프로젝트마다 월~일 시간 고르기(드롭다운) — 고른 시간만큼 그 요일 오늘 화면에 15분 칸이 나온다
 const WEEK_PRESETS = [['매일 15분', [15, 15, 15, 15, 15, 15, 15]], ['평일만 15분', [0, 15, 15, 15, 15, 15, 0]], ['매일 30분', [30, 30, 30, 30, 30, 30, 30]], ['모두 쉼', [0, 0, 0, 0, 0, 0, 0]]];
+const daysText = ds => { const on = [1, 2, 3, 4, 5, 6, 0].filter(i => ds[i]); return on.length === 7 ? '매일' : on.join() === '1,2,3,4,5' ? '월~금' : on.map(i => WD[i]).join('·'); };
+const DAY_PRESETS = [['월~금', [false, true, true, true, true, true, false]], ['매일', [true, true, true, true, true, true, true]], ['월·수·금', [false, true, false, true, false, true, false]], ['주말', [true, false, false, false, false, false, true]]];
+// 하는 요일 고르기(누르면 켜고 끄기) — 하루는 남긴다
+function dayToggles(days, onChange, label = '하는 요일') {
+  let cur = days.slice();
+  const box = h('div', {class: 'wdt', role: 'group', 'aria-label': label});
+  [1, 2, 3, 4, 5, 6, 0].forEach(i => {
+    const b = h('button', {type: 'button', class: i === 0 || i === 6 ? 'we' : null, 'aria-pressed': String(!!cur[i]), 'aria-label': `${WD[i]}요일`, onclick: () => {
+      const nd = cur.slice(); nd[i] = !nd[i];
+      if (!nd.some(Boolean)) return toast('하루는 골라 주세요');
+      cur = nd; b.setAttribute('aria-pressed', String(!!nd[i])); onChange(nd);
+    }}, WD[i]);
+    box.append(b);
+  });
+  return box;
+}
+// 일별·운동: 하는 요일 바꾸기 → 앞으로 남은 회차를 다시 놓음
+function daysSheet(g) {
+  const p = g.plan;
+  const draw = pp => {
+    const set = days => { p.days = days.slice(); replan(g); commit(g); draw(pp); };
+    const m = sesMap(g); let left = 0; for (let k = 1; k <= p.n; k++) if (!m.has(k)) left++;
+    pp.replaceChildren(h('h2', {id: 'sheetTitle'}, `‘${g.title}’ 하는 요일`),
+      h('p', {class: 'muted small-text', style: 'margin:0'}, '고른 요일에 하루 한 회차씩 나와요. 바꾸면 앞으로 남은 회차 날짜를 다시 놓아요(지난날 못 한 회차는 밀린 것으로 남아요).'),
+      h('div', {class: 'row'}, ...DAY_PRESETS.map(([name, ds]) => h('button', {class: 'btn small', type: 'button', onclick: () => set(ds)}, name))),
+      dayToggles(p.days, set),
+      h('p', {class: 'small-text num', style: 'margin:0', id: 'daysSum'}, `남은 회차 ${left}개 · 마지막 회차 ${mdw(p.dates[p.n - 1])} · 목표일 ${mdw(g.deadline)}`),
+      h('div', {class: 'row', style: 'justify-content:flex-end'}, h('button', {class: 'btn primary', type: 'button', autofocus: true, onclick: closeSheet}, '닫기')));
+  };
+  openSheet(draw);
+}
 function weekSheet(g) {
+  if (isSes(g)) return daysSheet(g);
   const draw = p => {
     p.replaceChildren(h('h2', {id: 'sheetTitle'}, `‘${g.title}’ 요일별 시간`),
       h('p', {class: 'muted small-text', style: 'margin:0'}, '고른 시간만큼 그 요일 오늘 화면에 15분 칸이 나와요. ‘쉼’인 요일엔 이 목표가 안 나와요.'),
@@ -858,16 +1127,19 @@ function go(name, focusId) {
 function goalLabel(g) {
   const bits = [g.sample ? '[예시] ' : '', g.title, ' · ', dday(shownDue(g))];
   if (g.gone) bits.push(' · 목표까지에서 빠짐'); else if (g.status === '완료' || g.status === '보류') bits.push(' · ' + g.status);
+  else if (!processed(g)) bits.push(' · 설정 전'); else if (waiting(g)) bits.push(` · ${md(startOf(g))} 시작`);
   return bits.join('');
 }
 let pendingRender = false;
 function render() {
   pendingRender = false;
   try {
+    sweepDone();
     const pick = $('goalPick'); pick.replaceChildren();
-    if (state.goals.length > 1) pick.append(h('option', {value: '*'}, `모든 목표 (${state.goals.filter(activeGoal).length}개)`));
-    for (const g of state.goals.slice().sort(byDue)) pick.append(h('option', {value: g.id}, goalLabel(g)));
-    pick.hidden = !state.goals.length;
+    const lv = live();
+    if (lv.length > 1) pick.append(h('option', {value: '*'}, `모든 목표 (${lv.filter(activeGoal).length}개)`));
+    for (const g of lv.slice().sort(byDue)) pick.append(h('option', {value: g.id}, goalLabel(g)));
+    pick.hidden = !lv.length;
     pick.value = isAll() ? '*' : (curGoal()?.id || '');
     views[tab]();
   } catch (e) {
@@ -890,62 +1162,163 @@ function commit(...gs) { for (const g of gs) touch(g); save(); render(); schedul
 /* ---------- 오늘 ---------- */
 function renderToday() {
   const v = $('view-today'); v.replaceChildren();
-  if (!state.goals.length) {
+  sweepDone();
+  if (!live().length) {
     v.append(h('div', {class: 'card empty'}, h('b', null, '아직 목표가 없어요'),
-      h('p', null, '이루고 싶은 것과 마감일을 정하면, 거꾸로 중간 목표를 세우고 15분 단위로 쪼개 드려요.'),
+      h('p', null, '목표와 목표일(D-day)을 정하고 단계·일별 횟수·운동 중 하나로 나누면, 오늘 할 것을 매일 보여 드려요.'),
       h('div', {class: 'row', style: 'justify-content:center'}, h('button', {class: 'btn primary', type: 'button', onclick: () => wizard()}, '목표 세우기'),
         syncReady() ? null : h('button', {class: 'btn', type: 'button', onclick: () => go('goals', 'syncCard')}, '목표까지와 연동'))));
+    const dl = doneTodayLine(); if (dl) v.append(dl);
     const sl = syncLine(); if (sl) v.append(sl);
     return;
   }
   const t = today();
   if (isAll()) return renderTodayAll(v, t);
-  const g = curGoal(), sch = schedule(g, t), rows = dayRows(g, sch, t);
+  const g = curGoal();
   if (g.sample) v.append(h('div', {class: 'banner'}, h('span', null, h('b', null, '예시 목표예요.'), ' 체크·타이머를 눌러 둘러보세요. 내 목표를 세우면 이 예시는 사라져요.'),
     h('div', {class: 'row'}, h('button', {class: 'btn primary small', type: 'button', onclick: () => wizard()}, '내 목표 세우기'),
       syncReady() ? null : h('button', {class: 'btn small', type: 'button', onclick: () => go('goals', 'syncCard')}, '목표까지와 연동'))));
   if (g.gone) v.append(h('div', {class: 'banner'}, h('span', null, h('b', null, '목표까지에서 빠진 목표예요.'), ' 오늘 할 일에 나오지 않아요. 목표 화면에서 지울 수 있어요.')));
   else if (!activeGoal(g)) v.append(h('div', {class: 'banner'}, h('span', null, h('b', null, `목표까지에서 ‘${g.status}’로 바꾼 목표예요.`), ' 오늘 할 일에 나오지 않아요.')));
-  const pct = sch.total ? Math.round(sch.done / sch.total * 100) : 0;
-  const stepsAll = sortSteps(g).filter(s => !s.final), stepsDone = stepsAll.filter(closed).length;
-  const hero = h('div', {class: 'card hero', style: 'margin-top:12px'},
-    h('span', {class: 'dday'}, ddBadge(g, true), `${mdw(shownDue(g))} 마감`, linked(g) ? h('span', {class: 'tag mk'}, '목표까지') : null),
-    h('h1', null, g.title),
-    linked(g) ? h('div', {class: 'muted small-text'}, `단계 ${stepsDone}/${stepsAll.length} 끝냄 · 이번 달 15분 × ${monthMinutes(g) / 15} (${dur(monthMinutes(g))})`)
-      : !sch.total || dmonth(g) ? h('div', {class: 'muted small-text'}, `이번 달 15분 칸 ${dmonth(g)}번${dmonth(g) ? ` (${dur(dmonth(g) * 15)})` : ''}`) : null,
-    h('div', {class: 'wkrow'}, weekStrip(g), h('button', {class: 'linkbtn', type: 'button', onclick: () => weekSheet(g)}, '요일별 시간')),
-    sch.total ? [h('div', {class: 'prog'}, h('span', null, '끝낸 시간 ', h('b', {class: 'num'}, dur(sch.done * 15)), ` / ${dur(sch.total * 15)}`), h('b', {class: 'num'}, pct + '%')), mosaic(g, sch, rows), legend(g)] : null);
-  v.append(hero);
-  for (const a of alerts(g, sch)) v.append(alertBox(a));
-  const tc = timerCard(); if (tc) v.append(tc);
-  const doneN = rows.filter(r => r.done).length, ms = dueToday(g, t);
-  v.append(h('div', {class: 'today-head'}, h('h2', null, '오늘의 15분'), h('span', {class: 'muted small-text num'}, rows.length ? `${doneN}/${rows.length} · ${dur(rows.length * 15)}` : '')));
-  if (ms.length) v.append(mileList(g, ms, sch));
-  if (rows.length) { const list = h('ul', {class: 'blocks', id: 'todayList'}); rows.forEach(r => list.append(blockRow(r))); v.append(list); }
-  const pending = rows.filter(r => !r.done).length;
-  if (activeGoal(g) && finished(g)) {
-    v.append(h('div', {class: 'card empty', style: 'margin-top:8px'}, h('b', null, '단계를 모두 끝냈어요'), h('p', null, linked(g) ? '목표까지에서 이 목표를 ‘완료’로 바꾸면 오늘 화면에서 빠져요.' : `${g.title} — 수고했어요!`)));
-  } else if (activeGoal(g) && !rows.length) {   // 이 목표를 쉬는 요일(0분)
-    v.append(h('div', {class: 'card empty', style: 'margin-top:8px'}, h('b', null, `오늘(${WD[wd(t)]}요일)은 이 목표를 쉬는 날이에요`),
-      h('p', null, '요일별 시간에서 고르면 그 요일마다 15분 칸이 나와요. 오늘만 하고 싶으면 15분 하기를 눌러요.'),
-      h('div', {class: 'row', style: 'justify-content:center'}, moreBtn(g, '＋ 15분 하기'), h('button', {class: 'btn small', type: 'button', onclick: () => weekSheet(g)}, '요일별 시간'))));
-  } else if (activeGoal(g) && !pending) {
-    const all_ = sch.total && sch.done >= sch.total;
-    v.append(h('div', {class: 'card empty', style: 'margin-top:8px'}, h('b', null, all_ ? '모든 할 일을 끝냈어요' : '오늘 몫을 다 했어요'),
-      h('p', null, all_ ? `${g.title}만 남았어요. 응원해요!` : '더 하고 싶으면 15분 더를 눌러요. 다음 할 일이 오늘로 당겨져요.'), moreBtn(g)));
+  if (!processed(g)) {   // 설정 전 목표는 오늘 화면에 할 것이 나오지 않는다
+    v.append(heroLite(g), preCard(g));
+    const sl = syncLine(); if (sl) v.append(sl);
+    return;
   }
-  const dn = activeGoal(g) ? dailyNote(g, t) : null; if (dn) v.append(dn);
+  const L = todayList(g, t), rows = L.rows, sch = L.sch, ses = isSes(g), over = t > g.deadline;
+  v.append(ses ? sesHero(g, L) : stepsHero(g, sch, rows));
+  if (!ses) for (const a of alerts(g, sch)) v.append(alertBox(a));
+  const tc = timerCard(); if (tc) v.append(tc);
+  v.append(todayHead(rows, L.late));
+  const ch = cheerLine(rows, t); if (ch) v.append(ch);
+  if (L.ms.length) v.append(mileList(g, L.ms, sch));
+  if (rows.length) v.append(rowList(g, rows, 'todayList'));
+  const pending = rows.filter(r => !r.done).length, card = (b, p, ...kids) => v.append(h('div', {class: 'card empty', style: 'margin-top:8px'}, h('b', null, b), p ? h('p', null, p) : null, ...kids));
+  const row = (...kids) => h('div', {class: 'row', style: 'justify-content:center'}, ...kids);
+  if (activeGoal(g)) {
+    if (waiting(g, t)) card('아직 시작 전이에요', ses ? '시작일이 되면 하는 요일마다 한 회차씩 여기에 나와요. 미리 하고 싶으면 오늘부터 시작할 수 있어요.' : '시작일이 되면 고른 요일마다 여기에 나와요.',
+      ses ? row(h('button', {class: 'btn small', type: 'button', onclick: () => startNow(g)}, '오늘부터 시작')) : null);
+    else if (over && !pending) card('목표일이 지났어요', '밀린 것이 없어요. 다 했으면 목표 완료로 보관하세요.', row(doneBtn(g)));
+    else if (!ses && finished(g) && !pending) card('단계를 모두 끝냈어요', `${g.title} — 수고했어요! 목표 완료로 보관하세요.`, row(doneBtn(g)));
+    else if (!rows.length) {   // 쉬는 요일(0분) · 하는 요일이 아님
+      card(`오늘(${WD[wd(t)]}요일)은 이 목표를 쉬는 날이에요`, ses ? '하는 요일에 한 회차씩 나와요. 오늘 하고 싶으면 한 회차 미리 하기를 눌러요.' : '요일별 시간에서 고르면 그 요일마다 15분 칸이 나와요. 오늘만 하고 싶으면 15분 하기를 눌러요.',
+        row(ses ? (sesFuture(g) ? moreBtn(g, '＋ 한 회차 미리 하기') : null) : moreBtn(g, '＋ 15분 하기'), h('button', {class: 'btn small', type: 'button', onclick: () => weekSheet(g)}, ses ? '하는 요일' : '요일별 시간')));
+    } else if (!pending && !over) {
+      if (ses) card('오늘 회차를 다 했어요', sesFuture(g) ? '더 하고 싶으면 다음 회차를 미리 할 수 있어요.' : '모든 회차를 끝냈어요!', sesFuture(g) ? moreBtn(g, '＋ 다음 회차 미리 하기') : null);
+      else { const all_ = sch.total && sch.done >= sch.total; card(all_ ? '모든 할 일을 끝냈어요' : '오늘 몫을 다 했어요', all_ ? `${g.title}만 남았어요. 응원해요!` : '더 하고 싶으면 15분 더를 눌러요. 다음 할 일이 오늘로 당겨져요.', moreBtn(g)); }
+    }
+    if (over && pending) v.append(h('p', {class: 'dfoot'}, '목표일이 지났어요 — 밀린 것을 다 하면 완료 보관함으로 옮겨요.'));
+    const dn = !ses ? dailyNote(g, t) : null; if (dn) v.append(dn);
+    v.append(h('div', {class: 'dfoot'}, h('button', {class: 'linkbtn', type: 'button', onclick: () => doneSheet(g)}, '목표 완료로 보관')));
+  }
+  const dl = doneTodayLine(); if (dl) v.append(dl);
   const sl = syncLine(); if (sl) v.append(sl);
 }
+const kindTag = g => processed(g) ? h('span', {class: 'tag'}, KIND_NAME[g.plan.kind]) : h('span', {class: 'tag pre'}, '설정 전');
+const doneBtn = g => h('button', {class: 'btn small primary', type: 'button', onclick: () => doneSheet(g)}, '목표 완료로 보관');
+const sesFuture = (g, t = today()) => { const m = sesMap(g); return g.plan.dates.some((d, i) => d > t && !m.has(i + 1)); };
+const todayHead = (rows, late) => {
+  const tiles = rows.filter(r => r.type !== 's').length;
+  return h('div', {class: 'today-head'}, h('h2', null, '오늘의 15분'),
+    h('span', {class: 'muted small-text num'}, rows.length ? [`${rows.filter(r => r.done).length}/${rows.length}`, tiles ? dur(tiles * 15) : '', late ? `밀린 ${late}` : ''].filter(Boolean).join(' · ') : ''));
+};
+// 밀린 것 독려: 어제 못 한 것 · 그전에 밀린 것
+function cheerLine(rows, t = today()) {
+  const y = add(t, -1), isLate = r => r.type === 'b' ? !r.done : !!r.late, lateU = rows.filter(isLate);
+  const caught = rows.filter(r => r.done && (r.type === 'b' || (r.type === 's' && r.d < t))).length;
+  if (!lateU.length) return caught ? h('p', {class: 'cheer ok', role: 'status'}, `밀린 것 ${caught}개를 오늘 끝냈어요. 잘했어요!`) : null;
+  const yN = lateU.filter(r => r.d === y).length, oN = lateU.length - yN;
+  return h('p', {class: 'cheer', role: 'status'}, [yN ? `어제 못 한 것 ${yN}개` : '', oN ? `그전에 밀린 것 ${oN}개` : ''].filter(Boolean).join(' · ') + ' — 오늘 같이 끝내 봐요!');
+}
+// 줄 목록: 밀린 것이 많으면 앞의 8개만 보이고 '더 보기'
+const LATE_SHOW = 8, openLate = new Set();
+function rowList(g, rows, id) {
+  const ul = h('ul', {class: 'blocks', id}), isLate = r => r.type === 'b' ? !r.done : !!r.late;
+  const lateN = rows.filter(isLate).length, cut = lateN > LATE_SHOW + 2 && !openLate.has(g.id);
+  let shown = 0, more = false;
+  for (const r of rows) {
+    if (cut && isLate(r)) {
+      if (shown >= LATE_SHOW) { if (!more) { more = true; ul.append(h('li', {class: 'morelate'}, h('button', {class: 'linkbtn', type: 'button', onclick: () => { openLate.add(g.id); render(); }}, `밀린 것 ${lateN - LATE_SHOW}개 더 보기`))); } continue; }
+      shown++;
+    }
+    ul.append(blockRow(r));
+  }
+  return ul;
+}
+function stepsHero(g, sch, rows) {
+  const pct = sch.total ? Math.round(sch.done / sch.total * 100) : 0, stepsAll = sortSteps(g).filter(s => !s.final), stepsDone = stepsAll.filter(closed).length;
+  return h('div', {class: 'card hero', style: 'margin-top:12px'},
+    h('span', {class: 'dday'}, ddBadge(g, true), `${mdw(shownDue(g))} 마감`, kindTag(g), linked(g) ? h('span', {class: 'tag mk'}, '목표까지') : null),
+    h('h1', null, g.title),
+    waiting(g) ? startNote(g, false) : null,
+    linked(g) ? h('div', {class: 'muted small-text'}, `단계 ${stepsDone}/${stepsAll.length} 끝냄 · 이번 달 15분 × ${monthMinutes(g) / 15} (${dur(monthMinutes(g))})`)
+      : !sch.total || dmonth(g) ? h('div', {class: 'muted small-text'}, `단계 ${stepsDone}/${stepsAll.length} 끝냄 · 이번 달 15분 칸 ${dmonth(g)}번${dmonth(g) ? ` (${dur(dmonth(g) * 15)})` : ''}`) : null,
+    h('div', {class: 'wkrow'}, weekStrip(g), h('button', {class: 'linkbtn', type: 'button', onclick: () => weekSheet(g)}, '요일별 시간')),
+    sch.total ? [h('div', {class: 'prog'}, h('span', null, '끝낸 시간 ', h('b', {class: 'num'}, dur(sch.done * 15)), ` / ${dur(sch.total * 15)}`), h('b', {class: 'num'}, pct + '%')), mosaic(g, sch, rows), legend(g)] : null);
+}
+function sesHero(g, L) {
+  const p = g.plan, t = today(), dn = sesDoneN(g), pct = Math.round(dn / p.n * 100), m = sesMap(g);
+  let nextK = null; for (let k = 1; k <= p.n; k++) if (!m.has(k)) { nextK = k; break; }
+  return h('div', {class: 'card hero', style: 'margin-top:12px'},
+    h('span', {class: 'dday'}, ddBadge(g, true), `${mdw(shownDue(g))} 마감`, kindTag(g), linked(g) ? h('span', {class: 'tag mk'}, '목표까지') : null),
+    h('h1', null, g.title),
+    waiting(g, t) ? startNote(g, false) : null,
+    p.kind === 'ramp' ? h('div', {class: 'rampinfo'}, h('span', {class: 'muted small-text'}, nextK ? `다음 ${nextK}회차 ${fmtN(rampAmt(p, nextK))}${p.unit} → 최종 ${fmtN(p.b)}${p.unit}` : `최종 ${fmtN(p.b)}${p.unit} 달성!`), rampSpark(p, dn)) : null,
+    h('div', {class: 'prog'}, h('span', null, '회차 ', h('b', {class: 'num'}, `${dn}/${p.n}`), ' 끝냄', L.late ? h('span', {class: 'lt'}, ` · 밀린 ${L.late}`) : ''), h('b', {class: 'num'}, pct + '%')),
+    sesMosaic(g),
+    h('div', {class: 'wkrow'}, weekStrip(g), h('button', {class: 'linkbtn', type: 'button', onclick: () => weekSheet(g)}, '하는 요일')));
+}
+const heroLite = g => h('div', {class: 'card hero', style: 'margin-top:12px'},
+  h('span', {class: 'dday'}, ddBadge(g, true), `${mdw(shownDue(g))} 마감`, kindTag(g), linked(g) ? h('span', {class: 'tag mk'}, '목표까지') : null), h('h1', null, g.title));
+function preCard(g) {
+  return h('div', {class: 'card empty', style: 'margin-top:12px'}, h('b', null, '설정 전 목표예요'),
+    h('p', null, '목표일 → 단계·일별·운동 순서로 설정한 목표만 오늘 화면에 나와요. 설정하면 오늘부터 할 것이 매일 나와요.'),
+    h('div', {class: 'row', style: 'justify-content:center'}, h('button', {class: 'btn primary', type: 'button', onclick: () => setupGoal(g)}, '설정하기'),
+      activeGoal(g) ? h('button', {class: 'btn', type: 'button', onclick: () => doneSheet(g)}, '목표 완료로 보관') : null));
+}
+const startNote = (g, btn = true) => h('div', {class: 'startnote'}, h('span', {class: 'dd start'}, `시작 ${dday(startOf(g))}`), h('span', null, startLine(g)),
+  btn && isSes(g) ? h('button', {class: 'linkbtn', type: 'button', onclick: () => startNow(g)}, '오늘부터 시작') : null);
+function startNow(g) { const p = g.plan, t = today(); p.from = t; p.dates = planDates(p.n, t, g.deadline, p.days); commit(g); toast('오늘부터 시작해요'); }
+function sesMosaic(g) {
+  const p = g.plan, t = today(), m = sesMap(g), per = Math.ceil(p.n / 200);
+  const box = h('div', {class: 'mosaic ses', role: 'img', 'aria-label': `전체 ${p.n}회 중 ${sesDoneN(g)}회 끝냄${per > 1 ? ` (칸 하나 = ${per}회)` : ''}`});
+  for (let k = 1; k <= p.n; k += per) {
+    let all = true, late = false, now = false;
+    for (let j = k; j < k + per && j <= p.n; j++) { const d = p.dates[j - 1]; if (!m.has(j)) { all = false; if (d < t) late = true; else if (d === t) now = true; } }
+    const i = h('i', {class: (all ? 'd' : '') + (late ? ' l' : '') + (now ? ' t' : '')}); i.style.setProperty('--hue', 'var(--accent-rgb)'); box.append(i);
+  }
+  return box;
+}
+// 운동 곡선 그림(처음 → 최종), 끝낸 회차까지 진하게
+function rampSpark(p, done = 0, w = 280, ht = 64) {
+  const N = Math.min(p.n, 80), lo = Math.min(p.a, p.b), hi = Math.max(p.a, p.b), span = hi - lo || 1, pts = [];
+  for (let i = 0; i < N; i++) { const k = 1 + Math.round(i * (p.n - 1) / Math.max(1, N - 1)); pts.push([4 + i / Math.max(1, N - 1) * (w - 8), ht - 6 - (rampAmt(p, k) - lo) / span * (ht - 14)]); }
+  const path = pts.map((q, i) => (i ? 'L' : 'M') + q[0].toFixed(1) + ' ' + q[1].toFixed(1)).join(' ');
+  const di = Math.max(0, Math.min(N - 1, Math.round((done - 1) / Math.max(1, p.n - 1) * (N - 1)))), dp = pts.slice(0, done ? di + 1 : 0);
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', `0 0 ${w} ${ht}`); svg.setAttribute('class', 'spark'); svg.setAttribute('role', 'img');
+  svg.setAttribute('aria-label', `${p.what} ${fmtN(p.a)}${p.unit}에서 ${fmtN(p.b)}${p.unit}까지 ${p.n}회에 걸쳐 ${p.curve === 'line' ? '똑같이' : '처음과 끝은 천천히'} 늘려요`);
+  svg.innerHTML = `<path class="sp-all" d="${path}" fill="none"/>${dp.length > 1 ? `<path class="sp-done" d="${dp.map((q, i) => (i ? 'L' : 'M') + q[0].toFixed(1) + ' ' + q[1].toFixed(1)).join(' ')}" fill="none"/>` : ''}`
+    + `<circle class="sp-dot" cx="${pts[0][0]}" cy="${pts[0][1]}" r="3"/><circle class="sp-dot" cx="${pts[N - 1][0]}" cy="${pts[N - 1][1]}" r="3"/>`;
+  return svg;
+}
+// 오늘 다 해서 보관함으로 간 목표
+function doneTodayLine() {
+  const t = today(), d = state.goals.filter(g => g.doneAt === t);
+  if (!d.length) return null;
+  return h('div', {class: 'rest'}, h('span', null, `오늘 완료한 목표: ${d.map(g => shortOf(g)).join(' · ')} ✓`), h('button', {class: 'linkbtn', type: 'button', onclick: () => { openArchive = true; go('goals', 'archive'); }}, '완료 보관함'));
+}
 function renderTodayAll(v, t) {
-  // 마감이 지났거나 D-day가 적은 목표부터
-  const secs = state.goals.filter(activeGoal).sort(byDue).map(g => { const sch = schedule(g, t); return {g, sch, rows: dayRows(g, sch, t), ms: dueToday(g, t)}; });
-  const all = secs.flatMap(s => s.rows), doneN = all.filter(r => r.done).length;
+  // 설정한 목표만 · 마감이 지났거나 D-day가 적은 목표부터 · 밀린 것도 함께
+  const lv = live().filter(activeGoal), proc = lv.filter(processed), pre = lv.filter(g => !processed(g)), wait = proc.filter(g => waiting(g, t));
+  const secs = proc.filter(g => !waiting(g, t)).sort(byDue).map(g => ({g, ...todayList(g, t)}));
+  const all = secs.flatMap(s => s.rows), doneN = all.filter(r => r.done).length, lateN = secs.reduce((a, s) => a + s.late, 0), tiles = all.filter(r => r.type !== 's').length;
   v.append(h('div', {class: 'today-head', style: 'margin-top:4px'}, h('h2', null, '오늘의 15분'),
-    h('span', {class: 'muted small-text num'}, all.length ? `${doneN}/${all.length} · ${dur(all.length * 15)}` : '')));
+    h('span', {class: 'muted small-text num'}, all.length ? [`${doneN}/${all.length}`, tiles ? dur(tiles * 15) : '', lateN ? `밀린 ${lateN}` : ''].filter(Boolean).join(' · ') : '')));
   v.append(h('p', {class: 'muted small-text', style: 'margin:-4px 2px 4px'}, `${mdw(t)} · 모든 목표 · 마감 가까운 순`));
+  const ch = cheerLine(all, t); if (ch) v.append(ch);
   const tc = timerCard(); if (tc) v.append(tc);
-  for (const s of secs) for (const a of alerts(s.g, s.sch)) v.append(alertBox({...a, text: [h('b', null, shortOf(s.g) + ' · '), ...a.text], fix: () => { state.current = s.g.id; save(); a.fix ? a.fix() : go('today'); }}));
+  for (const s of secs) if (!isSes(s.g)) for (const a of alerts(s.g, s.sch)) v.append(alertBox({...a, text: [h('b', null, shortOf(s.g) + ' · '), ...a.text], fix: () => { state.current = s.g.id; save(); a.fix ? a.fix() : go('today'); }}));
   let listN = 0;
   for (const s of secs) {
     if (!s.rows.length && !s.ms.length) continue;
@@ -953,22 +1326,39 @@ function renderTodayAll(v, t) {
     sec.style.setProperty('--hue', goalHue(s.g));
     const dn_ = s.rows.filter(r => r.done).length;
     sec.append(h('button', {class: 'gh', type: 'button', 'aria-label': `${s.g.title} 목표만 보기`, onclick: () => { state.current = s.g.id; save(); render(); scrollTo(0, 0); }},
-      ddBadge(s.g), h('b', null, s.g.title), h('span', {class: 'num'}, s.rows.length ? `${dn_}/${s.rows.length}` : '')));
+      ddBadge(s.g), h('b', null, s.g.title), h('span', {class: 'num'}, s.rows.length ? `${dn_}/${s.rows.length}` : '', s.late ? h('span', {class: 'lt'}, ` · 밀린 ${s.late}`) : '')));
     if (s.ms.length) sec.append(mileList(s.g, s.ms, s.sch));
-    if (s.rows.length) { const ul = h('ul', {class: 'blocks', id: listN++ ? null : 'todayList'}); s.rows.forEach(r => ul.append(blockRow(r))); sec.append(ul); }
-    if (s.rows.length && s.rows.every(r => r.done) && dailyOn(s.g)) sec.append(h('div', {class: 'dfoot'}, moreBtn(s.g)));
+    if (s.rows.length) sec.append(rowList(s.g, s.rows, listN++ ? null : 'todayList'));
+    const over = t > s.g.deadline, pend = s.rows.some(r => !r.done);
+    if (over && pend) sec.append(h('div', {class: 'dfoot'}, '목표일이 지났어요 — 밀린 것을 다 하면 완료 보관함으로 옮겨요.'));
+    else if (s.rows.length && !pend && !over) {
+      if (isSes(s.g)) { if (sesFuture(s.g)) sec.append(h('div', {class: 'dfoot'}, moreBtn(s.g, '＋ 한 회차 더'))); }
+      else if (dailyOn(s.g)) sec.append(h('div', {class: 'dfoot'}, moreBtn(s.g)));
+    }
     v.append(sec);
   }
-  // 오늘 칸이 없는 목표: 그 요일을 쉼(0분)으로 고른 목표 · 단계를 다 끝낸 목표
-  const idle = secs.filter(s => !s.rows.length && !s.ms.length), restG = idle.filter(s => dailyOn(s.g)), doneG = idle.filter(s => !dailyOn(s.g));
+  // 오늘 할 것이 없는 목표: 쉬는 요일 · 할 것을 다 끝낸 목표(목표 완료로 보관하라고)
+  const idle = secs.filter(s => !s.rows.length && !s.ms.length);
+  const restG = idle.filter(s => t <= s.g.deadline && (isSes(s.g) ? sesFuture(s.g) || sesLate(s.g, t).length : dailyOn(s.g))), doneG = idle.filter(s => !restG.includes(s));
   const nothing = !all.length && !secs.some(s => s.ms.length);
-  if (nothing) v.append(h('div', {class: 'card empty', style: 'margin-top:10px'}, h('b', null, '오늘은 할 일이 없어요'),
-    h('p', null, !secs.length ? '진행 중인 목표가 없어요.' : restG.length ? `오늘(${WD[wd(t)]}요일)은 모든 목표를 쉬는 날로 골랐어요.` : '진행 중인 목표의 단계를 모두 끝냈어요. 새 목표를 세워 보세요.')));
+  if (nothing) v.append(h('div', {class: 'card empty', style: 'margin-top:10px'}, h('b', null, '오늘은 할 것이 없어요'),
+    h('p', null, !proc.length ? (pre.length ? '설정한 목표가 아직 없어요. 아래에서 목표를 설정하면 오늘 할 것이 나와요.' : '진행 중인 목표가 없어요.')
+      : restG.length ? `오늘(${WD[wd(t)]}요일)은 모든 목표를 쉬는 날로 골랐어요.` : wait.length && !secs.length ? '설정한 목표가 모두 시작 전이에요.' : '진행 중인 목표의 할 것을 모두 끝냈어요.')));
   if (restG.length) v.append(h('div', {class: 'rest'}, h('span', null, `오늘 쉬는 목표: ${restG.map(s => shortOf(s.g)).join(' · ')}`),
-    h('button', {class: 'linkbtn', type: 'button', onclick: () => go('sched')}, '요일별 시간')));
-  if (doneG.length) v.append(h('p', {class: 'rest'}, `단계를 다 끝낸 목표: ${doneG.map(s => shortOf(s.g)).join(' · ')}`));
-  const off = state.goals.filter(g => !activeGoal(g)).length;
-  if (off) v.append(h('p', {class: 'rest'}, `완료·보류·빠진 목표 ${off}개는 숨겼어요.`));
+    h('button', {class: 'linkbtn', type: 'button', onclick: () => go('sched')}, '요일 바꾸기')));
+  if (doneG.length) v.append(h('div', {class: 'rest'}, h('span', null, `할 것을 다 끝낸 목표: ${doneG.map(s => shortOf(s.g)).join(' · ')}`),
+    h('button', {class: 'linkbtn', type: 'button', onclick: () => go('goals')}, '목표 완료로 보관')));
+  if (wait.length) v.append(h('div', {class: 'rest'}, h('span', null, `시작 전: ${wait.sort(byDue).map(g => `${shortOf(g)}(${md(startOf(g))} 시작 · ${dday(startOf(g)).replace('D-', '시작 D-')})`).join(' · ')}`)));
+  const dl = doneTodayLine(); if (dl) v.append(dl);
+  if (pre.length) {   // 설정 전 목표: 오늘 화면엔 안 나오고, 여기서 바로 설정하게
+    const box = h('div', {class: 'card prebox', id: 'preBox'}, h('div', {class: 'label'}, `설정 전 목표 ${pre.length}개`),
+      h('p', {class: 'muted small-text', style: 'margin:2px 0 6px'}, '목표일 → 단계·일별·운동 순서로 설정해야 오늘 화면에 나와요.'));
+    for (const g of pre.sort(byDue)) box.append(h('div', {class: 'prerow'}, h('span', {class: 'nm'}, ddBadge(g), h('b', null, g.title)),
+      h('button', {class: 'btn small', type: 'button', 'aria-label': `${g.title} 설정하기`, onclick: () => setupGoal(g)}, '설정하기')));
+    v.append(box);
+  }
+  const off = state.goals.filter(g => !g.doneAt && !activeGoal(g)).length;
+  if (off) v.append(h('p', {class: 'rest'}, `보류·빠진 목표 ${off}개는 숨겼어요.`));
   const sl = syncLine(); if (sl) v.append(sl);
 }
 function alertBox(a) { return h('div', {class: 'alert', style: 'margin-top:12px'}, h('span', null, ...a.text), a.fix ? h('button', {class: 'btn small danger', type: 'button', onclick: a.fix}, a.fixLabel) : null); }
@@ -1008,6 +1398,8 @@ function alerts(g, sch) {
   return out;
 }
 function blockRow(r, note) {
+  if (r.type === 's') return sesRow(r);
+  if (r.type === 'b') return backRow(r);
   note = note || r.note;
   const isItem = r.type === 'i', isDay = r.type === 'd', li = h('li', {class: 'blk' + (r.done ? ' done' : '') + (isDay || r.daily ? ' daily' : '')});
   li.style.setProperty('--hue', isItem ? itemHue(r.it) : hueOf(r.g, r.step));
@@ -1021,6 +1413,73 @@ function blockRow(r, note) {
   li.append(chk, mid, play);
   return li;
 }
+// 일별·운동 회차 한 줄: k/N(운동은 그 회차 양) · 끝낸 뒤 제목 고치기(✎)
+function sesRow(r) {
+  const g = r.g, p = g.plan, li = h('li', {class: 'blk ses' + (r.done ? ' done' : '') + (r.late ? ' late' : '')});
+  li.style.setProperty('--hue', 'var(--accent-rgb)');
+  const label = sesLabel(g, r.k), main = [p.kind === 'ramp' ? rampText(p, r.k) : '', r.e && r.e.t ? r.e.t : ''].filter(Boolean).join(' · ') || '회차';
+  const chk = h('button', {class: 'chk', type: 'button', 'aria-pressed': String(!!r.done), 'aria-label': `${g.title} ${label} ${main} ${r.done ? '끝냄 취소' : '끝냄'}`, onclick: () => toggleSes(g, r.k)}, svgCheck());
+  const sub = r.done ? (r.d < r.e.d ? `${mdw(r.d)} 몫 · 오늘 함` : r.d > r.e.d ? `미리 함 · 원래 ${mdw(r.d)}` : '오늘 끝냄') + ' · ✎로 제목 고치기'
+    : r.late ? [h('span', {class: 'lt'}, '밀림'), ` · ${mdw(r.d)} 못 함`] : r.early ? `미리 하기 · 원래 ${mdw(r.d)}` : '오늘 회차';
+  const mid = h('div', {style: 'min-width:0'}, h('div', {class: 't1'}, h('span', {class: 'kn num'}, label), ' ', main), h('div', {class: 't2'}, sub));
+  const right = r.done ? h('button', {class: 'btn small play', type: 'button', 'aria-label': `${label} 회차 제목 고치기`, onclick: () => sesTitleSheet(g, r.k)}, '✎')
+    : h('button', {class: 'btn small play', type: 'button', 'aria-label': `${label} 15분 타이머 시작`, onclick: () => startTimer(g, 's:' + r.k)}, '▶');
+  li.append(chk, mid, right);
+  return li;
+}
+// 단계 목표의 밀린 15분 칸: 그날의 단계 이름 · 그날 날짜
+function backRow(r) {
+  const g = r.g, li = h('li', {class: 'blk back' + (r.done ? ' done' : ' late')});
+  li.style.setProperty('--hue', hueOf(g, r.step));
+  const title = dailyTitle(g, r.step);
+  const chk = h('button', {class: 'chk', type: 'button', 'aria-pressed': String(!!r.done), 'aria-label': `${title} ${mdw(r.d)} 밀린 15분 ${r.done ? '끝냄 취소' : '끝냄'}`, onclick: () => toggleBack(r)}, svgCheck());
+  const sub = r.done ? `${mdw(r.d)} 몫 · 오늘 함` : [h('span', {class: 'lt'}, '밀림'), ` · ${mdw(r.d)} 못 한 15분`, r.m > 1 ? h('span', {class: 'num'}, ` · ${r.i}/${r.m}`) : ''];
+  const mid = h('div', {style: 'min-width:0'}, h('div', {class: 't1'}, title), h('div', {class: 't2'}, sub));
+  const play = r.done ? h('span') : h('button', {class: 'btn small play', type: 'button', 'aria-label': `${title} ${mdw(r.d)} 몫 15분 타이머 시작`, onclick: () => startTimer(g, 'b:' + r.d)}, '▶');
+  li.append(chk, mid, play);
+  return li;
+}
+function toggleSes(g, k) {
+  const i = g.slog.findIndex(e => e.k === k);
+  if (i >= 0) g.slog.splice(i, 1);
+  else {
+    g.slog.push({id: uid(), k, d: today()});
+    if (state.timer && state.timer.goalId === g.id && state.timer.key === 's:' + k) state.timer = null;
+    if (finishIfDone(g)) return;
+  }
+  commit(g);
+}
+function toggleBack(r) {
+  const g = r.g;
+  if (r.done) { const i = g.dlog.indexOf(r.e); if (i >= 0) g.dlog.splice(i, 1); }
+  else {
+    const used = dlogOn(g, r.d); let k = 1; while (used.has(k)) k++;
+    g.dlog.push({id: uid(), d: r.d, k, s: r.step.id, at: today()});
+    if (state.timer && state.timer.goalId === g.id && state.timer.key === 'b:' + r.d) state.timer = null;
+    if (finishIfDone(g)) return;
+  }
+  commit(g);
+}
+// 끝낸 회차 제목 고치기(1/40은 그대로 두고 오늘 한 것을 적어 둔다)
+function sesTitleSheet(g, k) {
+  const e = g.slog.find(x => x.k === k); if (!e) return;
+  openSheet(p => {
+    const inp = h('input', {id: 'sesTitle', type: 'text', value: e.t || '', maxlength: 80, placeholder: '예: 영단어 Day 3 · 기출 2019년 1회', enterkeyhint: 'done'});
+    const ok = () => { const v = inp.value.trim().slice(0, 80); if (v) e.t = v; else delete e.t; closeSheet(); commit(g); toast('회차 제목을 고쳤어요'); };
+    inp.addEventListener('keydown', ev => { if (ev.key === 'Enter' && !ev.isComposing) { ev.preventDefault(); ok(); } });
+    p.append(h('h2', {id: 'sheetTitle'}, `${sesLabel(g, k)} 회차 제목`),
+      h('p', {class: 'muted', style: 'margin:0'}, `‘${g.title}’ · ${mdw(e.d)}에 끝냄. 이 회차에 한 것을 적어 두면 기록이 돼요.`),
+      h('div', {class: 'field'}, h('label', {for: 'sesTitle'}, `${sesLabel(g, k)} 뒤에 붙일 제목`), inp),
+      h('div', {class: 'row', style: 'justify-content:flex-end'}, h('button', {class: 'btn', type: 'button', onclick: closeSheet}, '취소'), h('button', {class: 'btn primary', type: 'button', id: 'sesOk', onclick: ok}, '저장')));
+  });
+}
+// 목표 완료로 보관(손으로) · 되돌리기
+function doneSheet(g) {
+  confirmSheet(`‘${g.title}’를 완료로 보관할까요?`, '오늘·일정 화면에서 빠지고, 목표 화면 아래 ‘완료 보관함’에 남아요. 언제든 되돌릴 수 있어요.', '보관하기', () => {
+    archiveGoal(g, 'hand'); fixCurrent(); commit(g); toast(`‘${g.title}’를 완료 보관함으로 옮겼어요`);
+  });
+}
+function reopenGoal(g) { delete g.doneAt; delete g.doneBy; g.reopen = today(); commit(g); toast(`‘${g.title}’를 다시 진행 중으로 돌렸어요`); }
 function toggleRow(r) {
   const t = today(), g = r.g;
   if (r.type === 'd') {
@@ -1072,6 +1531,14 @@ function timerTarget() {
     const s = g.steps.find(x => x.id === tm.key.slice(2) && !closed(x) && !x.gone) || dailyStep(g);
     return {g, daily: true, step: s, label: dailyTitle(g, s)};
   }
+  if (tm.key.startsWith('s:')) {
+    const k = +tm.key.slice(2); if (!isSes(g) || !activeGoal(g) || k < 1 || k > g.plan.n) return null;
+    return {g, ses: k, label: `${g.title} ${sesLabel(g, k)}`};
+  }
+  if (tm.key.startsWith('b:')) {
+    const d = tm.key.slice(2); if (!processed(g) || !activeGoal(g) || !isDate(d)) return null;
+    const s = stepAt(g, d); return {g, back: d, step: s, label: `${dailyTitle(g, s)} (${mdw(d)} 몫)`};
+  }
   if (tm.key.startsWith('i:')) {
     const key = tm.key.slice(2), [day, mid] = key.split('|');
     const it = (state.mk?.days || []).find(x => x.g === g.src && x.d === day && x.m === mid);
@@ -1108,7 +1575,12 @@ function finishTimer(done) {
   const tg = timerTarget(); state.timer = null; lockScreen(false);
   if (done && tg) {
     const t = today();
-    if (tg.daily) {
+    if (tg.ses) {
+      if (!tg.g.slog.some(e => e.k === tg.ses)) { tg.g.slog.push({id: uid(), k: tg.ses, d: t}); toast(`‘${tg.label}’ 끝냄`); if (finishIfDone(tg.g)) return; }
+    } else if (tg.back) {
+      const used = dlogOn(tg.g, tg.back); let k = 1; while (used.has(k)) k++;
+      tg.g.dlog.push({id: uid(), d: tg.back, k, s: tg.step.id, at: t}); toast(`‘${tg.label}’ 15분 끝냄`); if (finishIfDone(tg.g)) return;
+    } else if (tg.daily) {
       const dk = dlogOn(tg.g, t); let k = 1; while (dk.has(k)) k++;
       if (k <= 64) { (tg.g.dlog = tg.g.dlog || []).push({id: uid(), d: t, k, s: tg.step.id}); toast(`‘${tg.label}’ 15분 끝냄`); }
     } else if (tg.it) {
@@ -1161,21 +1633,24 @@ setInterval(() => { if (lastDay !== today()) { lastDay = today(); softRender(); 
 function chooser(v, title) {
   v.append(h('h2', {class: 'view-title'}, title));
   const ul = h('ul', {class: 'chooser'});
-  for (const g of state.goals) {
+  for (const g of live().sort(byDue)) {
     ul.append(h('li', null, h('button', {type: 'button', onclick: () => { state.current = g.id; save(); render(); scrollTo(0, 0); }},
       h('b', null, g.title), h('span', {class: 'num muted small-text'}, dday(shownDue(g))),
-      h('span', {class: 'muted small-text'}, linked(g) ? h('span', {class: 'tag mk'}, '목표까지') : null, ' ', `${mdw(shownDue(g))} 마감`, g.gone ? ' · 빠짐' : !activeGoal(g) ? ` · ${g.status}` : ''))));
+      h('span', {class: 'muted small-text'}, kindTag(g), ' ', linked(g) ? h('span', {class: 'tag mk'}, '목표까지') : null, ' ', `${mdw(shownDue(g))} 마감`, g.gone ? ' · 빠짐' : !activeGoal(g) ? ` · ${g.status}` : ''))));
   }
   v.append(ul);
 }
 function renderPlan() {
   const v = $('view-plan'); v.replaceChildren();
-  if (!state.goals.length) { v.append(h('div', {class: 'card empty'}, h('b', null, '목표가 없어요'), h('button', {class: 'btn primary', type: 'button', onclick: () => wizard()}, '목표 세우기'))); return; }
+  if (!live().length) { v.append(h('div', {class: 'card empty'}, h('b', null, '목표가 없어요'), h('button', {class: 'btn primary', type: 'button', onclick: () => wizard()}, '목표 세우기'))); return; }
   if (isAll()) return chooser(v, '어느 목표의 계획을 볼까요?');
-  const g = curGoal(), sch = schedule(g), steps = sortSteps(g), flow = state.planView === 'flow';
+  const g = curGoal();
+  if (isSes(g)) return sesPlan(v, g);
+  const sch = schedule(g), steps = sortSteps(g), flow = state.planView === 'flow';
   const seg = (id, val, label) => h('button', {type: 'button', id, 'aria-pressed': String((state.planView === 'flow') === (val === 'flow')), onclick: () => { state.planView = val; save(); renderPlan(); }}, label);
   v.append(h('div', {class: 'view-head'}, h('h2', {class: 'view-title'}, '거꾸로 세운 계획'),
     h('div', {class: 'seg', role: 'group', 'aria-label': '보는 방법'}, seg('pvList', 'list', '목록'), seg('pvFlow', 'flow', '순서도'))));
+  if (!processed(g)) v.append(preNote(g));
   if (flow) {
     if (linked(g)) v.append(h('p', {class: 'muted small-text', style: 'margin:-6px 0 12px'}, '목표까지에서 가져온 계획이에요. 상자를 누르면 날짜를 바꿀 수 있고, 바꾼 날짜는 목표까지에서 ‘맞추기’를 누르면 그쪽에도 들어가요.'));
     v.append(flowView(g, sch), h('p', {class: 'muted small-text', style: 'margin:0'}, '할 일을 더하거나 고치려면 위 ‘목록’을 누르세요.'));
@@ -1204,6 +1679,33 @@ function renderPlan() {
   requestAnimationFrame(() => document.querySelectorAll('textarea.step-title').forEach(fitArea));
 }
 const fitArea = el => { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; };
+// 설정 전 목표 표시(역산·일정): 오늘 화면엔 안 나온다는 것과 설정하기
+const preNote = g => h('div', {class: 'prenote'}, h('span', null, h('b', null, '설정 전 목표예요.'), ' 오늘 화면에 나오지 않아요. 목표일 → 단계·일별·운동 순서로 설정하면 나와요.'),
+  h('button', {class: 'btn small primary', type: 'button', onclick: () => setupGoal(g)}, '설정하기'));
+// 일별·운동 회차 계획: 시작일 계산 · 회차마다 날짜·양·끝낸 날·제목
+function sesPlan(v, g) {
+  const p = g.plan, t = today(), m = sesMap(g), st = startFor(p.n, g.deadline, p.days), last = p.dates[p.n - 1];
+  let free = 0; for (let d = add(last, 1); d <= g.deadline; d = add(d, 1)) if (p.days[wd(d)]) free++;
+  v.append(h('div', {class: 'view-head'}, h('h2', {class: 'view-title'}, p.kind === 'ramp' ? '운동 회차 계획' : '회차 계획'), kindTag(g)));
+  v.append(h('div', {class: 'card plansum'},
+    h('div', {class: 'label'}, `${g.title} · 전체 ${p.n}회 · ${daysText(p.days)}`),
+    h('p', {class: 'small-text', style: 'margin:6px 0 0'}, `한 달 ${st.perMonth}일(주 ${st.perWeek}일) 기준 ${p.n}회는 ${fmtN(p.n / st.perMonth)}달, 여유 20%를 더해 ${fmtN(st.months)}달(${st.back}일)이에요.`),
+    h('p', {class: 'small-text num', style: 'margin:4px 0 0'}, `${mdw(p.from)} 시작 → 마지막 ${p.n}/${p.n}회 ${mdw(last)} · 목표일 ${mdw(g.deadline)}(${dday(g.deadline)})${free ? ` · 여유 ${free}일` : ''}`),
+    waiting(g, t) ? startNote(g) : null,
+    p.kind === 'ramp' ? h('div', {class: 'rampinfo'}, h('span', {class: 'muted small-text'}, `${p.what} ${fmtN(p.a)}${p.unit} → ${fmtN(p.b)}${p.unit} · ${p.curve === 'line' ? '매번 같은 만큼(직선)' : '처음·끝은 천천히(S자)'}`), rampSpark(p, sesDoneN(g))) : null,
+    h('div', {class: 'row', style: 'margin-top:8px'}, h('button', {class: 'btn small', type: 'button', onclick: () => weekSheet(g)}, '하는 요일'),
+      h('button', {class: 'btn small', type: 'button', onclick: () => setupGoal(g)}, '설정 바꾸기'))));
+  const ul = h('ul', {class: 'sesl', 'aria-label': '회차 목록'});
+  for (let k = 1; k <= p.n; k++) {
+    const d = p.dates[k - 1], e = m.get(k), late = !e && d < t, now = !e && d === t;
+    ul.append(h('li', {class: (e ? 'done' : '') + (late ? ' late' : '') + (now ? ' now' : '')},
+      h('span', {class: 'kn num'}, `${k}/${p.n}`), h('span', {class: 'dt num'}, mdw(d)),
+      h('span', {class: 'tx'}, [p.kind === 'ramp' ? rampText(p, k) : '', e && e.t ? e.t : ''].filter(Boolean).join(' · ')),
+      h('span', {class: 'st'}, e ? `✓ ${md(e.d)}` : late ? '밀림' : now ? '오늘' : ''),
+      e ? h('button', {class: 'icon-btn', type: 'button', 'aria-label': `${k}/${p.n} 회차 제목 고치기`, onclick: () => sesTitleSheet(g, k)}, '✎') : h('span')));
+  }
+  v.append(ul);
+}
 // 순서도: 맨 위 최종 목표 → 단계(늦은 날짜부터) → 오늘 → 지난 단계. 화살표는 하는 순서(아래→위), 단계마다 15분 할 일이 오른쪽 가지로
 function flowView(g, sch) {
   const t = today(), done = doneSets(g);
@@ -1266,9 +1768,10 @@ function dateSheet(g) {
     const di = h('input', {type: 'date', id: 'dsDate', class: 'date-in', value: cur, min: add(t, 1), 'aria-label': '새 마감일'});
     const ok = () => {
       const v = di.value;
-      if (linked(g)) { const lb = lateCount(g); if (!editLinkedDue(g, v)) return; closeSheet(); commit(g); toast(linkDateMsg(g, lb)); return; }
+      if (linked(g)) { const lb = lateCount(g); if (!editLinkedDue(g, v)) return; if (isSes(g)) replan(g); closeSheet(); commit(g); toast(linkDateMsg(g, lb)); return; }
       const r = setDeadline(g, v); if (!r) return;
-      closeSheet(); commit(g); toast(r.moved ? `마감을 옮기고 중간 목표 ${r.moved}개도 같은 비율로 옮겼어요` : '마감을 바꿨어요');
+      if (isSes(g)) replan(g);
+      closeSheet(); commit(g); toast(isSes(g) ? '목표일을 바꾸고 남은 회차 날짜를 다시 놓았어요' : r.moved ? `마감을 옮기고 중간 목표 ${r.moved}개도 같은 비율로 옮겼어요` : '마감을 바꿨어요');
     };
     di.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); ok(); } });
     p.append(h('h2', {id: 'sheetTitle'}, '마감일 바꾸기'), h('p', {class: 'muted', style: 'margin:0'}, `‘${g.title}’ · 지금 ${mdw(cur)} (${dday(cur)})`),
@@ -1458,11 +1961,18 @@ let schedShown = 21;
 function renderSched() {
   const v = $('view-sched'); v.replaceChildren();
   if (!state.goals.length) { v.append(h('div', {class: 'card empty'}, h('b', null, '목표가 없어요'), h('button', {class: 'btn primary', type: 'button', onclick: () => wizard()}, '목표 세우기'))); return; }
-  const t = today(), all = isAll(), gs = all ? state.goals.filter(activeGoal) : [curGoal()];
+  const t = today(), all = isAll(), gs = all ? live().filter(activeGoal) : [curGoal()];
   v.append(h('h2', {class: 'view-title'}, all ? '날짜별 일정 · 모든 목표' : '날짜별 일정'));
   let sch0 = null;
-  if (!all) {
+  if (!all && isSes(gs[0])) {
+    const g = gs[0], p = g.plan;
+    v.append(h('div', {class: 'card'}, h('div', {class: 'label', style: 'margin-bottom:4px'}, '하는 요일'),
+      h('p', {class: 'muted small-text', style: 'margin:0 0 8px'}, '고른 요일에 하루 한 회차씩 나와요. 바꾸면 앞으로 남은 회차 날짜를 다시 놓아요.'),
+      dayToggles(p.days, days => { p.days = days.slice(); replan(g); commit(g); })));
+    v.append(h('p', {class: 'small-text num', style: 'margin:10px 2px 14px'}, waiting(g, t) ? startLine(g) + ' ' : '', `회차 ${sesDoneN(g)}/${p.n} 끝냄 · 마지막 회차 ${mdw(p.dates[p.n - 1])} · 목표일 ${mdw(g.deadline)}`));
+  } else if (!all) {
     const g = gs[0]; sch0 = schedule(g, t);
+    if (!processed(g)) v.append(preNote(g));
     v.append(availEditor(g));
     const weekMin = g.avail.reduce((a, b) => a + b, 0);
     v.append(h('p', {class: 'small-text', style: 'margin:10px 2px 14px'},
@@ -1482,19 +1992,35 @@ function renderSched() {
   const byDay = new Map(), miles = new Map();
   const at = d => { if (!byDay.has(d)) byDay.set(d, []); return byDay.get(d); };
   for (const g of gs) {
-    const sch = all ? schedule(g, t) : sch0;
-    const pull = new Set(dayRows(g, sch, t).filter(r => r.daily && !r.done).map(r => r.task.id + ':' + r.k)), days = new Map();
-    for (const [d, bs] of sch.days) {   // 오늘 화면에 요일별 시간만큼 당겨 온 칸은 원래 날에서 빼고 오늘에
-      if (d < t) continue;
-      if (!days.has(d)) days.set(d, []);
-      for (const b of bs) { const to = pull.has(b.task.id + ':' + b.k) ? t : d; if (!days.has(to)) days.set(to, []); days.get(to).push(b); }
+    if (isSes(g)) {   // 일별·운동: 회차를 그 날짜에(밀린 회차는 오늘 상자에 개수로)
+      const p = g.plan, m = sesMap(g), late = sesLate(g, t).length;
+      if (late) at(t).push({g, hue: 'var(--accent-rgb)', text: `밀린 회차 ${late}개`, late: true});
+      for (let k = 1; k <= p.n; k++) { const d = p.dates[k - 1]; if (d < t || m.has(k)) continue; at(d).push({g, hue: 'var(--accent-rgb)', text: p.kind === 'ramp' ? `${k}/${p.n} · ${rampText(p, k)}` : `${k}/${p.n} 회차`, ses: true}); }
+      const fin = g.steps.find(s => s.final); if (fin && g.deadline >= t) { if (!miles.has(g.deadline)) miles.set(g.deadline, []); miles.get(g.deadline).push({g, s: fin, miss: false}); }
+      continue;
     }
-    for (const [d, bs] of days) {
-      if (!bs.length) continue;
-      const groups = []; for (const b of bs) { const last = groups[groups.length - 1]; if (last && last.task === b.task) last.c++; else groups.push({task: b.task, step: b.step, c: 1}); }
-      for (const gr of groups) at(d).push({g, hue: hueOf(g, gr.step), text: gr.task.title, min: gr.c * 15});
+    const sch = all ? schedule(g, t) : sch0, grp = (d, list) => {   // 같은 할 일끼리 묶어서 그날에
+      const out = []; for (const x of list) { const last = out[out.length - 1]; if (last && last.key === x.key) last.c++; else out.push({...x, c: 1}); }
+      for (const x of out) at(d).push({g, hue: x.hue, text: x.text, min: x.c * 15, gen: x.gen, pre: !processed(g)});
+    };
+    if (processed(g)) {   // 단계: 앞으로 고른 요일마다 요일별 시간만큼 — 그날 놓인 할 일 + 남는 시간은 그 구간 단계 이름으로
+      const st = startOf(g), late = missedN(g, t);
+      if (late) at(t).push({g, hue: hueOf(g, stepAt(g, t)), text: `밀린 15분 ${late}칸`, late: true});
+      const tdRows = st <= t && t <= g.deadline ? dayRows(g, sch, t).filter(r => !r.done) : [];
+      const pulled = new Set(tdRows.filter(r => r.type === 't').map(r => r.task.id + ':' + r.k));
+      grp(t, tdRows.map(r => r.type === 'i' ? {key: 'i' + r.key, hue: itemHue(r.it), text: r.it.text} : r.type === 'd' ? {key: 'd', hue: hueOf(g, r.step), text: dailyTitle(g, r.step), gen: true} : {key: r.task.id, hue: hueOf(g, r.step), text: r.task.title}));
+      for (let d = add(t, 1), i = 0; d <= g.deadline && i < 400; d = add(d, 1), i++) {
+        if (d < st) continue;
+        const q = Math.floor((g.avail[wd(d)] || 0) / 15), s0 = stepAt(g, d);
+        const list = [...itemsOn(g, d).flatMap(it => Array.from({length: itemBlocks(it)}, () => ({key: 'i' + ikey(it), hue: itemHue(it), text: it.text}))),
+          ...(sch.days.get(d) || []).filter(b => !pulled.has(b.task.id + ':' + b.k)).map(b => ({key: b.task.id, hue: hueOf(g, b.step), text: b.task.title}))];
+        if (s0 && !closed(s0)) for (let r = list.length; r < q; r++) list.push({key: 'd', hue: hueOf(g, s0), text: dailyTitle(g, s0), gen: true});
+        if (list.length) grp(d, list);
+      }
+    } else {   // 설정 전: 예전처럼 놓인 할 일·하루 분량을 흐리게
+      for (const [d, bs] of sch.days) if (d >= t) grp(d, bs.map(b => ({key: b.task.id, hue: hueOf(g, b.step), text: b.task.title})));
+      if (g.src && state.mk) for (const it of itemsFrom(g, t)) at(it.d).push({g, hue: all ? goalHue(g) : itemHue(it), text: it.text, min: itemBlocks(it) * 15, item: true, pre: true});
     }
-    if (g.src && state.mk) for (const it of itemsFrom(g, t)) at(it.d).push({g, hue: all ? goalHue(g) : itemHue(it), text: it.text, min: itemBlocks(it) * 15, item: true});
     for (const s of sortSteps(g)) if (s.due >= t && !closed(s)) { if (!miles.has(s.due)) miles.set(s.due, []); const f = sch.info.get(s.id); miles.get(s.due).push({g, s, miss: f && (f.short > 0 || f.overdue)}); }
   }
   const keys = [...new Set([...byDay.keys(), ...miles.keys()])].sort();
@@ -1509,9 +2035,10 @@ function renderSched() {
     const es = byDay.get(d) || [], ms = miles.get(d) || [];
     if (es.length || (d === t && ms.length)) {
       n++;
-      const ul = h('ul'), mins = es.reduce((a, e) => a + e.min, 0);
-      for (const e of es) { const i = h('i'); i.style.setProperty('--hue', e.hue); ul.append(h('li', null, i, h('span', null, e.text), all ? h('span', {class: 'who'}, shortOf(e.g)) : null, h('span', {class: 'n'}, dur(e.min)))); }
-      list.append(h('li', {class: 'day' + (d === t ? ' is-today' : '')}, h('div', {class: 'dh'}, h('b', null, mdw(d) + (d === t ? ' 오늘' : '')), h('span', {class: 'muted num'}, es.length ? `15분 × ${mins / 15} = ${dur(mins)}` : '놓인 15분 없음')),
+      const ul = h('ul'), mins = es.reduce((a, e) => a + (e.late || e.ses ? 0 : e.min), 0), sesN = es.filter(e => e.ses).length;
+      for (const e of es) { const i = h('i'); i.style.setProperty('--hue', e.hue); ul.append(h('li', {class: e.late ? 'late' : e.pre ? 'pre' : null}, i, h('span', null, e.text), all ? h('span', {class: 'who'}, shortOf(e.g)) : null,
+        e.pre ? h('span', {class: 'tag pre'}, '설정 전') : null, h('span', {class: 'n'}, e.ses ? '1회' : e.late ? '밀림' : dur(e.min)))); }
+      list.append(h('li', {class: 'day' + (d === t ? ' is-today' : '')}, h('div', {class: 'dh'}, h('b', null, mdw(d) + (d === t ? ' 오늘' : '')), h('span', {class: 'muted num'}, [mins ? `15분 × ${mins / 15} = ${dur(mins)}` : '', sesN ? `회차 ${sesN}` : ''].filter(Boolean).join(' · ') || '놓인 15분 없음')),
         es.length ? ul : null, ms.length ? h('div', {class: 'dmiles'}, ...ms.map(m => mileEl(m, d, true))) : null));
     } else for (const m of ms) list.append(mileEl(m, d, false));
   }
@@ -1534,45 +2061,73 @@ function availEditor(g) {
 }
 
 /* ---------- 목표 ---------- */
+let openArchive = false;
 function renderGoals() {
   const v = $('view-goals'); v.replaceChildren();
   v.append(h('h2', {class: 'view-title'}, '내 목표'));
-  const list = h('div', {class: 'stack'});
-  for (const g of state.goals.slice().sort(byDue)) {   // 마감이 지났거나 D-day가 적은 목표부터
-    const sch = schedule(g), pct = sch.total ? Math.round(sch.done / sch.total * 100) : 0;
-    const mids = sortSteps(g).filter(s => !s.final), md_ = mids.filter(closed).length;
-    const lpct = linked(g) && !sch.total ? (mids.length ? Math.round(md_ / mids.length * 100) : 0) : pct;
-    const bar = h('div', {class: 'bar', role: 'img', 'aria-label': `진행 ${lpct}%`}, h('i', {style: `width:${lpct}%`}));
-    const canDel = !linked(g) || g.gone;
-    list.append(h('div', {class: 'card goal-item'},
-      h('div', {style: 'min-width:0'}, h('h3', null, (g.sample ? '[예시] ' : '') + g.title, ' ', linked(g) ? h('span', {class: 'tag mk'}, '목표까지') : null,
-          g.gone ? h('span', {class: 'tag off'}, '빠짐') : !activeGoal(g) ? h('span', {class: 'tag off'}, g.status) : null),
-        h('div', {class: 'muted small-text num gsub'}, ddBadge(g), `${mdw(shownDue(g))} · ${linked(g) ? `단계 ${md_}/${mids.length}` : lpct + '%'}${(g.dlog || []).length ? ` · 15분 칸 ${g.dlog.length}번` : ''}`)),
-      h('span', {class: 'chip' + (g.id === curGoal()?.id ? ' ok' : '')}, g.id === curGoal()?.id ? '보는 중' : `${mids.length}단계`),
-      bar,
-      !linked(g) && !g.sample && syncReady() ? h('div', {class: 'muted small-text'}, g.toMk
-        ? h('span', null, '목표까지에서 ‘맞추기’를 누르면 들어가요 · ', h('button', {class: 'linkish', type: 'button', onclick: () => { g.toMk = false; commit(g); toast('목표까지로 보내지 않을게요'); }}, '보내지 않기'))
-        : h('button', {class: 'linkish', type: 'button', onclick: () => toMkSheet(g)}, '＋ 목표까지에도 넣기')) : null,
-      h('div', {class: 'wkrow'}, weekStrip(g), g.gone ? null : h('button', {class: 'linkbtn', type: 'button', 'aria-label': `${g.title} 요일별 시간`, onclick: () => weekSheet(g)}, '요일별 시간')),
-      h('div', {class: 'acts'},
-        h('button', {class: 'btn small', type: 'button', onclick: () => { state.current = g.id; save(); go('today'); }}, '열기'),
-        g.gone ? null : h('button', {class: 'btn small', type: 'button', onclick: () => dateSheet(g)}, '마감 바꾸기'),
-        canDel ? h('button', {class: 'btn small danger', type: 'button', onclick: () => confirmSheet(`‘${g.title}’ 목표를 지울까요?`, '중간 목표·할 일·끝낸 기록이 모두 지워져요. 필요하면 먼저 백업을 내보내세요.', '지우기', () => {
-          state.goals = state.goals.filter(x => x !== g); if (!g.sample) state.del[g.id] = Date.now();
-          if (state.current === g.id) state.current = state.goals.length > 1 ? '*' : state.goals[0]?.id || null; commit(); })}, '지우기')
-          : h('span', {class: 'muted small-text'}, '목표까지에서 지우면 여기서도 빠져요'))));
-  }
-  if (!state.goals.length) list.append(h('div', {class: 'card empty'}, h('b', null, '목표가 없어요'), h('p', null, '아래에서 첫 목표를 세우거나 목표까지와 연동하세요.')));
+  const list = h('div', {class: 'stack'}), lv = live();
+  for (const g of lv.slice().sort(byDue)) list.append(goalCard(g));   // 마감이 지났거나 D-day가 적은 목표부터
+  if (!lv.length) list.append(h('div', {class: 'card empty'}, h('b', null, '목표가 없어요'), h('p', null, '아래에서 첫 목표를 세우거나 목표까지와 연동하세요.')));
   v.append(list,
-    h('button', {class: 'btn primary wide', type: 'button', style: 'margin-top:12px', onclick: () => wizard()}, '+ 새 목표 세우기'),
-    syncCard(),
-    h('div', {class: 'card how', style: 'margin-top:16px'}, h('b', null, '역산 계획은 이렇게 해요'),
-      h('ol', null, h('li', null, '마감일에 이룰 최종 목표를 정해요.'), h('li', null, '"그 바로 전에 이뤄져 있어야 할 것은?"을 거꾸로 물으며 중간 목표를 세워요.'),
-        h('li', null, '중간 목표마다 할 일을 15분 단위로 쪼개면, 쓸 수 있는 시간에 맞춰 날짜별로 놓아 드려요.'), h('li', null, '목표마다 요일별 시간을 고르면, 그 요일 ‘오늘의 15분’에 그만큼 칸이 나와요. 하나씩 끝내요.'))),
+    h('button', {class: 'btn primary wide', type: 'button', style: 'margin-top:12px', onclick: () => wizard()}, '+ 새 목표 세우기'));
+  const ab = archiveBox(); if (ab) v.append(ab);
+  v.append(syncCard(),
+    h('div', {class: 'card how', style: 'margin-top:16px'}, h('b', null, '목표는 이렇게 세워요'),
+      h('ol', null, h('li', null, '이룰 목표와 목표일(D-day)을 정해요.'), h('li', null, '세부 목표를 단계(중간 목표마다 날짜) · 일별(전체 횟수) · 운동(점점 늘리기) 중 하나로 나눠요.'),
+        h('li', null, '단계는 고른 요일마다 그 구간의 단계가, 일별·운동은 하루 한 회차가 ‘오늘’에 나와요. 못 한 것은 다음 날 밀린 것으로 함께 나와요.'),
+        h('li', null, '다 하면(목표일이 지났으면 밀린 것까지) 완료 보관함으로 옮겨요. 이 순서로 설정하지 않은 목표는 오늘 화면에 나오지 않아요.'))),
     h('div', {class: 'row', style: 'margin-top:16px'},
       h('button', {class: 'btn', type: 'button', id: 'exportBtn', onclick: exportBackup}, '백업 내보내기'),
       h('button', {class: 'btn', type: 'button', id: 'importBtn', onclick: () => $('importFile').click()}, '백업 가져오기')),
     h('div', {class: 'foot'}, h('span', null, syncReady() ? '내용은 이 기기와 내 동기화 서버(Cloudflare)에 저장돼요.' : '입력한 내용은 이 기기에만 저장돼요.'), h('a', {href: 'privacy.html'}, '개인정보처리방침')));
+}
+function goalCard(g) {
+  const t = today(), pre = !processed(g), ses = isSes(g), canDel = !linked(g) || g.gone;
+  let pct = 0, sub = '';
+  if (ses) { const dn = sesDoneN(g); pct = Math.round(dn / g.plan.n * 100); sub = `회차 ${dn}/${g.plan.n}`; }
+  else {
+    const sch = schedule(g), mids = sortSteps(g).filter(s => !s.final), md_ = mids.filter(closed).length;
+    pct = sch.total ? Math.round(sch.done / sch.total * 100) : mids.length ? Math.round(md_ / mids.length * 100) : 0;
+    sub = linked(g) || !sch.total ? `단계 ${md_}/${mids.length}` : pct + '%';
+    if ((g.dlog || []).length) sub += ` · 15분 칸 ${g.dlog.length}번`;
+  }
+  const late = processed(g) ? missedN(g, t) : 0; if (late) sub += ` · 밀린 ${late}`;
+  const bar = h('div', {class: 'bar', role: 'img', 'aria-label': `진행 ${pct}%`}, h('i', {style: `width:${pct}%`}));
+  return h('div', {class: 'card goal-item' + (pre ? ' pre' : '')},
+    h('div', {style: 'min-width:0'}, h('h3', null, (g.sample ? '[예시] ' : '') + g.title, ' ', kindTag(g), ' ', linked(g) ? h('span', {class: 'tag mk'}, '목표까지') : null,
+        g.gone ? h('span', {class: 'tag off'}, '빠짐') : !activeGoal(g) ? h('span', {class: 'tag off'}, g.status) : null),
+      h('div', {class: 'muted small-text num gsub'}, ddBadge(g), `${mdw(shownDue(g))} · ${sub}`)),
+    h('span', {class: 'chip' + (g.id === curGoal()?.id ? ' ok' : '')}, g.id === curGoal()?.id ? '보는 중' : ses ? `${g.plan.n}회` : `${sortSteps(g).filter(s => !s.final).length}단계`),
+    waiting(g, t) ? h('div', {class: 'gfull'}, startNote(g)) : null,
+    pre ? h('p', {class: 'small-text prewarn'}, '설정 전 — 오늘 화면에 나오지 않아요. ‘설정하기’로 목표일 → 단계·일별·운동을 정하세요.') : null,
+    bar,
+    !linked(g) && !g.sample && syncReady() ? h('div', {class: 'muted small-text'}, g.toMk
+      ? h('span', null, '목표까지에서 ‘맞추기’를 누르면 들어가요 · ', h('button', {class: 'linkish', type: 'button', onclick: () => { g.toMk = false; commit(g); toast('목표까지로 보내지 않을게요'); }}, '보내지 않기'))
+      : h('button', {class: 'linkish', type: 'button', onclick: () => toMkSheet(g)}, '＋ 목표까지에도 넣기')) : null,
+    h('div', {class: 'wkrow'}, weekStrip(g), g.gone ? null : h('button', {class: 'linkbtn', type: 'button', 'aria-label': `${g.title} ${ses ? '하는 요일' : '요일별 시간'}`, onclick: () => weekSheet(g)}, ses ? '하는 요일' : '요일별 시간')),
+    h('div', {class: 'acts'},
+      h('button', {class: 'btn small', type: 'button', onclick: () => { state.current = g.id; save(); go('today'); }}, '열기'),
+      g.gone ? null : h('button', {class: 'btn small' + (pre ? ' primary' : ''), type: 'button', 'aria-label': `${g.title} ${pre ? '설정하기' : '설정 바꾸기'}`, onclick: () => setupGoal(g)}, pre ? '설정하기' : '설정 바꾸기'),
+      g.gone ? null : h('button', {class: 'btn small', type: 'button', onclick: () => dateSheet(g)}, '마감 바꾸기'),
+      activeGoal(g) ? h('button', {class: 'btn small', type: 'button', 'aria-label': `${g.title} 목표 완료로 보관`, onclick: () => doneSheet(g)}, '목표 완료') : null,
+      canDel ? h('button', {class: 'btn small danger', type: 'button', onclick: () => delGoalSheet(g)}, '지우기') : h('span', {class: 'muted small-text'}, '목표까지에서 지우면 여기서도 빠져요')));
+}
+function delGoalSheet(g) {
+  confirmSheet(`‘${g.title}’ 목표를 지울까요?`, '중간 목표·할 일·끝낸 기록이 모두 지워져요. 필요하면 먼저 백업을 내보내세요.', '지우기', () => {
+    state.goals = state.goals.filter(x => x !== g); if (!g.sample) state.del[g.id] = Date.now();
+    if (state.current === g.id) state.current = live().length > 1 ? '*' : live()[0]?.id || null; commit();
+  });
+}
+// 완료 보관함: 다 해서 옮긴 목표(되돌리기·지우기)
+function archiveBox() {
+  const arch = state.goals.filter(g => g.doneAt).sort((a, b) => (a.doneAt < b.doneAt ? 1 : a.doneAt > b.doneAt ? -1 : 0));
+  if (!arch.length) return null;
+  const box = h('details', {class: 'card archive', id: 'archive', open: openArchive ? true : null, ontoggle: e => { openArchive = e.currentTarget.open; }}, h('summary', null, `완료 보관함 ${arch.length}개`));
+  for (const g of arch) box.append(h('div', {class: 'arow'},
+    h('div', {style: 'min-width:0'}, h('b', null, g.title), h('div', {class: 'muted small-text num'}, `${mdw(g.doneAt)} 완료 · ${processed(g) ? KIND_NAME[g.plan.kind] : '설정 전'} · 목표일 ${mdw(shownDue(g))}${isSes(g) ? ` · 회차 ${sesDoneN(g)}/${g.plan.n}` : ''}`)),
+    h('div', {class: 'row'}, h('button', {class: 'btn small', type: 'button', 'aria-label': `${g.title} 되돌리기`, onclick: () => reopenGoal(g)}, '되돌리기'),
+      !linked(g) || g.gone ? h('button', {class: 'btn small danger', type: 'button', 'aria-label': `${g.title} 지우기`, onclick: () => delGoalSheet(g)}, '지우기') : null)));
+  return box;
 }
 let syncEditing = false;
 function syncCard() {
@@ -1643,18 +2198,25 @@ function confirmSheet(title, body, okLabel, onOk, opts = {}) {
       h('button', {class: 'btn primary', type: 'button', onclick: () => { closeSheet(); onOk(); }}, okLabel))), {onEsc: opts.onCancel || null});
 }
 
-/* 마법사: 1 목표 → 2 거꾸로 중간 목표 → 3 15분 쪼개기 → 4 쓸 수 있는 시간
-   적는 중인 내용은 state.draft에 계속 저장 — Claude 앱에 다녀오는 사이 폰이 이 앱을 닫아도 이어서 만든다 */
+/* 마법사(10/23 새 순서): 1 목표·목표일(D-day) → 2 나누는 방식(단계·일별·운동) → 3 세부(단계 날짜 / 전체 횟수·하는 요일 / 운동 목표·처음 가능치·곡선) → 4 확인
+   적는 중인 내용은 state.draft에 계속 저장 — Claude 앱에 다녀오는 사이 폰이 이 앱을 닫아도 이어서 만든다.
+   설정 전 목표의 '설정하기'(·설정 바꾸기)도 같은 순서: 그 목표의 사본을 고쳐서 끝나면 바꿔 넣는다(setup = 그 목표 id) */
 function wizard(resume) {
   const t = today();
-  const w = resume || {g: newGoal('', add(t, 56)), page: 1};
+  const w = resume ? {g: resume.g, page: resume.page || 1, opt: normOpt(resume.opt), setup: resume.setup || null}
+    : {g: newGoal('', add(t, 56)), page: 1, opt: normOpt({unit: '회'}), setup: null};
   sheetKeep = true;
-  const draw = () => { state.draft = {g: w.g, page: w.page}; save(); openSheet(p => wzPage(p, w, draw), {onEsc: () => quitWizard(w, draw)}); sheetKeep = true; };
+  const draw = () => { state.draft = {g: w.g, page: w.page, opt: w.opt, setup: w.setup}; save(); openSheet(p => wzPage(p, w, draw), {onEsc: () => quitWizard(w, draw)}); sheetKeep = true; };
   draw();
+}
+function setupGoal(g) {
+  const copy = JSON.parse(JSON.stringify(g));
+  const opt = optFromPlan(g.plan, g); opt.due = shownDue(g);
+  wizard({g: copy, page: 1, opt, setup: g.id});
 }
 function closeWizard() { delete state.draft; state.draft = null; save(); closeSheet(); }
 function quitWizard(w, draw) {
-  const g = w.g, entered = g.title.trim() || g.why.trim() || g.steps.length > 1 || g.steps.some(s => s.tasks.length);
+  const g = w.g, entered = !w.setup && (g.title.trim() || g.why.trim() || g.steps.length > 1 || g.steps.some(s => s.tasks.length));
   if (!entered) return closeWizard();
   openSheet(p => p.append(h('h2', {id: 'sheetTitle'}, '만들던 목표를 버릴까요?'), h('p', {class: 'muted', style: 'margin:0'}, '적은 내용이 모두 사라져요.'),
     h('div', {class: 'row', style: 'justify-content:flex-end'}, h('button', {class: 'btn primary', type: 'button', autofocus: true, onclick: draw}, '계속 만들기'),
@@ -1662,33 +2224,61 @@ function quitWizard(w, draw) {
   sheetKeep = true;
 }
 function wzPage(p, w, draw) {
-  const g = w.g, fin = g.steps.find(s => s.final), steps = () => sortSteps(g);
-  const head = (n, title) => [h('div', {class: 'row', style: 'justify-content:space-between'}, h('div', {class: 'stepno'}, `${n} / 4`),
+  const g = w.g, o = w.opt, fin = g.steps.find(s => s.final), steps = () => sortSteps(g), lk = linked(g);
+  const head = (n, title) => [h('div', {class: 'row', style: 'justify-content:space-between'}, h('div', {class: 'stepno'}, `${n} / 4${w.setup ? ' · 설정하기' : ''}`),
     h('button', {class: 'btn small', type: 'button', onclick: () => quitWizard(w, draw), 'aria-label': '목표 만들기 그만두기'}, '그만두기')), h('h2', {id: 'sheetTitle'}, title)];
   const nav = (back, next, nextLabel = '다음') => h('div', {class: 'sheet-actions'},
     back ? h('button', {class: 'btn', type: 'button', onclick: back}, '이전') : h('button', {class: 'btn', type: 'button', onclick: () => quitWizard(w, draw)}, '닫기'),
     h('button', {class: 'btn primary', type: 'button', id: 'wzNext', onclick: next}, nextLabel));
-  const keepDraft = () => { state.draft = {g, page: w.page}; save(); };
-  if (w.page === 1) {
-    const t = today();
-    const ti = h('input', {id: 'wzTitle', type: 'text', value: g.title, placeholder: '예: 토익 850점 받기 · 하프 마라톤 완주', autofocus: true, enterkeyhint: 'next', oninput: e => { g.title = e.target.value; keepDraft(); }});
-    const di = h('input', {id: 'wzDeadline', type: 'date', value: g.deadline, min: add(t, 1), oninput: e => { if (isDate(e.target.value)) { g.deadline = e.target.value; keepDraft(); } }});
-    const wi = h('input', {id: 'wzWhy', type: 'text', value: g.why, placeholder: '예: 하반기 지원 서류에 넣으려고', enterkeyhint: 'next', oninput: e => { g.why = e.target.value; keepDraft(); }});
+  const keepDraft = () => { state.draft = {g, page: w.page, opt: o, setup: w.setup}; save(); };
+  const due = () => lk ? (o.due || shownDue(g)) : g.deadline;
+  if (w.page === 1) {   // 1. 목표와 목표일(D-day)
+    const t = today(), d0 = due();
+    const ddOut = h('span', {class: 'dd', id: 'wzDday', 'aria-live': 'polite'}, dday(d0));
+    const ti = lk ? null : h('input', {id: 'wzTitle', type: 'text', value: g.title, placeholder: '예: 토익 850점 받기 · 부가세 신고 · 팔굽혀펴기 50개', autofocus: true, enterkeyhint: 'next', oninput: e => { g.title = e.target.value; keepDraft(); }});
+    const di = h('input', {id: 'wzDeadline', type: 'date', value: d0, min: add(t, 1), autofocus: lk ? true : null,
+      oninput: e => { const x = e.target.value; if (!isDate(x)) return; if (lk) o.due = x; else if (!w.setup) g.deadline = x; ddOut.textContent = dday(x); keepDraft(); }});
+    const wi = lk ? null : h('input', {id: 'wzWhy', type: 'text', value: g.why, placeholder: '예: 하반기 지원 서류에 넣으려고', enterkeyhint: 'next', oninput: e => { g.why = e.target.value; keepDraft(); }});
     const next = () => {
-      const title = ti.value.trim();
+      const title = lk ? g.title : ti.value.trim();
       if (!title) { ti.focus(); return toast('최종 목표를 적어 주세요'); }
-      if (!isDate(di.value) || di.value <= today()) { di.focus(); return toast('마감일은 내일 이후로 골라 주세요'); }
-      g.title = title; g.deadline = di.value; g.why = wi.value.trim(); fixOrder(g); w.page = 2; draw();
+      if (!isDate(di.value) || di.value <= today()) { di.focus(); return toast('목표일은 내일 이후로 골라 주세요'); }
+      if (lk) o.due = di.value;
+      else {
+        g.title = title; g.why = wi.value.trim();
+        if (w.setup && di.value !== g.deadline) { if (!setDeadline(g, di.value)) return; } else g.deadline = di.value;
+        fixOrder(g);
+      }
+      w.page = 2; draw();
     };
-    for (const el of [ti, di, wi]) el.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); el === ti ? di.focus() : next(); } });
-    p.append(...head(1, '어떤 목표를 언제까지 이룰까요?'),
-      h('div', {class: 'field'}, h('label', {for: 'wzTitle'}, '최종 목표'), ti),
-      h('div', {class: 'field'}, h('label', {for: 'wzDeadline'}, '마감일'), di),
-      h('div', {class: 'field'}, h('label', {for: 'wzWhy'}, '왜 이루고 싶나요? (선택)'), wi),
+    for (const el of [ti, di, wi].filter(Boolean)) el.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); el === ti ? di.focus() : next(); } });
+    p.append(...head(1, w.setup ? '목표와 목표일(D-day)을 확인해요' : '어떤 목표를 언제까지 이룰까요?'),
+      lk ? h('div', {class: 'linknote', style: 'margin:0'}, h('span', null, h('b', null, g.title), ' — 목표까지에서 정한 목표예요. 목표일을 바꾸면 목표까지에서 ‘맞추기’를 누를 때 그쪽에도 들어가요.'))
+        : h('div', {class: 'field'}, h('label', {for: 'wzTitle'}, '최종 목표'), ti),
+      h('div', {class: 'field'}, h('label', {for: 'wzDeadline'}, '목표일 (D-day)'), h('div', {class: 'row', style: 'flex-wrap:nowrap'}, di, ddOut)),
+      lk ? null : h('div', {class: 'field'}, h('label', {for: 'wzWhy'}, '왜 이루고 싶나요? (선택)'), wi),
       nav(null, next));
     return;
   }
-  if (w.page === 2) {
+  if (w.page === 2) {   // 2. 세부 목표를 나누는 방식
+    const card = (kind, title, desc) => h('button', {type: 'button', class: 'kindc', 'aria-pressed': String(o.kind === kind), 'data-kind': kind,
+      onclick: () => { o.kind = kind; if (kind === 'ramp') rampGuess(g, o); w.page = 3; draw(); }}, h('b', null, title), h('span', null, desc));
+    p.append(...head(2, '세부 목표는 어떻게 나눌까요?'),
+      h('div', {class: 'kinds'},
+        card('steps', '단계(sub 목표)로', '중간 목표마다 목표일을 정해요. 그날까지의 구간 동안 고른 요일에 그 단계가 오늘 화면에 나와요.'),
+        card('daily', '일별 횟수로', '전체 횟수를 정하면 한 달 20일 기준에 여유 20%를 더해 시작일을 잡고, 하루 한 회차씩(1/40, 2/40 …) 나와요.'),
+        card('ramp', '운동 — 점점 늘리기', '최종 목표와 지금 할 수 있는 양을 넣으면, 변화 곡선으로 회차마다 조금씩 늘려 나눠요.')),
+      nav(() => { w.page = 1; draw(); }, () => { if (!o.kind) return toast('나누는 방식을 골라 주세요'); w.page = 3; draw(); }));
+    return;
+  }
+  if (w.page === 3 && o.kind === 'steps') {   // 3. 단계(sub 목표): 거꾸로 묻고 목표일 정하기
+    if (lk) {
+      const list = h('ul', {class: 'wz-list'}, h('li', {class: 'goal'}, h('span', null, `최종 목표 · ${g.title}`), h('span', {class: 'd'}, mdw(due()))));
+      for (const s of steps().filter(s => !s.final && !s.gone).reverse()) list.append(h('li', null, h('span', null, s.title), h('span', {class: 'd'}, mdw(s.due))));
+      p.append(...head(3, '단계(sub 목표)를 확인해요'), h('p', {class: 'muted small-text', style: 'margin:0'}, '목표까지에서 정한 단계예요. 이름·단계는 목표까지에서, 날짜는 역산 화면에서도 바꿀 수 있어요.'), list,
+        nav(() => { w.page = 2; draw(); }, () => { w.page = 4; draw(); }));
+      return;
+    }
     const list = h('ul', {class: 'wz-list'});
     list.append(h('li', {class: 'goal'}, h('span', null, `최종 목표 · ${g.title}`), h('span', {class: 'd'}, mdw(g.deadline))));
     const mids = steps().filter(s => !s.final).reverse();   // 최종 목표 아래로 거꾸로
@@ -1697,7 +2287,7 @@ function wzPage(p, w, draw) {
     const earliest = mids.length ? mids[mids.length - 1] : fin, t = today();
     const span = Math.max(1, diff(t, earliest.due));
     const qi = h('input', {id: 'wzMid', type: 'text', placeholder: '예: 모의고사 830점 넘기기', 'aria-label': '이 전에 이뤄져 있어야 할 중간 목표', autofocus: true, enterkeyhint: 'done'});
-    const qd = h('input', {id: 'wzMidDate', class: 'date-in', type: 'date', value: span > 1 ? add(t, Math.round(span / 2)) : earliest.due, min: t, max: earliest.due, 'aria-label': '이 중간 목표의 날짜'});
+    const qd = h('input', {id: 'wzMidDate', class: 'date-in', type: 'date', value: span > 1 ? add(t, Math.round(span / 2)) : earliest.due, min: t, max: earliest.due, 'aria-label': '이 중간 목표의 목표일'});
     const addMid = () => {
       const v = qi.value.trim(); if (!v) { qi.focus(); return toast('중간 목표를 적어 주세요'); }
       let d = isDate(qd.value) ? qd.value : earliest.due;
@@ -1706,54 +2296,53 @@ function wzPage(p, w, draw) {
       g.steps.push({id: uid(), title: v, due: d, tasks: []}); fixOrder(g); draw();
     };
     qi.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); addMid(); } });
-    p.append(...head(2, '거꾸로 생각해요'),
-      h('p', {class: 'muted small-text', style: 'margin:0'}, '최종 목표에서 출발해, 바로 전 단계에 무엇이 이뤄져 있어야 하는지 묻고 답하세요. 지금 바로 시작할 수 있는 단계가 나오면 다음으로 넘어가요.'),
+    p.append(...head(3, '거꾸로 생각해요'),
+      h('p', {class: 'muted small-text', style: 'margin:0'}, '최종 목표에서 출발해, 바로 전 단계에 무엇이 이뤄져 있어야 하는지 묻고 답하세요. 단계마다 목표일을 정하면 그 날짜로 구간이 나뉘어요.'),
       list,
       h('div', {class: 'ask'}, h('div', {class: 'q'}, `‘${earliest.final ? g.title : earliest.title}’ 바로 전에 이뤄져 있어야 할 것은?`),
         h('div', {class: 'row'}, qi, qd), h('button', {class: 'btn small', type: 'button', onclick: addMid}, '중간 목표 추가')),
-      h('button', {class: 'btn small', type: 'button', onclick: () => claudeSheet(g, () => { w.page = 3; draw(); }, () => draw())}, 'Claude에게 나눠 달라기 (무료, 복사·붙여넣기)'),
-      nav(() => { w.page = 1; draw(); }, () => { w.page = 3; draw(); }, mids.length ? `다음 (중간 목표 ${mids.length}개)` : '중간 목표 없이 다음'));
+      h('button', {class: 'btn small', type: 'button', onclick: () => claudeSheet(g, () => { w.page = 4; draw(); }, () => draw())}, 'Claude에게 나눠 달라기 (무료, 복사·붙여넣기)'),
+      nav(() => { w.page = 2; draw(); }, () => { w.page = 4; draw(); }, mids.length ? `다음 (중간 목표 ${mids.length}개)` : '중간 목표 없이 다음'));
     return;
   }
-  if (w.page === 3) {
-    const wrap = h('div', {class: 'stack'}), typed = [];
-    let first = true;
-    for (const s of steps()) {
-      const box = h('div', {class: 'card', style: 'padding:12px'}), ul = h('ul', {class: 'wz-list', style: 'margin:8px 0'});
-      const tot = s.tasks.reduce((a, k) => a + k.blocks, 0);
-      box.append(h('div', {class: 'row', style: 'justify-content:space-between'}, h('b', null, s.final ? `최종 · ${s.title}` : s.title), h('span', {class: 'muted small-text num'}, `${mdw(s.due)} · ${dur(tot * 15)}`)));
-      for (const k of s.tasks) ul.append(h('li', null, h('span', null, k.title), h('span', {class: 'row', style: 'gap:6px;flex-wrap:nowrap'}, h('span', {class: 'd'}, dur(k.blocks * 15)),
-        h('button', {class: 'icon-btn', type: 'button', 'aria-label': `‘${k.title}’ 빼기`, onclick: () => { s.tasks = s.tasks.filter(x => x !== k); draw(); }}, '×'))));
-      box.append(ul);
-      let mins = 30;
-      const inp = h('input', {type: 'text', placeholder: '할 일 (예: 단어 50개 외우기)', 'aria-label': `‘${s.title}’에 더할 할 일`, enterkeyhint: 'done', id: 'wz-add-' + s.id, autofocus: first && !w.focus ? true : null});
-      first = false;
-      const addIt = () => { const v = inp.value.trim(); if (!v) { inp.focus(); return toast('할 일을 적어 주세요'); } s.tasks.push(mkTask(v, mins / 15)); w.focus = 'wz-add-' + s.id; draw(); };
-      typed.push(() => { const v = inp.value.trim(); if (!v) return 0; s.tasks.push(mkTask(v, mins / 15)); inp.value = ''; return 1; });   // 적고 '할 일 추가'를 안 눌렀어도 넘어갈 때 넣는다
-      inp.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); addIt(); } });
-      box.append(h('div', {class: 'addtask'}, inp, timeSelect(mins, {min: 15, max: 480, label: `‘${s.title}’에 더할 할 일 시간`, onChange: m => { mins = m; }}),
-        h('button', {class: 'btn small', type: 'button', onclick: addIt}, '할 일 추가')));
-      wrap.append(box);
+  if (w.page === 3) {   // 3. 일별·운동: 전체 횟수 · 하는 요일 (운동은 무엇을·최종 목표·처음 가능치·곡선)
+    const ramp = o.kind === 'ramp', sum = h('div', {class: 'sum', id: 'wzPlanSum', 'aria-live': 'polite'});
+    const paint = () => sum.replaceChildren(...planSummary(due(), o));
+    const numF = (id, label, val, ph, on, dec) => h('div', {class: 'field'}, h('label', {for: id}, label),
+      h('input', {id, type: 'number', inputmode: dec ? 'decimal' : 'numeric', min: dec ? '0.1' : '1', max: dec ? null : '999', step: dec ? 'any' : '1', value: val || '', placeholder: ph,
+        oninput: e => { on(e.target.value); keepDraft(); paint(); }}));
+    const fields = [];
+    if (ramp) {
+      fields.push(h('div', {class: 'field'}, h('label', {for: 'wzWhat'}, '무엇을 (운동 이름)'), h('input', {id: 'wzWhat', type: 'text', value: o.what, placeholder: '예: 팔굽혀펴기 · 달리기', oninput: e => { o.what = e.target.value.trim(); keepDraft(); paint(); }})));
+      const unitIn = h('input', {id: 'wzUnit', type: 'text', list: 'wzUnits', value: o.unit || '회', maxlength: 8, placeholder: '개', oninput: e => { o.unit = e.target.value.trim(); keepDraft(); paint(); }});
+      fields.push(h('div', {class: 'two'}, numF('wzTarget', '최종 목표', o.b, '예: 50', v => { o.b = +v > 0 ? +v : 0; }, true),
+        h('div', {class: 'field'}, h('label', {for: 'wzUnit'}, '단위'), unitIn, h('datalist', {id: 'wzUnits'}, ...['개', '회', '분', '초', 'km', 'm', 'kg', '세트'].map(u => h('option', {value: u}))))));
+      fields.push(numF('wzStart', '지금 할 수 있는 양 (처음 실행 가능치)', o.a, '예: 10', v => { o.a = +v > 0 ? +v : 0; }, true));
     }
-    const leave = page => { const n = typed.reduce((a, f) => a + f(), 0); w.page = page; draw(); if (n) toast(`적어 둔 할 일 ${n}개도 넣었어요`); };
-    p.append(...head(3, '15분 단위로 쪼개요'),
-      h('p', {class: 'muted small-text', style: 'margin:0'}, '단계마다 할 일을 적고 걸리는 시간을 고르세요. 오늘 화면의 15분 칸이 이 할 일로 채워져요(없으면 단계 이름으로). 나중에 역산 화면에서 언제든 고칠 수 있어요.'),
-      wrap, nav(() => leave(2), () => leave(4), g.steps.some(s => s.tasks.length) ? '다음' : '할 일 없이 다음'));
-    if (w.focus) { const id = w.focus; w.focus = null; setTimeout(() => { const el = $(id); el && el.focus({preventScroll: true}); el && el.scrollIntoView({block: 'center'}); }, 40); }
+    fields.push(numF('wzCount', '전체 횟수', o.n, '예: 40', v => { o.n = clamp(Math.round(+v) || 0, 0, 999); }));
+    fields.push(h('div', {class: 'field'}, h('span', {class: 'flabel'}, '하는 요일'), dayToggles(o.days, d => { o.days = d; keepDraft(); paint(); })));
+    if (ramp) {
+      const segB = (v, label) => h('button', {type: 'button', 'aria-pressed': String(o.curve === v), 'data-curve': v, onclick: e => { o.curve = v; keepDraft(); e.currentTarget.parentNode.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.curve === v))); paint(); }}, label);
+      fields.push(h('div', {class: 'field'}, h('span', {class: 'flabel'}, '늘리는 모양 (변화 곡선)'), h('div', {class: 'seg', role: 'group', 'aria-label': '늘리는 모양'}, segB('s', 'S자 · 처음·끝 천천히'), segB('line', '직선 · 매번 같게'))));
+    }
+    const next = () => {
+      if (ramp && !(o.what || '').trim()) { $('wzWhat')?.focus(); return toast('무엇을 하는지 적어 주세요'); }
+      if (ramp && !(o.b > 0)) { $('wzTarget')?.focus(); return toast('최종 목표를 숫자로 넣어 주세요'); }
+      if (ramp && !(o.a > 0)) { $('wzStart')?.focus(); return toast('지금 할 수 있는 양을 숫자로 넣어 주세요'); }
+      if (!(o.n >= 1)) { $('wzCount')?.focus(); return toast('전체 횟수를 넣어 주세요'); }
+      if (ramp && !o.unit) o.unit = '회';
+      w.page = 4; draw();
+    };
+    p.append(...head(3, ramp ? '운동 목표를 알려 주세요' : '모두 몇 번 할까요?'),
+      h('p', {class: 'muted small-text', style: 'margin:0'}, ramp ? '처음 할 수 있는 양에서 최종 목표까지 회차마다 조금씩 늘려요. 날짜는 일별처럼 한 달 20일 기준에 여유 20%를 더해 잡아요.'
+        : '전체 횟수를 한 달 20일(주 5일) 기준으로 나누고 여유 20%를 더해, 목표일에서 거꾸로 시작일을 잡아요.'),
+      ...fields, sum, nav(() => { w.page = 2; draw(); }, next));
+    paint();
     return;
   }
-  // 4: 쓸 수 있는 시간 + 요약
-  const sch = schedule(g), weekMin = g.avail.reduce((a, b) => a + b, 0);
-  const good = sch.total && !sch.late;
-  const bare = sortSteps(g).filter(s => !s.final && !s.tasks.length);
-  const bareNote = sch.total && bare.length ? h('p', {class: 'small-text', style: 'margin:0;color:var(--warn)'},
-    `할 일이 없는 중간 목표 ${bare.length}개(${bare.slice(0, 2).map(s => `‘${s.title}’`).join(', ')}${bare.length > 2 ? ' 등' : ''})는 오늘 화면에 단계 이름으로만 15분 칸이 나와요. 할 일로 나누려면 ‘이전’에서 적어 두세요.`) : null;
-  const sum = !sch.total ? h('div', {class: 'sum bad'}, '할 일이 아직 없어요. 오늘 화면에는 요일별 시간만큼 단계 이름으로 15분 칸이 나와요 — 할 일로 나누려면 ‘이전’에서 적거나, 만든 뒤 역산 → 목록에서 적어 주세요.')
-    : sch.unplaced ? h('div', {class: 'sum bad'}, '쓸 수 있는 시간이 0분이에요. 요일별 시간을 정해 주세요.')
-    : h('div', {class: 'sum' + (good ? '' : ' bad')}, `할 일 모두 ${dur(sch.total * 15)} · 한 주 ${dur(weekMin)}씩 하면 `, h('b', null, mdw(sch.finish)),
-        good ? `에 끝나요(마감 ${diff(sch.finish, g.deadline)}일 전).` : `에 끝나요 — 마감보다 ${diff(g.deadline, sch.finish)}일 늦어요.${sch.needPerDay ? ` 하루 평균 ${dur(sch.needPerDay)} 더 필요해요.` : ''} 시간을 늘리거나 할 일을 줄이세요.`);
+  // 4. 확인 — 단계는 요일별 시간을 고르고, 일별·운동은 시작일 안내
   let mkBox = null;
-  if (syncReady()) {   // 목표까지와 연결돼 있으면: 새 목표를 목표까지 인생 목표에도 넣을지(기본 켬)
+  if (syncReady() && !w.setup && !lk) {   // 목표까지와 연결돼 있으면: 새 목표를 목표까지 인생 목표에도 넣을지(기본 켬)
     if (typeof g.toMk !== 'boolean') g.toMk = true;
     const sel = h('select', {id: 'wzCat', disabled: g.toMk ? null : true, onchange: e => { g.cat = e.target.value; keepDraft(); }}, ...MK_CATS.map(c => h('option', {value: c, selected: (g.cat || '기타') === c ? true : null}, c)));
     const cb = h('input', {type: 'checkbox', id: 'wzToMk', checked: g.toMk ? true : null, style: 'width:22px;height:22px;flex:none', onchange: e => { g.toMk = e.target.checked; sel.disabled = !g.toMk; keepDraft(); }});
@@ -1762,17 +2351,66 @@ function wzPage(p, w, draw) {
       h('div', {class: 'field'}, h('label', {for: 'wzCat'}, '목표까지 분야'), sel),
       h('p', {class: 'muted small-text', style: 'margin:0'}, '목표까지에서 ‘역산 플래너와 맞추기’를 누르면 인생 목표에 들어가요. 그다음부터 이름·단계는 목표까지에서, 날짜는 여기서도 고칠 수 있어요.'));
   }
-  p.append(...[...head(4, '언제 할 수 있나요?'), h('p', {class: 'muted small-text', style: 'margin:0'}, '요일마다 이 목표에 쓸 시간을 고르세요. 고른 시간만큼 그 요일 오늘 화면에 15분 칸이 나와요(‘쉼’이면 안 나옴).'),
-    availEditorWz(g, draw), sum, bareNote, mkBox,
-    nav(() => { w.page = 3; draw(); }, () => finishWizard(g), '완료')].filter(Boolean));
+  if (o.kind !== 'steps') {
+    p.append(...[...head(4, '이렇게 시작해요'),
+      h('div', {class: 'sum', id: 'wzPlanSum'}, ...planSummary(due(), o)),
+      h('p', {class: 'muted small-text', style: 'margin:0'}, '회차는 1/전체 횟수로 미리 적혀 있고, 끝낸 뒤 제목을 고쳐 그날 한 것을 남길 수 있어요. 못 한 회차는 다음 날 밀린 것으로 함께 나와요.'),
+      mkBox, nav(() => { w.page = 3; draw(); }, () => finishWizard(w), '완료')].filter(Boolean));
+    return;
+  }
+  const secs = []; let prev = today();
+  for (const s of steps().filter(s => !s.gone)) { const end = s.final ? due() : s.due; secs.push(h('li', null, h('span', null, s.final ? `최종 · ${g.title}` : s.title), h('span', {class: 'd'}, `${md(prev <= end ? prev : end)}~${md(end)}`))); prev = add(end, 1); }
+  const weekMin = g.avail.reduce((a, b) => a + b, 0);
+  p.append(...[...head(4, '언제 할까요?'), h('p', {class: 'muted small-text', style: 'margin:0'}, '요일마다 이 목표에 쓸 시간을 고르세요. 각 구간 동안 고른 요일에 그 단계가 시간만큼 15분 칸으로 오늘 화면에 나와요(‘쉼’이면 안 나옴).'),
+    availGrid(g, draw),
+    h('div', {class: 'sum' + (weekMin ? '' : ' bad')}, weekMin ? [h('b', null, '구간마다 나오는 단계'), h('ul', {class: 'wz-list', style: 'margin-top:6px'}, ...secs)] : '요일별 시간이 모두 ‘쉼’이에요. 하루는 시간을 골라 주세요.'),
+    h('p', {class: 'muted small-text', style: 'margin:0'}, '15분 할 일로 더 쪼개고 싶으면 만든 뒤 역산 → 목록에서 단계마다 적어요. 적으면 15분 칸이 그 할 일로 채워져요.'),
+    mkBox, nav(() => { w.page = 3; draw(); }, () => { if (!weekMin) return toast('하루는 시간을 골라 주세요'); finishWizard(w); }, '완료')].filter(Boolean));
 }
-function finishWizard(g) {
+// 운동 제목 '팔굽혀펴기 50개' → 무엇을 '팔굽혀펴기', 최종 목표 50, 단위 '개'(비어 있을 때만)
+function rampGuess(g, o) {
+  const m = String(g.title).match(/^(.*?)\s*(\d+(?:\.\d+)?)\s*([^\s\d.]{0,4})\s*$/);
+  if (!o.what) o.what = (m && m[1].trim()) || g.title;
+  if (m && !(o.b > 0)) { o.b = +m[2]; if (m[3] && (!o.unit || o.unit === '회')) o.unit = m[3]; }
+}
+// 일별·운동 시작일 계산 안내: 한 달 20일 기준 + 여유 20% → 시작일(늦으면 '…에 시작될 예정입니다')
+function planSummary(due, o) {
+  if (!(o.n >= 1)) return [h('span', {class: 'muted'}, '전체 횟수를 넣으면 시작일을 계산해 드려요.')];
+  const t = today(), st = startFor(o.n, due, o.days), from = st.from0 > t ? st.from0 : t, ds = planDates(o.n, from, due, o.days), last = ds[ds.length - 1];
+  let free = 0; for (let d = add(last, 1); d <= due; d = add(d, 1)) if (o.days[wd(d)]) free++;
+  const multi = new Set(ds).size < ds.length, out = [];
+  out.push(h('div', null, `한 달 ${st.perMonth}일(주 ${st.perWeek}일) 기준 ${o.n}회는 ${fmtN(o.n / st.perMonth)}달, 여유 20%를 더하면 ${fmtN(st.months)}달(${st.back}일)이에요.`));
+  if (st.from0 > t) out.push(h('p', {class: 'startline'}, h('span', {class: 'dd start'}, `시작 ${dday(st.from0)}`), ' ', h('b', null, `이 프로젝트의 실행은 ${mdKo(st.from0)}에 시작될 예정입니다.`)));
+  else if (st.from0 < t) out.push(h('p', {class: 'warnline'}, `목표일까지 ${diff(t, due) + 1}일이라 필요한 ${st.back}일보다 짧아요. 오늘부터 시작${multi ? '하고, 하루 2회 이상인 날이 있어요' : '해요'}. 목표일을 늦추면 여유가 생겨요.`));
+  else out.push(h('p', {class: 'startline'}, h('b', null, '오늘부터 시작해요.')));
+  out.push(h('div', {class: 'num small-text'}, `${mdw(from)} 시작 → 마지막 ${o.n}/${o.n}회 ${mdw(last)} · 목표일 ${mdw(due)}${free ? `까지 여유 ${free}일` : ''}`));
+  if (o.kind === 'ramp' && o.a > 0 && o.b > 0) {
+    const p = {n: o.n, a: o.a, b: o.b, unit: o.unit || '회', what: o.what || '', curve: o.curve};
+    out.push(rampSpark(p, 0), h('div', {class: 'num small-text'}, [...new Set([1, Math.ceil(o.n / 4), Math.ceil(o.n / 2), Math.ceil(o.n * 3 / 4), o.n])].map(k => `${k}회 ${fmtN(rampAmt(p, k))}${p.unit}`).join(' → ')));
+  }
+  out.push(h('div', {class: 'muted small-text num'}, [0, 1, 2].filter(i => i < ds.length).map(i => `${i + 1}/${o.n} ${mdw(ds[i])}`).join(' · ') + (o.n > 3 ? ` … ${o.n}/${o.n} ${mdw(last)}` : '')));
+  return out;
+}
+function finishWizard(w) {
+  const g = w.g, o = w.opt;
+  if (w.setup) {   // 설정하기: 사본을 원래 목표 자리에(체크 기록은 그대로)
+    const orig = state.goals.find(x => x.id === w.setup);
+    if (!orig) { closeWizard(); return toast('설정하던 목표가 없어졌어요'); }
+    if (linked(g) && o.due && o.due !== shownDue(orig) && !editLinkedDue(g, o.due)) return;
+    g.plan = buildPlan(g, o); delete g.doneAt; delete g.reopen; touch(g);
+    state.goals[state.goals.indexOf(orig)] = g;
+    if (state.current !== '*') state.current = g.id;
+    state.draft = null; closeSheet(); save(); go('today'); scheduleSync();
+    toast(waiting(g) ? `‘${g.title}’를 설정했어요. ${startLine(g)}` : `‘${g.title}’를 설정했어요. 이제 오늘 화면에 나와요.`);
+    return;
+  }
+  g.plan = buildPlan(g, o);
   const samples = state.goals.filter(x => x.sample), edited = samples.filter(s => sampleSigOf(s) !== s.sampleSig);
   const done = keep => {
     for (const s of keep) { delete s.sample; delete s.sampleSig; touch(s); }
     state.goals = state.goals.filter(x => !x.sample);
-    touch(g); state.goals.push(g); state.current = state.goals.length > 1 && state.current === '*' ? '*' : g.id; state.draft = null; closeSheet(); save(); go('today'); scheduleSync();
-    toast(samples.length && !keep.length ? '목표를 만들었어요. 예시 목표는 지웠어요.' : '목표를 만들었어요');
+    touch(g); state.goals.push(g); state.current = live().length > 1 && state.current === '*' ? '*' : g.id; state.draft = null; closeSheet(); save(); go('today'); scheduleSync();
+    toast(waiting(g) ? `목표를 만들었어요. ${startLine(g)}` : samples.length && !keep.length ? '목표를 만들었어요. 예시 목표는 지웠어요.' : '목표를 만들었어요');
   };
   if (!edited.length) return done([]);
   openSheet(p => p.append(h('h2', {id: 'sheetTitle'}, '예시 목표를 고쳐 쓰셨네요'), h('p', {class: 'muted', style: 'margin:0'}, '‘토익 850점 받기’ 예시를 내 목표로 남겨 둘까요, 지울까요?'),
@@ -1780,7 +2418,6 @@ function finishWizard(g) {
       h('button', {class: 'btn danger', type: 'button', onclick: () => done([])}, '예시 지우기'))));
   sheetKeep = true;
 }
-function availEditorWz(g, draw) { return availGrid(g, draw); }
 
 /* Claude에게 나눠 달라기: 부탁 글을 복사해 Claude 앱에 붙여넣고, 받은 답(JSON)을 붙여넣으면 채운다(키·서버 필요 없음) */
 const availLine = g => `월 ${g.avail[1]}, 화 ${g.avail[2]}, 수 ${g.avail[3]}, 목 ${g.avail[4]}, 금 ${g.avail[5]}, 토 ${g.avail[6]}, 일 ${g.avail[0]}`;
@@ -2026,10 +2663,10 @@ function applyMk(raw) {
     const active = m.status !== '완료' && m.status !== '보류';
     if (!g) {
       if (!active || !m.due) continue;
-      g = {id: uid(), src: m.id, title: m.title, why: '', deadline: m.due, createdAt: today(), avail: LINK_AVAIL.slice(), av: 1, steps: [{id: uid(), title: m.title, due: m.due, final: true, tasks: []}], log: [], ilog: [], dlog: [], ed: Date.now()};
+      g = {id: uid(), src: m.id, title: m.title, why: '', deadline: m.due, createdAt: today(), avail: LINK_AVAIL.slice(), av: 1, steps: [{id: uid(), title: m.title, due: m.due, final: true, tasks: []}], log: [], ilog: [], dlog: [], slog: [], ed: Date.now()};
       state.goals.push(g);
     }
-    const e = g.mkEdit;
+    const e = g.mkEdit, dl0 = g.deadline;
     g.title = m.title; g.why = m.memo || ''; g.short = m.short || undefined; g.status = m.status; delete g.gone;
     if (m.cat) g.cat = m.cat;
     if (m.due) g.mkDue = settle(m.due, e?.due, () => { delete e.due; });
@@ -2048,6 +2685,7 @@ function applyMk(raw) {
     for (const s of g.steps) if (s.src && !keep.has(s.src)) s.gone = true;
     g.steps = g.steps.filter(s => !(s.gone && !s.tasks.length));
     relinkDeadline(g);
+    if (isSes(g) && g.deadline !== dl0) replan(g);
   }
   for (const g of state.goals) if (g.src && !seen.has(g.src)) g.gone = true;
   // 목표까지가 한 번 만들었다가 지운 폰 목표는 더 보내지 않는다
@@ -2060,13 +2698,26 @@ function applyMk(raw) {
   if (changed) for (const g of state.goals) if (g.src) touch(g);
   return true;
 }
+// 옛 판(10/23 전, 새 칸을 모르는 기기)이 올린 목표에는 설정(plan)·회차 기록(slog)·완료 보관(doneAt)이 빠져 있다.
+// 이 판은 설정을 지우는 일이 없으므로, 받은 쪽에 설정이 없고 이 기기에 있으면 옛 판이 올린 것으로 보고 이 기기 것을 지킨다.
+// 보관은 새 판이 되돌릴 때 reopen을 남기므로, reopen 없이 빠졌으면 지킨다.
+function keepNew(r, l) {
+  if (!l || r === l) return r;
+  if (!r.plan && l.plan) {
+    r.plan = l.plan;
+    const ks = new Set(r.slog.map(e => e.k)); for (const e of l.slog || []) if (!ks.has(e.k)) { r.slog.push(e); ks.add(e.k); }
+  }
+  if (!r.doneAt && l.doneAt && !r.reopen) { r.doneAt = l.doneAt; if (l.doneBy) r.doneBy = l.doneBy; }
+  return r;
+}
 // 여러 기기: 서버가 앞서 있으면 합친다 — 목표별로 나중에 고친 쪽, 체크 기록은 합집합, 지운 목표는 다시 살리지 않음
 function mergeRemote(rd, dirty) {
   const rgs = (Array.isArray(rd.goals) ? rd.goals : []).map(normGoal).filter(Boolean);
   const del = {...state.del}; for (const [k, v] of Object.entries(rd.del || {})) if (Number.isFinite(+v)) del[k] = Math.max(del[k] || 0, +v);
   const samples = state.goals.filter(g => g.sample && (!rgs.length || sampleSigOf(g) !== g.sampleSig));   // 다른 기기에 목표가 있으면 손대지 않은 예시는 치운다
   if (!dirty) {
-    state.goals = [...rgs.filter(g => !del[g.id]), ...samples]; state.del = del;
+    const loc = new Map(state.goals.map(g => [g.id, g]));
+    state.goals = [...rgs.filter(g => !del[g.id]).map(r => keepNew(r, loc.get(r.id))), ...samples]; state.del = del;
     state.imin = {...state.imin, ...(rd.imin || {})};
     return;
   }
@@ -2076,6 +2727,7 @@ function mergeRemote(rd, dirty) {
     if (del[r.id]) continue;
     if (!l) { out.push(r); continue; }
     const win = (r.ed || 0) >= (l.ed || 0) ? r : l, lose = win === r ? l : r;
+    keepNew(win, lose);
     const taskIds = new Set(win.steps.flatMap(s => s.tasks.map(k => k.id)));
     const logs = new Map(); for (const e of [...win.log, ...lose.log]) if (taskIds.has(e.t) && !logs.has(e.id)) logs.set(e.id, e);
     const seenK = new Set(); win.log = [...logs.values()].filter(e => { const key = e.t + '#' + e.k; if (seenK.has(key)) return false; seenK.add(key); return true; });
@@ -2083,13 +2735,15 @@ function mergeRemote(rd, dirty) {
     const seenI = new Set(); win.ilog = [...il.values()].filter(e => { const key = e.i + '#' + e.k; if (seenI.has(key)) return false; seenI.add(key); return true; });
     const dl = new Map(); for (const e of [...(win.dlog || []), ...(lose.dlog || [])]) if (!dl.has(e.id)) dl.set(e.id, e);
     const seenD = new Set(); win.dlog = [...dl.values()].filter(e => { const key = e.d + '#' + e.k; if (seenD.has(key)) return false; seenD.add(key); return true; });
+    const sl = new Map(); for (const e of [...(win.slog || []), ...(lose.slog || [])]) if (!sl.has(e.id)) sl.set(e.id, e);
+    const seenS = new Set(); win.slog = [...sl.values()].filter(e => { if (seenS.has(e.k)) return false; seenS.add(e.k); return true; });
     out.push(win);
   }
   for (const l of local.values()) if (!del[l.id]) out.push(l);
   state.goals = [...out, ...samples]; state.del = del;
   state.imin = {...(rd.imin || {}), ...state.imin};
 }
-function fixCurrent() { if (state.current !== '*' && !state.goals.some(g => g.id === state.current)) state.current = state.goals.length > 1 ? '*' : state.goals[0]?.id || null; }
+function fixCurrent() { const lv = live(); if (state.current !== '*' && !lv.some(g => g.id === state.current)) state.current = lv.length > 1 ? '*' : lv[0]?.id || null; }
 // 목표까지로 돌려보낼 진행: 끝낸 단계(sid), 하루 분량 실적(수치 mid별·달별), 횟수, 15분 기록(달별 분)
 function computeProgress() {
   const out = {at: new Date().toISOString(), device: DEVICE, goals: {}};
@@ -2100,6 +2754,7 @@ function computeProgress() {
     const addMin = d => { const ym = d.slice(0, 7); p.minutes[ym] = (p.minutes[ym] || 0) + 15; if (!p.last || d > p.last) p.last = d; };
     for (const e of g.log) addMin(e.d);
     for (const e of g.dlog || []) addMin(e.d);
+    for (const e of g.slog || []) addMin(e.d);
     const perItem = new Map();
     for (const e of g.ilog) {
       addMin(e.d);
@@ -2214,7 +2869,7 @@ if (state.timer) runTick();
 if (fromLink && !state.sync.code) setTimeout(() => { $('syncCard')?.scrollIntoView({block: 'center'}); $('syncCode')?.focus({preventScroll: true}); }, 60);
 if (syncReady()) syncNow('open');
 // 만들던 목표가 있으면(다른 앱에 다녀오는 사이 앱이 닫혔을 때) 이어서
-if (state.draft && state.draft.g) { wizard({g: state.draft.g, page: state.draft.page}); toast('만들던 목표를 이어서 만들어요'); }
+if (state.draft && state.draft.g) { wizard(state.draft); toast(state.draft.setup ? '설정하던 목표를 이어서 설정해요' : '만들던 목표를 이어서 만들어요'); }
 </script>
 </body>
 </html>
