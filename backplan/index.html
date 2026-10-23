@@ -577,6 +577,7 @@ function normPlan(p, g) {
   if (p.kind === 'steps') return out;
   out.n = clamp(Math.round(+p.n) || 1, 1, 999);
   out.days = Array.isArray(p.days) && p.days.length === 7 && p.days.some(Boolean) ? p.days.map(Boolean) : DEF_DAYS.slice();
+  out.buf = p.buf !== false;   // 여유 20%를 더했는지(10/23 오후: 고를 수 있게)
   out.from = isDate(p.from) ? p.from : out.at;
   const ds = Array.isArray(p.dates) ? p.dates.filter(isDate) : [];
   out.dates = ds.length === out.n ? ds : planDates(out.n, out.from, g.deadline, out.days);
@@ -587,11 +588,14 @@ function normPlan(p, g) {
   }
   return out;
 }
-// 한 달 20일(주 5일) 기준 + 여유 20%: 필요한 달 = 횟수 ÷ 한 달에 하는 날 × 1.2 → 목표일에서 그만큼(1달 = 30일) 거꾸로가 시작일
-function startFor(n, deadline, days) {
-  const perWeek = days.filter(Boolean).length || 5, perMonth = perWeek * 4, months = n / perMonth * 1.2, back = Math.max(1, Math.round(months * 30));
-  return {perWeek, perMonth, months, back, from0: add(deadline, -back)};
+// 한 달 20일(주 5일) 기준: 필요한 달 = 횟수 ÷ 한 달에 하는 날 (여유 20%를 더하기로 했으면 × 1.2) → 목표일에서 그만큼(1달 = 30일) 거꾸로가 시작일
+function startFor(n, deadline, days, buf = true) {
+  const perWeek = days.filter(Boolean).length || 5, perMonth = perWeek * 4, base = n / perMonth, months = base * (buf === false ? 1 : 1.2), back = Math.max(1, Math.round(months * 30));
+  return {perWeek, perMonth, base, months, back, buf: buf !== false, from0: add(deadline, -back)};
 }
+// 계산 안내 한 줄: '한 달 20일(주 5일) 기준 40회는 2달, 여유 20%를 더하면 2.4달(72일)이에요.' / 여유 없이
+const startCalc = (n, st) => st.buf ? `한 달 ${st.perMonth}일(주 ${st.perWeek}일) 기준 ${n}회는 ${fmtN(st.base)}달, 여유 20%를 더하면 ${fmtN(st.months)}달(${st.back}일)이에요.`
+  : `한 달 ${st.perMonth}일(주 ${st.perWeek}일) 기준 ${n}회는 ${fmtN(st.base)}달(${st.back}일)이에요. 여유 20%는 더하지 않았어요.`;
 // 시작일부터 고른 요일에 하루 한 회차씩. 목표일까지 자리가 모자라면 앞날부터 하루 두 회차 이상으로
 function planDates(n, from, deadline, days) {
   const end = deadline >= from ? deadline : from, slots = [];
@@ -607,7 +611,7 @@ function normOpt(o) {   // 만들던 목표의 세부 설정(마법사)
   const num = v => Number.isFinite(+v) && +v > 0 ? Math.round(+v * 100) / 100 : 0;
   return {kind: ['steps', 'daily', 'ramp'].includes(o.kind) ? o.kind : null, n: clamp(Math.round(+o.n) || 0, 0, 999),
     days: Array.isArray(o.days) && o.days.length === 7 && o.days.some(Boolean) ? o.days.map(Boolean) : DEF_DAYS.slice(),
-    a: num(o.a), b: num(o.b), unit: String(o.unit ?? '').slice(0, 8), what: String(o.what ?? '').slice(0, 40), curve: o.curve === 'line' ? 'line' : 's', due: isDate(o.due) ? o.due : null};
+    a: num(o.a), b: num(o.b), unit: String(o.unit ?? '').slice(0, 8), what: String(o.what ?? '').slice(0, 40), curve: o.curve === 'line' ? 'line' : 's', due: isDate(o.due) ? o.due : null, buf: o.buf !== false};
 }
 function normDraft(g) {   // 마법사로 만들던 목표: 이름이 아직 비어 있어도 된다
   if (!g || typeof g !== 'object') return null;
@@ -887,7 +891,7 @@ const byDue = (a, b) => (shownDue(a) < shownDue(b) ? -1 : shownDue(a) > shownDue
 /* ---------- 새 순서(10/23 LEE 요청) ----------
    목표마다 '설정(plan)'을 거친 것만 오늘 화면에 나온다. 설정 전 목표는 역산·일정·목표에만, 구분해서 보여 준다.
    · 단계(steps): 중간 목표 날짜로 구간을 나누고, 구간마다 그 단계가 요일별 시간만큼 15분 칸으로 나온다.
-   · 일별(daily): 전체 횟수를 한 달 20일(주 5일) 기준으로 나누고 여유 20%를 더해, 목표일에서 거꾸로 시작일을 잡는다.
+   · 일별(daily): 전체 횟수를 한 달 20일(주 5일) 기준으로 나누고 (고르면) 여유 20%를 더해, 목표일에서 거꾸로 시작일을 잡는다.
      고른 요일에 하루 한 회차씩 날짜(dates)를 정해 두고 1/40, 2/40 …로 나온다. 끝낸 회차는 제목을 고쳐 기록으로 남긴다.
    · 운동(ramp): 일별과 같은 날짜에, 처음 할 수 있는 양(a) → 최종 목표(b)를 S자(또는 직선) 곡선으로 회차마다 나눈다.
    오늘 화면에는 오늘 몫과 함께 지난날 못 한 것(밀린 것)을 같이 보여 준다. 다 하면(마감이 지난 목표는 밀린 것까지) 완료 보관함(doneAt)으로. */
@@ -983,7 +987,7 @@ function replan(g) {
   const p = g.plan; if (!isSes(g)) return;
   const t = today(), m = sesMap(g);
   if (p.from > t && !g.slog.length) {
-    const st = startFor(p.n, g.deadline, p.days); p.from = st.from0 > t ? st.from0 : t;
+    const st = startFor(p.n, g.deadline, p.days, p.buf); p.from = st.from0 > t ? st.from0 : t;
     p.dates = planDates(p.n, p.from, g.deadline, p.days); return;
   }
   const ks = []; for (let k = 1; k <= p.n; k++) if (!m.has(k) && !(p.dates[k - 1] < t)) ks.push(k);
@@ -995,12 +999,12 @@ function replan(g) {
 function buildPlan(g, o) {
   const t = today();
   if (o.kind === 'steps') return {kind: 'steps', at: t};
-  const st = startFor(o.n, g.deadline, o.days), from = st.from0 > t ? st.from0 : t;
-  const p = {kind: o.kind, at: t, n: o.n, days: o.days.slice(), from, dates: planDates(o.n, from, g.deadline, o.days)};
+  const st = startFor(o.n, g.deadline, o.days, o.buf), from = st.from0 > t ? st.from0 : t;
+  const p = {kind: o.kind, at: t, n: o.n, days: o.days.slice(), buf: o.buf !== false, from, dates: planDates(o.n, from, g.deadline, o.days)};
   if (o.kind === 'ramp') Object.assign(p, {a: o.a, b: o.b, unit: (o.unit || '회').trim().slice(0, 8), what: (o.what || g.title).trim().slice(0, 40), curve: o.curve === 'line' ? 'line' : 's'});
   return p;
 }
-const optFromPlan = (p, g) => p ? normOpt({kind: p.kind, n: p.n, days: p.days, a: p.a, b: p.b, unit: p.unit, what: p.what, curve: p.curve}) : normOpt({what: g.title, unit: '회'});
+const optFromPlan = (p, g) => p ? normOpt({kind: p.kind, n: p.n, days: p.days, a: p.a, b: p.b, unit: p.unit, what: p.what, curve: p.curve, buf: p.buf}) : normOpt({what: g.title, unit: '회'});
 /* 시간 고르기: 드롭다운(15분 단위, 4시간 넘으면 30분·1시간 단위). 0은 '쉼' */
 function timeOpts(min, max, cur) {
   const vs = [];
@@ -1684,12 +1688,12 @@ const preNote = g => h('div', {class: 'prenote'}, h('span', null, h('b', null, '
   h('button', {class: 'btn small primary', type: 'button', onclick: () => setupGoal(g)}, '설정하기'));
 // 일별·운동 회차 계획: 시작일 계산 · 회차마다 날짜·양·끝낸 날·제목
 function sesPlan(v, g) {
-  const p = g.plan, t = today(), m = sesMap(g), st = startFor(p.n, g.deadline, p.days), last = p.dates[p.n - 1];
+  const p = g.plan, t = today(), m = sesMap(g), st = startFor(p.n, g.deadline, p.days, p.buf), last = p.dates[p.n - 1];
   let free = 0; for (let d = add(last, 1); d <= g.deadline; d = add(d, 1)) if (p.days[wd(d)]) free++;
   v.append(h('div', {class: 'view-head'}, h('h2', {class: 'view-title'}, p.kind === 'ramp' ? '운동 회차 계획' : '회차 계획'), kindTag(g)));
   v.append(h('div', {class: 'card plansum'},
     h('div', {class: 'label'}, `${g.title} · 전체 ${p.n}회 · ${daysText(p.days)}`),
-    h('p', {class: 'small-text', style: 'margin:6px 0 0'}, `한 달 ${st.perMonth}일(주 ${st.perWeek}일) 기준 ${p.n}회는 ${fmtN(p.n / st.perMonth)}달, 여유 20%를 더해 ${fmtN(st.months)}달(${st.back}일)이에요.`),
+    h('p', {class: 'small-text', style: 'margin:6px 0 0'}, startCalc(p.n, st)),
     h('p', {class: 'small-text num', style: 'margin:4px 0 0'}, `${mdw(p.from)} 시작 → 마지막 ${p.n}/${p.n}회 ${mdw(last)} · 목표일 ${mdw(g.deadline)}(${dday(g.deadline)})${free ? ` · 여유 ${free}일` : ''}`),
     waiting(g, t) ? startNote(g) : null,
     p.kind === 'ramp' ? h('div', {class: 'rampinfo'}, h('span', {class: 'muted small-text'}, `${p.what} ${fmtN(p.a)}${p.unit} → ${fmtN(p.b)}${p.unit} · ${p.curve === 'line' ? '매번 같은 만큼(직선)' : '처음·끝은 천천히(S자)'}`), rampSpark(p, sesDoneN(g))) : null,
@@ -2266,7 +2270,7 @@ function wzPage(p, w, draw) {
     p.append(...head(2, '세부 목표는 어떻게 나눌까요?'),
       h('div', {class: 'kinds'},
         card('steps', '단계(sub 목표)로', '중간 목표마다 목표일을 정해요. 그날까지의 구간 동안 고른 요일에 그 단계가 오늘 화면에 나와요.'),
-        card('daily', '일별 횟수로', '전체 횟수를 정하면 한 달 20일 기준에 여유 20%를 더해 시작일을 잡고, 하루 한 회차씩(1/40, 2/40 …) 나와요.'),
+        card('daily', '일별 횟수로', '전체 횟수를 정하면 한 달 20일 기준(여유 20%는 더할지 골라요)으로 시작일을 잡고, 하루 한 회차씩(1/40, 2/40 …) 나와요.'),
         card('ramp', '운동 — 점점 늘리기', '최종 목표와 지금 할 수 있는 양을 넣으면, 변화 곡선으로 회차마다 조금씩 늘려 나눠요.')),
       nav(() => { w.page = 1; draw(); }, () => { if (!o.kind) return toast('나누는 방식을 골라 주세요'); w.page = 3; draw(); }));
     return;
@@ -2321,6 +2325,11 @@ function wzPage(p, w, draw) {
     }
     fields.push(numF('wzCount', '전체 횟수', o.n, '예: 40', v => { o.n = clamp(Math.round(+v) || 0, 0, 999); }));
     fields.push(h('div', {class: 'field'}, h('span', {class: 'flabel'}, '하는 요일'), dayToggles(o.days, d => { o.days = d; keepDraft(); paint(); })));
+    const bufB = (v, label) => h('button', {type: 'button', 'aria-pressed': String(o.buf === v), 'data-buf': v ? '1' : '0',
+      onclick: e => { o.buf = v; keepDraft(); e.currentTarget.parentNode.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.buf === (v ? '1' : '0')))); paint(); }}, label);
+    fields.push(h('div', {class: 'field'}, h('span', {class: 'flabel', id: 'wzBufQ'}, '여유 20%를 더할까요?'),
+      h('div', {class: 'seg', role: 'group', 'aria-labelledby': 'wzBufQ'}, bufB(true, '더하기'), bufB(false, '안 더하기')),
+      h('span', {class: 'muted small-text'}, '더하면 필요한 기간을 1.2배로 잡아 시작이 앞당겨지고, 목표일 전에 밀린 것을 따라잡을 여유 날이 생겨요.')));
     if (ramp) {
       const segB = (v, label) => h('button', {type: 'button', 'aria-pressed': String(o.curve === v), 'data-curve': v, onclick: e => { o.curve = v; keepDraft(); e.currentTarget.parentNode.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.curve === v))); paint(); }}, label);
       fields.push(h('div', {class: 'field'}, h('span', {class: 'flabel'}, '늘리는 모양 (변화 곡선)'), h('div', {class: 'seg', role: 'group', 'aria-label': '늘리는 모양'}, segB('s', 'S자 · 처음·끝 천천히'), segB('line', '직선 · 매번 같게'))));
@@ -2334,8 +2343,8 @@ function wzPage(p, w, draw) {
       w.page = 4; draw();
     };
     p.append(...head(3, ramp ? '운동 목표를 알려 주세요' : '모두 몇 번 할까요?'),
-      h('p', {class: 'muted small-text', style: 'margin:0'}, ramp ? '처음 할 수 있는 양에서 최종 목표까지 회차마다 조금씩 늘려요. 날짜는 일별처럼 한 달 20일 기준에 여유 20%를 더해 잡아요.'
-        : '전체 횟수를 한 달 20일(주 5일) 기준으로 나누고 여유 20%를 더해, 목표일에서 거꾸로 시작일을 잡아요.'),
+      h('p', {class: 'muted small-text', style: 'margin:0'}, ramp ? '처음 할 수 있는 양에서 최종 목표까지 회차마다 조금씩 늘려요. 날짜는 일별처럼 한 달 20일 기준으로 잡아요(여유 20%는 더할지 골라요).'
+        : '전체 횟수를 한 달 20일(주 5일) 기준으로 나눠 목표일에서 거꾸로 시작일을 잡아요. 여유 20%를 더할지 골라요.'),
       ...fields, sum, nav(() => { w.page = 2; draw(); }, next));
     paint();
     return;
@@ -2373,13 +2382,13 @@ function rampGuess(g, o) {
   if (!o.what) o.what = (m && m[1].trim()) || g.title;
   if (m && !(o.b > 0)) { o.b = +m[2]; if (m[3] && (!o.unit || o.unit === '회')) o.unit = m[3]; }
 }
-// 일별·운동 시작일 계산 안내: 한 달 20일 기준 + 여유 20% → 시작일(늦으면 '…에 시작될 예정입니다')
+// 일별·운동 시작일 계산 안내: 한 달 20일 기준(+ 여유 20%를 더하기로 했으면) → 시작일(늦으면 '…에 시작될 예정입니다')
 function planSummary(due, o) {
   if (!(o.n >= 1)) return [h('span', {class: 'muted'}, '전체 횟수를 넣으면 시작일을 계산해 드려요.')];
-  const t = today(), st = startFor(o.n, due, o.days), from = st.from0 > t ? st.from0 : t, ds = planDates(o.n, from, due, o.days), last = ds[ds.length - 1];
+  const t = today(), st = startFor(o.n, due, o.days, o.buf), from = st.from0 > t ? st.from0 : t, ds = planDates(o.n, from, due, o.days), last = ds[ds.length - 1];
   let free = 0; for (let d = add(last, 1); d <= due; d = add(d, 1)) if (o.days[wd(d)]) free++;
   const multi = new Set(ds).size < ds.length, out = [];
-  out.push(h('div', null, `한 달 ${st.perMonth}일(주 ${st.perWeek}일) 기준 ${o.n}회는 ${fmtN(o.n / st.perMonth)}달, 여유 20%를 더하면 ${fmtN(st.months)}달(${st.back}일)이에요.`));
+  out.push(h('div', null, startCalc(o.n, st)));
   if (st.from0 > t) out.push(h('p', {class: 'startline'}, h('span', {class: 'dd start'}, `시작 ${dday(st.from0)}`), ' ', h('b', null, `이 프로젝트의 실행은 ${mdKo(st.from0)}에 시작될 예정입니다.`)));
   else if (st.from0 < t) out.push(h('p', {class: 'warnline'}, `목표일까지 ${diff(t, due) + 1}일이라 필요한 ${st.back}일보다 짧아요. 오늘부터 시작${multi ? '하고, 하루 2회 이상인 날이 있어요' : '해요'}. 목표일을 늦추면 여유가 생겨요.`));
   else out.push(h('p', {class: 'startline'}, h('b', null, '오늘부터 시작해요.')));

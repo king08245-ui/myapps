@@ -1767,3 +1767,44 @@ def flow_sync_old_device_keeps_new_fields(page, shot):
     assert st["끝낸 일"].get("doneAt") == kst(0), "옛 판이 올린 목표를 받으면서 완료 보관이 풀림"
     tab(page, "today")
     assert rows(page).count() >= 1 and rows(page).first.inner_text().startswith("1/5"), "옛 판 목표를 받은 뒤 오늘 회차가 사라짐"
+
+
+def flow_daily_buffer_choice(page, shot):
+    """일별·운동: 여유 20%를 더할지 묻고 고르게 — 안 더하면 기간이 그대로(시작이 늦어짐), 고른 값은 저장돼 '설정 바꾸기'에서 다시 고름(10/23 오후 LEE 요청)"""
+    fresh(page)
+    page.locator("button:visible", has_text=re.compile("목표 세우기")).first.click()
+    page.fill("#wzTitle", "영단어 40회")
+    page.fill("#wzDeadline", kst(100))
+    wz_next(page)
+    page.click(".kindc[data-kind='daily']")
+    page.fill("#wzCount", "40")
+    q = page.locator(".field", has=page.locator("#wzBufQ"))
+    assert "여유 20%를 더할까요?" in q.inner_text() and q.locator("button").count() == 2, "여유 20%를 더할지 묻지 않음"
+    assert q.locator("button[data-buf='1']").get_attribute("aria-pressed") == "true", "처음엔 더하기가 골라져 있어야 함"
+    assert "2.4달(72일)" in page.inner_text("#wzPlanSum") and "시작 D-28" in page.inner_text("#wzPlanSum"), "여유를 더한 계산이 아님"
+    q.locator("button[data-buf='0']").click()
+    sm = page.inner_text("#wzPlanSum")
+    start = kst(100 - 60)
+    assert "40회는 2달(60일)" in sm and "여유 20%는 더하지 않았어요" in sm, f"여유를 안 더한 계산 안내가 없음: {sm}"
+    assert f"이 프로젝트의 실행은 {int(start[5:7])}월 {int(start[8:10])}일에 시작될 예정입니다." in sm and "시작 D-40" in sm, f"여유 없이 시작일이 다시 계산되지 않음: {sm}"
+    shot("wizard-buffer", store=False)
+    wz_next(page)
+    assert "여유 20%는 더하지 않았어요" in page.inner_text("#wzPlanSum"), "확인 단계에 고른 여유가 안 이어짐"
+    wz_next(page)
+    page.wait_for_selector("#sheet[hidden]", state="attached", timeout=5000)
+    p = saved(page)["goals"][0]["plan"]
+    assert p.get("buf") is False and p["from"] == start, f"여유를 안 더한 설정이 저장되지 않음: buf={p.get('buf')} from={p['from']}"
+    tab(page, "plan")
+    assert "여유 20%는 더하지 않았어요" in page.inner_text(".plansum"), "역산 회차 계획에 여유를 안 더했다는 안내가 없음"
+    # 설정 바꾸기: 고른 값이 남아 있고, 더하기로 바꾸면 시작이 앞당겨짐
+    page.locator(".plansum button", has_text="설정 바꾸기").click()
+    wz_next(page)
+    page.click(".kindc[data-kind='daily']")
+    q = page.locator(".field", has=page.locator("#wzBufQ"))
+    assert q.locator("button[data-buf='0']").get_attribute("aria-pressed") == "true", "설정 바꾸기에서 고른 여유(안 더하기)가 안 남아 있음"
+    q.locator("button[data-buf='1']").click()
+    wz_next(page)
+    wz_next(page)
+    page.wait_for_selector("#sheet[hidden]", state="attached", timeout=5000)
+    p = saved(page)["goals"][0]["plan"]
+    assert p.get("buf") is True and p["from"] == kst(28), f"더하기로 바꿨는데 시작일이 앞당겨지지 않음: buf={p.get('buf')} from={p['from']}"
