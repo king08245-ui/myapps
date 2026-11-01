@@ -105,6 +105,23 @@ body {
 }
 .add-btn:active { transform: scale(0.88); }
 
+.mic-btn {
+  background: var(--surface3); border: 1px solid var(--border);
+  font-size: 16px; width: 30px; height: 30px; border-radius: 50%;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; line-height: 1; margin-right: 4px;
+  transition: all 0.15s;
+}
+.mic-btn:active { transform: scale(0.88); }
+.mic-btn.listening {
+  background: #E53935; border-color: #E53935;
+  animation: micPulse 1s ease-in-out infinite;
+}
+@keyframes micPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(229,57,53,0.5); }
+  50% { box-shadow: 0 0 0 6px rgba(229,57,53,0); }
+}
+
 /* TABS */
 .tabs { display: flex; border-bottom: 1px solid var(--border); }
 .tab {
@@ -441,14 +458,16 @@ body {
         inputmode="text" enterkeyhint="done"
         autofocus
         onkeydown="handleInputKey(event)">
+      <button class="mic-btn" id="micBtn" onclick="toggleVoiceInput()" title="음성 입력" style="display:none">🎤</button>
       <button class="add-btn" onclick="addItem()">+</button>
     </div>
   </div>
   <div class="tabs">
     <div class="tab active" onclick="switchTab(0,this)">메모</div>
     <div class="tab" onclick="switchTab(1,this)">쇼핑</div>
-    <div class="tab" onclick="switchTab(2,this)">1일여행</div>
-    <div class="tab" onclick="switchTab(3,this)">정기행사</div>
+    <div class="tab" onclick="switchTab(2,this)">먹킷리스트</div>
+    <div class="tab" onclick="switchTab(3,this)">1일여행</div>
+    <div class="tab" onclick="switchTab(4,this)">정기행사</div>
   </div>
 </div>
 
@@ -472,8 +491,9 @@ body {
     <div class="popup-title">어디로 보낼까요?</div>
     <div class="popup-tab-list">
       <button class="popup-tab-btn" onclick="moveSelectedTo(1)">🛒 쇼핑</button>
-      <button class="popup-tab-btn" onclick="moveSelectedTo(2)">🧳 1일여행</button>
-      <button class="popup-tab-btn" onclick="moveSelectedTo(3)">📅 정기행사</button>
+      <button class="popup-tab-btn" onclick="moveSelectedTo(2)">🍽️ 먹킷리스트</button>
+      <button class="popup-tab-btn" onclick="moveSelectedTo(3)">🧳 1일여행</button>
+      <button class="popup-tab-btn" onclick="moveSelectedTo(4)">📅 정기행사</button>
     </div>
     <div class="popup-btns">
       <button class="popup-btn cancel" onclick="document.getElementById('moveTabPopup').classList.remove('show')">취소</button>
@@ -511,10 +531,11 @@ body {
 // ══════════════════════════════════════════════
 let state = {
   tabs: [
-    { name:'메모',     items:[] },
-    { name:'쇼핑',     items:[] },
-    { name:'1일여행',  items:[] },
-    { name:'정기행사', items:[], groups:[] }
+    { name:'메모',       items:[] },
+    { name:'쇼핑',       items:[] },
+    { name:'먹킷리스트', items:[] },
+    { name:'1일여행',    items:[] },
+    { name:'정기행사',   items:[], groups:[] }
   ],
   currentTab: 0
 };
@@ -566,19 +587,34 @@ function load() {
     if (old) {
       try {
         const oldState = JSON.parse(old);
-        // 기존 3개 탭 데이터 → 새 4개 탭 구조로
-        // [챙길것, 1일여행, 정기행사] → [메모(=챙길것), 쇼핑(새), 1일여행, 정기행사]
-        state.tabs[0].items = (oldState.tabs?.[0]?.items) || [];
-        state.tabs[1].items = []; // 쇼핑은 새로
-        state.tabs[2].items = (oldState.tabs?.[1]?.items) || [];
-        state.tabs[3].items = (oldState.tabs?.[2]?.items) || [];
-        state.tabs[3].groups = (oldState.tabs?.[2]?.groups) || [];
-        save(); // 새 키에 저장
+        // 옛 3개 탭 [챙길것, 1일여행, 정기행사]
+        //   → 메모(=챙길것) / 쇼핑(새) / 먹킷리스트(새) / 1일여행 / 정기행사
+        state.tabs[0].items  = (oldState.tabs?.[0]?.items) || [];
+        state.tabs[1].items  = []; // 쇼핑 새로
+        state.tabs[2].items  = []; // 먹킷리스트 새로
+        state.tabs[3].items  = (oldState.tabs?.[1]?.items) || [];
+        state.tabs[4].items  = (oldState.tabs?.[2]?.items) || [];
+        state.tabs[4].groups = (oldState.tabs?.[2]?.groups) || [];
+        save();
       } catch(e) {}
     }
   }
+
+  // 탭 구조 정규화 — 이름 기준으로 5개 탭을 보장.
+  // (먹킷리스트 추가 전 v3를 쓰던 사용자: 탭 4개 → 먹킷리스트 끼워넣기)
+  const want = ['메모','쇼핑','먹킷리스트','1일여행','정기행사'];
+  const byName = {};
+  (state.tabs || []).forEach(t => { if (t && t.name) byName[t.name] = t; });
+  state.tabs = want.map(name => {
+    if (byName[name]) return byName[name];
+    return (name === '정기행사') ? { name, items:[], groups:[] } : { name, items:[] };
+  });
+
   // 정합성 보정
-  if (!state.tabs[3].groups) state.tabs[3].groups = [];
+  if (!state.tabs[4].groups) state.tabs[4].groups = [];
+  if (typeof state.currentTab !== 'number' || state.currentTab < 0 || state.currentTab > 4) {
+    state.currentTab = 0;
+  }
   state.tabs.forEach(t => t.items.forEach(i => {
     if (!i.subItems) i.subItems = [];
   }));
@@ -615,8 +651,8 @@ function switchTab(idx, el) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
   render();
-  // 메모/쇼핑 탭이면 입력창에 자동 포커스 (키보드 즉시 노출)
-  if (idx === 0 || idx === 1) {
+  // 메모/쇼핑/먹킷리스트 탭이면 입력창에 자동 포커스 (키보드 즉시 노출)
+  if (idx === 0 || idx === 1 || idx === 2) {
     setTimeout(() => {
       const inp = document.getElementById('newInput');
       if (inp) inp.focus();
@@ -632,7 +668,7 @@ function render() {
   area.innerHTML = '';
   const tab = state.tabs[state.currentTab];
 
-  if (state.currentTab === 3) {
+  if (state.currentTab === 4) {
     renderJeongi(area, tab);
   } else {
     if (!tab.items.length) {
@@ -778,8 +814,8 @@ function buildItemEl(item, isJeongi) {
   div.className = 'item' + (item.done ? ' done' : '') + (item.open ? ' open' : '') + (isSelected(item.id) ? ' selected' : '');
   div.id = 'item-' + item.id;
 
-  const isMemo = (state.currentTab === 0);   // 메모 탭
-  const isShop = (state.currentTab === 1);   // 쇼핑 탭
+  const isMemo = (state.currentTab === 0);   // 메모 탭 (🛒 쇼핑 이동 버튼 전용)
+  const isShop = (state.currentTab === 1 || state.currentTab === 2);   // 쇼핑/먹킷리스트 (심플 리스트)
 
   /* ── main row ── */
   const row = document.createElement('div');
@@ -858,7 +894,7 @@ function buildItemEl(item, isJeongi) {
     // 다른 탭은 기존 수정/그룹 버튼 유지
     if (!isMemo && !isShop) {
       acts.appendChild(mkbtn('수정', '', () => startEdit(item.id)));
-      if (isJeongi && item.star && (state.tabs[3].groups||[]).length) {
+      if (isJeongi && item.star && (state.tabs[4].groups||[]).length) {
         acts.appendChild(mkbtn('그룹▾','blue', () => openMovePopup(item.id)));
       }
     }
@@ -1083,13 +1119,13 @@ function cancelEdit(id) {
 function deleteItem(id) {
   const curTab = state.tabs[state.currentTab];
   const item = curTab.items.find(i => i.id === id);
-  const isStarredAndInOtherTab = item && item.star && state.currentTab !== 3;
+  const isStarredAndInOtherTab = item && item.star && state.currentTab !== 4;
 
   if (isStarredAndInOtherTab) {
     // 정기행사에 복사된 항목은 남겨두고, 현재 탭에서만 삭제
     // 정기행사의 복사본에서 별표를 해제하지 않음 — 독립적으로 유지
     curTab.items = curTab.items.filter(i => i.id !== id);
-  } else if (state.currentTab === 3) {
+  } else if (state.currentTab === 4) {
     // 정기행사에서 삭제하는 경우: 정기행사에서만 제거
     curTab.items = curTab.items.filter(i => i.id !== id);
   } else {
@@ -1173,16 +1209,16 @@ function toggleStar(id) {
   if (!item) return;
   item.star = !item.star;
 
-  if (item.star && state.currentTab !== 3) {
-    const jeongi = state.tabs[3];
+  if (item.star && state.currentTab !== 4) {
+    const jeongi = state.tabs[4];
     if (!jeongi.items.find(i => i.id === id)) {
       jeongi.items.push(JSON.parse(JSON.stringify({ ...item, groupId: null })));
     }
   }
-  if (!item.star && state.currentTab !== 3) {
-    state.tabs[3].items = state.tabs[3].items.filter(i => i.id !== id);
+  if (!item.star && state.currentTab !== 4) {
+    state.tabs[4].items = state.tabs[4].items.filter(i => i.id !== id);
   }
-  const jItem = state.tabs[3].items.find(i => i.id === id);
+  const jItem = state.tabs[4].items.find(i => i.id === id);
   if (jItem) jItem.star = item.star;
 
   save(); render();
@@ -1225,7 +1261,7 @@ function moveToShopping(id) {
 function updateActionBar(){
   const bar = document.getElementById('actionBar');
   if(!bar) return;
-  const isMemoOrShop = (state.currentTab === 0 || state.currentTab === 1);
+  const isMemoOrShop = (state.currentTab === 0 || state.currentTab === 1 || state.currentTab === 2);
   const content = document.getElementById('contentArea');
 
   if(!isMemoOrShop){
@@ -1342,7 +1378,7 @@ function closeGroupPopup(e) {
 function confirmGroup() {
   const val = document.getElementById('groupNameInput').value.trim();
   if (!val) return;
-  const jeongi = state.tabs[3];
+  const jeongi = state.tabs[4];
   if (!jeongi.groups) jeongi.groups = [];
   jeongi.groups.push({ id: uid(), name: val });
   document.getElementById('groupPopup').classList.remove('show');
@@ -1351,7 +1387,7 @@ function confirmGroup() {
 
 function openMovePopup(itemId) {
   movingItemId = itemId;
-  const jeongi = state.tabs[3];
+  const jeongi = state.tabs[4];
   const list = document.getElementById('moveGroupList');
   list.innerHTML = '';
   if (!jeongi.groups || !jeongi.groups.length) {
@@ -1377,7 +1413,7 @@ function closeMovePopup(e) {
     document.getElementById('movePopup').classList.remove('show');
 }
 function moveToGroup(groupId) {
-  const jeongi = state.tabs[3];
+  const jeongi = state.tabs[4];
   const item = jeongi.items.find(i => i.id === movingItemId);
   if (item) item.groupId = groupId;
   movingItemId = null;
@@ -1417,7 +1453,7 @@ function loadFile(event) {
   reader.onload = e => {
     try {
       state = JSON.parse(e.target.result);
-      if (!state.tabs[3].groups) state.tabs[3].groups = [];
+      if (!state.tabs[4].groups) state.tabs[4].groups = [];
       state.tabs.forEach(t => t.items.forEach(i => { if(!i.subItems) i.subItems = []; }));
       save(); render();
     } catch { alert('올바른 백업 파일이 아니에요.'); }
@@ -1476,6 +1512,65 @@ function resetAll() {
     currentTab: state.currentTab
   };
   save(); render();
+}
+
+// ══════════════════════════════════════════════
+//  VOICE INPUT (음성 입력)
+// ══════════════════════════════════════════════
+let _recognition = null;
+let _isListening = false;
+
+(function initVoice(){
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const micBtn = document.getElementById('micBtn');
+  if(!SR || !micBtn) return;  // 미지원 브라우저 → 버튼 숨긴 채로 둠
+
+  micBtn.style.display = '';  // 지원되면 버튼 노출
+
+  _recognition = new SR();
+  _recognition.lang = 'ko-KR';
+  _recognition.interimResults = true;   // 말하는 중간 결과도 표시
+  _recognition.continuous = false;      // 한 번 말하면 멈춤
+  _recognition.maxAlternatives = 1;
+
+  const inp = document.getElementById('newInput');
+  let baseText = '';  // 녹음 시작 시점의 기존 입력값
+
+  _recognition.onstart = () => {
+    _isListening = true;
+    micBtn.classList.add('listening');
+    baseText = inp.value;
+  };
+  _recognition.onresult = (e) => {
+    let transcript = '';
+    for(let i = e.resultIndex; i < e.results.length; i++){
+      transcript += e.results[i][0].transcript;
+    }
+    // 기존 입력 뒤에 이어붙임
+    inp.value = (baseText ? baseText + ' ' : '') + transcript;
+  };
+  _recognition.onerror = (e) => {
+    _isListening = false;
+    micBtn.classList.remove('listening');
+    if(e.error === 'not-allowed' || e.error === 'service-not-allowed'){
+      alert('마이크 권한이 필요해요. 브라우저 설정에서 이 사이트의 마이크를 허용해주세요.');
+    }
+  };
+  _recognition.onend = () => {
+    _isListening = false;
+    micBtn.classList.remove('listening');
+    inp.focus();  // 받아쓰기 끝나면 입력창 포커스 (바로 수정/엔터 가능)
+  };
+})();
+
+function toggleVoiceInput(){
+  if(!_recognition) return;
+  if(_isListening){
+    _recognition.stop();
+  } else {
+    try { _recognition.start(); }
+    catch(err){ /* 이미 시작된 경우 등 무시 */ }
+  }
 }
 
 // ══════════════════════════════════════════════
